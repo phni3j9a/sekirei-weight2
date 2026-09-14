@@ -1,0 +1,24 @@
+name: Repository checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Python syntax and USI score handling
+        run: |
+          python3 -m py_compile scripts/prepare.py scripts/smoke.py
+          python3 -m unittest discover -s tests -v
+      - name: JSON configuration
+        run: |
+          python3 -m json.tool config/toolchain.lock.json >/dev/null
+          python3 -m json.tool config/smoke.json >/dev/null
+          git diff --check
+      # The real engine smoke is run locally: the teacher is not redistributed to CI.

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "sekirei": {
+      "url": "https://github.com/kent-tokyo/sekirei.git",
+      "commit": "aeb6ea30d58f93cad84ffe98bc13441feb807fa8",
+      "version": "0.3.36",
+      "ref": "refs/tags/v0.3.36",
+      "packages": ["sekirei", "sekirei-train"]
+    },
+    "shogiesa": {
+      "url": "https://github.com/kent-tokyo/shogiesa.git",
+      "commit": "dd0317437dc43b4d9b299e11542d82843f538b9d",
+      "version": "0.9.2",
+      "packages": ["shogiesa-cli"]
+    },
+    "yaneuraou": {
+      "url": "https://github.com/yaneurao/YaneuraOu.git",
+      "commit": "c1b80eaa09fe13d5f12b1599d1ae4d53c224de30",
+      "version": "9.80git",
+      "edition": "YANEURAOU_ENGINE_SFNN_halfka2_1024_7_64_k3k3",
+      "target_cpu": "AVX2"
+    }
+  },
+  "rustflags": "-C target-cpu=x86-64-v3",
+  "suisho11plus": {
+    "archive_sha256": "ee23379ab3bb0422e7d2f3f8df4feb297a77e6cbada6a350926fd4757bea9478",
+    "weight_sha256": "a78b7f889843037d344f482623b3febd124ead5c1f34f134d9f1c2c78cd0f829",
+    "weight_bytes": 135285230,
+    "options_sha256": "9c242cd8820c158292af4a6d58890e37ae060000a9a6344d7a549abf7f44f0b3",
+    "architecture": "SFNN_halfka2_1024_7_64_k3k3",
+    "fv_scale": 40,
+    "source_article": "https://www.fanbox.cc/@yaneurao/posts/12349386"
+  }
+}

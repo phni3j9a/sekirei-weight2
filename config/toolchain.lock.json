@@ -16,8 +16,8 @@
     },
     "yaneuraou": {
       "url": "https://github.com/yaneurao/YaneuraOu.git",
-      "commit": "c1b80eaa09fe13d5f12b1599d1ae4d53c224de30",
-      "version": "9.80git",
+      "commit": "76d58ef2e4cf64116784f41fd4816425ab6817ee",
+      "version": "9.70git",
       "edition": "YANEURAOU_ENGINE_SFNN_halfka2_1024_7_64_k3k3",
       "target_cpu": "AVX2"
     }

@@ -8,10 +8,11 @@ Suisho11Plus と Sekirei をそれぞれ **100万ノード指定**で解析し�
 
 ## 現在の段階
 
-Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) で初期方針と実行環境を整備中。
+Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) で初期方針と実行環境を整備し、[PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) でレビューする。
 
 - Sekirei と付属学習器、shogiesa、Suisho11Plus 用やねうら王のソースを commit 単位で固定。
 - Python 標準ライブラリによるビルド・重み照合・USI 疎通確認スクリプト。
+- 実機で両エンジンの100万ノード指定探索、shogiesa の一局面ラベル生成を確認済み。[検証結果と制約](docs/validation/environment-2026-09-14.md)。
 - 正式ベンチマークの棋譜選定、本格学習、モデル採用判定、定期自動実行は次の段階。
 - Sekirei の今回の初期疎通は **駒得評価へのフォールバック**。学習済みモデルはまだない。
 
@@ -31,6 +32,8 @@ python3 scripts/smoke.py
 `--runtime /absolute/path` で保存先を変更できる。既定は `~/.local/share/sekirei-weight2`。複数 worktree で固定環境を共有し、実験でソース版・構造を変える場合は別 runtime を使う。
 
 `smoke.py` は短い自作棋譜の一局面を両エンジンで100万ノード指定解析し、さらに shogiesa から教師を起動してラベルを一件生成する。結果と USI ログは runtime の `runs/environment-*/` に保存される。これはモデル品質や棋譜全体の一致率を測るベンチマークではない。
+
+教師の旧形式の識別ハッシュ警告は記録に残る。今回の最終教師出力は upperbound で、確定評価値には変換していない。正式な教師ベースラインの照合と境界値の採点規則は次の確認事項。
 
 ## 次の到達点
 

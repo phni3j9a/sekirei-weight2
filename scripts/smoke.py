@@ -81,7 +81,7 @@ class Engine:
             raise RuntimeError(f"USI engine exited with {self.process.returncode}")
 
 
-def parse_result(lines, side):
+def parse_result(lines, side, *, allow_bounds=False):
     best = next(line.split()[1] for line in reversed(lines) if line.startswith("bestmove "))
     if not re.fullmatch(r"(?:[1-9][a-i][1-9][a-i]\+?|[PLNSGBR]\*[1-9][a-i])", best):
         raise RuntimeError(f"unexpected smoke bestmove: {best}")
@@ -96,7 +96,8 @@ def parse_result(lines, side):
     if not infos:
         raise RuntimeError("no scored PV")
     tokens = infos[-1]
-    if "lowerbound" in tokens or "upperbound" in tokens:
+    bound = next((name for name in ("lowerbound", "upperbound") if name in tokens), "exact")
+    if bound != "exact" and not allow_bounds:
         raise RuntimeError("final scored PV is a bound")
     if tokens[tokens.index("pv") + 1] != best:
         raise RuntimeError("final scored PV and bestmove disagree")
@@ -105,8 +106,13 @@ def parse_result(lines, side):
     if kind != "cp":
         raise RuntimeError(f"expected finite cp score for smoke position, got {kind}")
     fields = {name: int(tokens[tokens.index(name) + 1]) for name in ("nodes", "depth")}
-    return dict(fields, bestmove=best, score_cp_stm=int(value),
-                score_cp_sente=int(value) * (1 if side == "black" else -1))
+    sente_bound = bound
+    if side == "white" and bound != "exact":
+        sente_bound = "lowerbound" if bound == "upperbound" else "upperbound"
+    return dict(fields, bestmove=best, reported_cp_stm=int(value),
+                score_bound_stm=bound, score_bound_sente=sente_bound,
+                score_cp_stm=int(value) if bound == "exact" else None,
+                score_cp_sente=int(value) * (1 if side == "black" else -1) if bound == "exact" else None)
 
 
 def probe(runtime, name, options, config, output):
@@ -122,19 +128,22 @@ def probe(runtime, name, options, config, output):
             for key, value in options.items():
                 engine.send(f"setoption name {key} value {value}")
             engine.send("isready")
-            engine.until(lambda line: line == "readyok")
+            startup = engine.until(lambda line: line == "readyok")
             engine.send("usinewgame")
             engine.send("position " + config["position"])
             started = time.monotonic()
             engine.send(f"go nodes {config['requested_nodes']}")
             lines = engine.until(lambda line: line.startswith("bestmove "))
-            result = parse_result(lines, config["side_to_move"])
+            # A node-limited search may finish during an aspiration fail-low/high.
+            # Preserve its bound for environment diagnostics; never create a point score.
+            result = parse_result(lines, config["side_to_move"], allow_bounds=True)
             # Smoke sanity envelope, not the eventual benchmark acceptance policy.
             if not config["requested_nodes"] * 0.98 <= result["nodes"] <= config["requested_nodes"] * 1.02:
                 raise RuntimeError(f"unexpected node count: {result['nodes']}")
             result.update(wall_seconds=round(time.monotonic() - started, 3),
                           options=options, requested_nodes=config["requested_nodes"],
-                          engine_id=[line for line in handshake if line.startswith("id ")])
+                          engine_id=[line for line in handshake if line.startswith("id ")],
+                          startup_warnings=[line for line in startup if "warning" in line.lower()])
             return result
         finally:
             engine.close()
@@ -165,13 +174,16 @@ def check_shogiesa(runtime, output, teacher_options, weight, config):
         raise RuntimeError("shogiesa node budget mismatch")
     if observation.get("weight_sha256") != LOCK["suisho11plus"]["weight_sha256"]:
         raise RuntimeError("shogiesa weight attribution mismatch")
-    if observation.get("was_timeout_salvaged") or observation.get("score_bound") != "exact":
-        raise RuntimeError("shogiesa timed out or returned only a bound")
+    if observation.get("was_timeout_salvaged"):
+        raise RuntimeError("shogiesa salvaged a timed out search")
+    if observation.get("score_bound") not in ("exact", "lowerbound", "upperbound"):
+        raise RuntimeError("shogiesa returned an unrecognized score bound")
     if observation.get("score", {}).get("kind") != "cp":
         raise RuntimeError("shogiesa did not return a finite cp score")
     if not config["requested_nodes"] * 0.98 <= (observation.get("nodes") or 0) <= config["requested_nodes"] * 1.02:
         raise RuntimeError("shogiesa observation has unexpected node count")
     return {"version": capture([binary, "--version"]), "observations": len(rows),
+            "score_bound": observation["score_bound"], "nodes": observation["nodes"],
             "history_mode": "standalone_sfen_not_benchmark"}
 
 

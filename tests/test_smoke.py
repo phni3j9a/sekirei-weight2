@@ -31,6 +31,17 @@ class ScoreAcceptanceTests(unittest.TestCase):
                 "bestmove 4a3b",
             ], "white")
 
+    def test_diagnostic_bound_is_preserved_without_a_point_estimate(self):
+        result = parse_result([
+            "info depth 20 score cp 10 nodes 900000 pv 8c8d",
+            "info depth 21 score cp -63 upperbound nodes 1000131 pv 8c8d",
+            "bestmove 8c8d",
+        ], "white", allow_bounds=True)
+        self.assertIsNone(result["score_cp_sente"])
+        self.assertIsNone(result["score_cp_stm"])
+        self.assertEqual(result["reported_cp_stm"], -63)
+        self.assertEqual(result["score_bound_sente"], "lowerbound")
+
     def test_unexpected_mate_is_not_coerced_to_cp(self):
         with self.assertRaisesRegex(RuntimeError, "finite cp"):
             parse_result([

@@ -1,0 +1,17 @@
+# Local source material, including paid articles and supplied archives.
+/docs/pixiv_fanbox_yaneurao/
+/docs/Clippings/
+/.local/
+/data/
+/models/
+/runs/
+/target/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.7z
+*.zip
+*.nnue
+*.bin

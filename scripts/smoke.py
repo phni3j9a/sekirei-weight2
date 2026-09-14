@@ -172,7 +172,7 @@ def check_shogiesa(runtime, output, teacher_options, weight, config):
     observation = rows[0]["observations"][0]
     if observation.get("requested_nodes") != config["requested_nodes"]:
         raise RuntimeError("shogiesa node budget mismatch")
-    if observation.get("weight_sha256") != LOCK["suisho11plus"]["weight_sha256"]:
+    if observation.get("weight_sha256") != LOCK["primary_teacher"]["weight_sha256"]:
         raise RuntimeError("shogiesa weight attribution mismatch")
     if observation.get("was_timeout_salvaged"):
         raise RuntimeError("shogiesa salvaged a timed out search")
@@ -197,6 +197,9 @@ def main():
         fcntl.flock(lockfile, fcntl.LOCK_SH | fcntl.LOCK_NB)
         weight = verify_weight(runtime)
         manifest = json.loads((runtime / "build-manifest.json").read_text())
+        if (int(config["teacher_options"]["FV_SCALE"])
+                != LOCK["primary_teacher"]["fv_scale"]):
+            raise RuntimeError("smoke FV_SCALE does not match the primary teacher lock")
         if manifest["lock_sha256"] != sha256(REPO / "config/toolchain.lock.json"):
             raise RuntimeError("build manifest does not match current toolchain lock")
         for name, binary in manifest["binaries"].items():
@@ -210,6 +213,7 @@ def main():
             "purpose": "environment_smoke_not_model_quality",
             "position": config["position"], "side_to_move": config["side_to_move"],
             "build_manifest": manifest, "weight_sha256": sha256(weight),
+            "teacher_id": LOCK["primary_teacher"]["id"],
             "config_sha256": sha256(REPO / "config/smoke.json"),
             "sekirei_model": "material_fallback_no_trained_weights",
         }

@@ -1,5 +1,6 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "runtime_profile": "suisho11beta-v1",
   "sources": {
     "sekirei": {
       "url": "https://github.com/kent-tokyo/sekirei.git",
@@ -16,20 +17,54 @@
     },
     "yaneuraou": {
       "url": "https://github.com/yaneurao/YaneuraOu.git",
-      "commit": "76d58ef2e4cf64116784f41fd4816425ab6817ee",
-      "version": "9.70git",
-      "edition": "YANEURAOU_ENGINE_SFNN_halfka2_1024_7_64_k3k3",
+      "commit": "a81730f47eefa4d53003ed85034715a28d2437ab",
+      "version": "9.20",
+      "edition": "YANEURAOU_ENGINE_NNUE_SFNNwoP1536",
       "target_cpu": "AVX2"
     }
   },
   "rustflags": "-C target-cpu=x86-64-v3",
-  "suisho11plus": {
+  "primary_teacher": {
+    "id": "suisho11beta-concerto-202512",
+    "name": "Suisho11beta / Suisho Concerto 202512",
+    "archive_sha256": "989d292dcb8f16ad75451cb58d01841d1ad0b654b399fb38f9466d8b69aab8a8",
+    "archive_member": "eval/nn.bin",
+    "weight_sha256": "d1b16f0adffab3183faeb5740ea11185734236c23aedd715c89c1bb4e8e67785",
+    "weight_bytes": 112887658,
+    "architecture": "SFNNwoP1536",
+    "fv_scale": 28,
+    "source_article": "https://www.fanbox.cc/@yaneurao/posts/11335845"
+  },
+  "teacher_corpora": {
+    "suisho11beta-1m": {
+      "teacher_id": "suisho11beta-concerto-202512",
+      "requested_nodes": 1000000,
+      "format": "gensfen-pack",
+      "archives": [
+        {
+          "archive_sha256": "f708b706b22754dafd74896590da8a993340b4f20f6a99b41662d19a2a1b5d1c",
+          "member_prefix": "1000000a/",
+          "source_article": "https://www.fanbox.cc/@yaneurao/posts/12184084"
+        },
+        {
+          "archive_sha256": "47b3385674b765ba8b9904f66e2db15eab9f37d13b1d62f680b5ff46a208929c",
+          "member_prefix": "1000000b/",
+          "source_article": "https://www.fanbox.cc/@yaneurao/posts/12338760"
+        }
+      ]
+    }
+  },
+  "reference_teacher": {
+    "id": "suisho11plus-20260525",
+    "name": "Suisho11Plus",
     "archive_sha256": "ee23379ab3bb0422e7d2f3f8df4feb297a77e6cbada6a350926fd4757bea9478",
     "weight_sha256": "a78b7f889843037d344f482623b3febd124ead5c1f34f134d9f1c2c78cd0f829",
     "weight_bytes": 135285230,
     "options_sha256": "9c242cd8820c158292af4a6d58890e37ae060000a9a6344d7a549abf7f44f0b3",
     "architecture": "SFNN_halfka2_1024_7_64_k3k3",
     "fv_scale": 40,
+    "yaneuraou_commit": "76d58ef2e4cf64116784f41fd4816425ab6817ee",
+    "yaneuraou_edition": "YANEURAOU_ENGINE_SFNN_halfka2_1024_7_64_k3k3",
     "source_article": "https://www.fanbox.cc/@yaneurao/posts/12349386"
   }
 }

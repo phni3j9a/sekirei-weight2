@@ -9,15 +9,16 @@
 | パス | 用途 |
 | --- | --- |
 | `/home/server/projects/sekirei-weight2` | main 同期用 checkout、既存資料の保持 |
-| `/home/server/worktrees/sekirei-weight2/issue-3-beta-teacher` | Issue #3 の開発 worktree |
+| `/home/server/worktrees/sekirei-weight2/<作業名>` | Issueごとの開発worktree。統合後は安全確認して削除 |
 | `/home/server/projects/sekirei-weight2/docs/pixiv_fanbox_yaneurao` | ユーザー提供のローカル資料。Git 対象外 |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/sources` | β固定版の upstream ソース |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/build` | β固定環境のビルド生成物 |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/bin` | β固定環境の実行ファイルへのリンク |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/models/suisho11beta-concerto-202512` | 主教師重み |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/data/teachers/suisho11beta-1m` | 内容ハッシュで重複除外した教師 `.pack` とmanifest |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/venv` | `.pack` 監査専用の固定Python環境 |
+| `~/.local/share/sekirei-weight2/suisho11beta-v1/venv` | `.pack` 監査・CSA合法手確認用の固定Python環境 |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/runs` | smoke・監査・今後の個別実験成果物 |
+| `~/.local/share/sekirei-weight2/shogiquest-human-v1` | 公開棋譜1,000局、取得cache、再開状態、ローカルmanifest |
 
 大規模資料を worktree にコピーしない。独立した研究実験では専用のソース・出力先を使い、共通 runtime を改造しない。`prepare.py` は排他ロック、`smoke.py` と `audit_pack.py` は共有ロックを取り、スクリプト同士のビルド／解析の競合を防ぐ。手動でのソース変更や直接ビルドは別途利用状況を確認する。
 
@@ -69,7 +70,7 @@ python3 scripts/prepare.py import-corpus --archive \
 
 それぞれのアーカイブ全体を固定SHA-256で照合し、記事で水匠11β・100万ノードと説明された `1000000a/` と `1000000b/` の `.pack` だけを標準出力経由で安全に抽出する。個々のファイルはSHA-256名で保存し、同じ内容を複数回保持しない。実機では収録15本のうち2本が重複し、13本、534,175,084 bytesになった。由来と重複関係はローカルの `manifest.json` に残る。
 
-`.pack` の復号には cshogi 1.0.4 / NumPy 1.26.4 を専用venvへ固定する。これはCPU用で、GPU環境は導入しない。
+`.pack` の復号と取得したCSAの合法手再生には cshogi 1.0.4 / NumPy 1.26.4 を専用venvへ固定する。これはCPU用で、GPU環境は導入しない。
 
 ```sh
 python3 scripts/prepare.py audit-deps
@@ -100,6 +101,8 @@ GenSfen `.pack` はゲーム境界を保持するが、評価関数SHA、エン�
 
 shogiesa の固定版は `position sfen ...` で局面を渡し、同じプロセスを再利用する。棋譜履歴を保持し、局面ごとに探索状態を独立させる正式なグラフ比較と意味が異なる。学習用のラベル生成には活用するが、今の label コマンドをそのまま最終採点器にはしない。
 
-固定版の `sekirei-train` と `shogiesa` はGenSfen `.pack` を直接は読まない。ストリーム復号から学習入力への接続、ゲーム単位の分割、正式棋譜の選定、複数棋譜の比較、CPUでの小規模学習は次の到達点。βへの切替と監査結果は [β環境と教師監査](validation/suisho11beta-2026-09-15.md)、旧Plus環境は [初期検証](validation/environment-2026-09-14.md) に記録する。
+独立評価用には、将棋クエストの公開棋譜1,000局をGit外runtimeへ固定し、エンジン解析前にdevelopment 5局 / final 5局を選定した。取得状態を再利用するため、公開Web画面へ繰り返しアクセスする必要はない。出典、filter、実測、snapshot hash、制約は[将棋クエスト独立棋譜corpusの固定](validation/shogiquest-corpus-2026-09-15.md)に記録する。
+
+固定版の `sekirei-train` と `shogiesa` はGenSfen `.pack` を直接は読まない。ストリーム復号から学習入力への接続、固定棋譜の100万ノード比較、複数棋譜の採点、CPUでの小規模学習は次の到達点。βへの切替と監査結果は [β環境と教師監査](validation/suisho11beta-2026-09-15.md)、旧Plus環境は [初期検証](validation/environment-2026-09-14.md) に記録する。
 
 公開 GitHub Actions では Python の構文、USI スコア受理のテスト、設定 JSON を検証する。教師重みを CI へアップロードせず、実エンジンと教師の smoke は Mac mini で実行する。

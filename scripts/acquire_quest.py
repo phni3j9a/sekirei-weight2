@@ -119,6 +119,8 @@ def parse_csa(text):
     This is an integrity/normalization pass.  Actual move legality is checked
     separately with the pinned cshogi environment before a game is accepted.
     """
+    if not text.strip():
+        raise ValueError("CSA is empty")
     if "\x00" in text:
         raise ValueError("CSA contains a NUL byte")
     lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
@@ -439,6 +441,9 @@ def process_game(root, state, game, game_type, client, cshogi, csa):
             reject(state, game_id, metadata, "csa_missing")
             return False
         raise
+    if not csa_bytes:
+        reject(state, game_id, metadata, "csa_empty")
+        return False
     try:
         text = csa_bytes.decode("utf-8")
         parsed = parse_csa(text)

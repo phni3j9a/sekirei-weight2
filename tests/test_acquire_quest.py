@@ -66,6 +66,10 @@ class CsaTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "standard-even"):
             parse_csa(self.fixture().replace("P1-KY", "P1 * ", 1))
 
+    def test_rejects_empty_csa(self):
+        with self.assertRaisesRegex(ValueError, "empty"):
+            parse_csa("")
+
 
 class SnapshotSelectionTests(unittest.TestCase):
     def test_fixed_buckets_have_no_repeated_players(self):

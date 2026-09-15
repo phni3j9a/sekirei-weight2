@@ -74,6 +74,10 @@ POSITION_CLASSIFICATION_TYPES = (
 )
 POSITION_CLASSIFICATION_METADATA_KEY = "position_classifications"
 PARSER_ID = "usi-observation-v2"
+# The fixed YaneuraOu node/time check cadence permits one 1024-node quantum
+# beyond a one-million-node request.  Keep this in runner code so a change to
+# the source-derived formal ceiling also changes the runner/parser identity.
+FORMAL_NODE_CHECK_QUANTUM = 1024
 
 
 class BenchmarkError(RuntimeError):
@@ -884,6 +888,17 @@ def _strict_positive_int(value, field):
     return value
 
 
+def formal_node_ceiling(requested_nodes):
+    """Return the only permitted formal absolute node ceiling.
+
+    ``go nodes`` remains an upper bound and this helper does not impose a
+    minimum node target.  The value is deliberately derived from runner source
+    rather than accepted from a mutable config claim.
+    """
+    _strict_positive_int(requested_nodes, "requested_nodes")
+    return requested_nodes + FORMAL_NODE_CHECK_QUANTUM
+
+
 def validate_run_policy(config, run_type, *, require_formal_gate=False):
     """Validate repetition and absolute node-policy fields for one run."""
     if run_type not in ("pilot", "formal"):
@@ -905,6 +920,12 @@ def validate_run_policy(config, run_type, *, require_formal_gate=False):
         _strict_positive_int(max_nodes, "formal.max_reported_nodes")
         if max_nodes < config["requested_nodes"]:
             raise ConfigurationError("formal.max_reported_nodes must be >= requested_nodes")
+        derived_ceiling = formal_node_ceiling(config["requested_nodes"])
+        if max_nodes != derived_ceiling:
+            raise ConfigurationError(
+                "formal.max_reported_nodes must equal the runner-derived ceiling "
+                f"{derived_ceiling}"
+            )
     if run_type == "formal" and repetitions != 1:
         raise ConfigurationError("formal.repetitions must remain the fixed value 1")
     if require_formal_gate and run_type == "formal" and not isinstance(section.get("pilot_evidence"), dict):
@@ -933,6 +954,9 @@ def make_plan(run_type, config=None):
         by_ply = {item["ply"]: item for item in game["occurrences"]}
         selected.extend(by_ply[ply] for ply in plies)
     repetitions = policy["repetitions"]
+    planned_max_reported_nodes = policy["max_reported_nodes"]
+    if run_type == "formal" and planned_max_reported_nodes is None:
+        planned_max_reported_nodes = formal_node_ceiling(config["requested_nodes"])
     payload = {
         "schema_version": 1,
         "benchmark_id": config["benchmark_id"],
@@ -940,7 +964,7 @@ def make_plan(run_type, config=None):
         "run_type": run_type,
         "repetitions": repetitions,
         "requested_nodes": config["requested_nodes"],
-        "max_reported_nodes": policy["max_reported_nodes"],
+        "max_reported_nodes": planned_max_reported_nodes,
         "positions": selected,
         "hashes": {
             "benchmark_manifest_sha256": sha256(BENCHMARK_MANIFEST_PATH),
@@ -4156,6 +4180,17 @@ def validate_formal_gate(runtime, config):
     chosen_claim = gate["max_reported_nodes"]
     if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in (observed_claim, chosen_claim)):
         raise ConfigurationError("formal.pilot_evidence node values must be positive integers")
+    derived_ceiling = formal_node_ceiling(config["requested_nodes"])
+    if policy["max_reported_nodes"] != derived_ceiling:
+        raise ConfigurationError(
+            "formal.max_reported_nodes must equal the runner-derived ceiling "
+            f"{derived_ceiling}"
+        )
+    if chosen_claim != derived_ceiling:
+        raise ConfigurationError(
+            "formal.pilot_evidence.max_reported_nodes must equal the runner-derived ceiling "
+            f"{derived_ceiling}"
+        )
     if policy["max_reported_nodes"] != chosen_claim:
         raise ConfigurationError("formal.max_reported_nodes does not match frozen pilot evidence")
     if chosen_claim < observed_claim:

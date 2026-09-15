@@ -86,6 +86,16 @@ rfkit-rs の Planner → 一つの Issue → Worker → 検証済み PR の骨�
 
 ## Issue #7 開発baselineの固定契約
 
+### reviewed pilot v2 の診断結果と formal gate
+
+`development-pilot-20260916-v2` は、固定された15局面を両エンジン・3 repetitionで解析し、90/90 attemptを完了した。strict validatorで technical failure は0件、30個の engine-position triple（15局面×2エンジン）は30/30がrepetition間で安定した。Teacherの内訳は `exact_cp=6`、`bound_cp=30`、`mate=9`、Sekireiは `exact_cp=42`、`no_score=3` である。
+
+positive node evidence もengine別に保持する。Teacherは45 attempt中42 attemptが正の値を持ち、positive observationは870、zeroは3、missing/invalidは0、observed maxは1,000,692 nodesだった。Sekireiは45 attempt中39 attemptが正の値を持ち、positive observationは39、zeroは3、missingは3、invalidは0、observed maxは1,000,001 nodesだった。Sekireiのmissing 3件は terminal checkmate の no-score responseであり、technical failureではない。
+
+typed occurrenceでは、development-04 p108を `forced_single_legal_move`（in check、合法手1、sole move `2i1g`）として保持し、Teacherはmate distance 2、Sekireiは300 cpを返した。development-05 p123は `terminal_checkmate`（in check、合法手0）として保持し、Teacherは mate -1、Sekireiは `no_score` の裸の resignとして扱った。詰みやboundを巨大cpへ変換せず、pilotのTeacher exact coverageだけで五局の正式headlineを定義しない。
+
+このpilotのfingerprint `6eb64a82e1673510438e3dcbc9e7ba1533c5b7042d9c04ec3c5e209e1c3904e4` と strict all-evidence observed maximum 1,000,692は、記録済みrunnerに対するstrict-validな診断結果として保持する。AX-102を受け、formalの唯一の絶対上限はrunnerソースの `formal_node_ceiling(requested_nodes) = requested_nodes + 1024` から導出するfail-closed規則にした。固定YaneuraOuの node/time check cadence（`callsCnt = limits.nodes ? min(512, int(limits.nodes / 1024)) : 512`）に対応する1,024-node量子であり、±2%のvalidity bandではない。`formal.max_reported_nodes` と `formal.pilot_evidence.max_reported_nodes` はこの導出値に完全一致しなければならず、`go nodes` は上限なので最低ノード目標は設けない。runner/parserの変更でexecution identityも変わるため、v2をformal launch evidenceへ昇格させず、設定のformal ceilingとpilot evidenceは新しいpilot v3が完了するまで未凍結に戻した。v3のfingerprint、observed maximum、ceiling値は先取りして記録しない。
+
 node evidence の厳密文法は、`go nodes <[0-9]+>`（ASCII 十進数字列、符号なし）から対応する `bestmove` までの各 structured `info` 行を対象にする。`info string` は free text として無視し、`pv`・`string`・`refutation`・`currline` の可変長 payload 内は読まない。payload 前の各行には `nodes <[0-9]+>` を高々一組だけ許容し、欠落・重複・負値・符号付き／非整数値は無効または曖昧として失敗させる。
 
 最初の重み改善の前に、現在のSekirei（学習済みモデルなしの駒得fallback）と固定水匠11βを、独立したdevelopment 5局で比較できる実装を用意する。初期位置は採点対象にせず、各記録指し手後の570 occurrenceだけを使う。入力は常に `position startpos moves ...` とし、別棋譜の同一履歴をcacheしない。final 5局はこのrunnerの入力集合に含めない。development-05 p123 は終端詰みとして universe に残す。

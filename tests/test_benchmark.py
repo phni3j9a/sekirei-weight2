@@ -21,6 +21,7 @@ from benchmark import (  # noqa: E402
     BenchmarkError,
     CleanupError,
     ConfigurationError,
+    FORMAL_NODE_CHECK_QUANTUM,
     OUTCOME_FIELDS,
     PARSER_ID,
     POSITION_CLASSIFICATION_TYPES,
@@ -33,10 +34,12 @@ from benchmark import (  # noqa: E402
     load_config,
     load_development_games,
     load_position_classifications,
+    make_plan,
     observed_max_reported_nodes,
     parse_csa_text,
     parse_usi_observation,
     positive_node_evidence,
+    formal_node_ceiling,
     run_engine_attempt,
     sha256,
     USIProcess,
@@ -63,6 +66,13 @@ class UniverseTests(unittest.TestCase):
         self.assertEqual(sum(len(game["occurrences"]) for game in universe["games"]), 570)
         self.assertEqual(development_csa_hash(games), config["hashes"]["development_csa_aggregate_sha256"])
         self.assertEqual(universe_hash(universe), config["hashes"]["universe_sha256"])
+
+    def test_formal_ceiling_is_derived_and_shown_in_formal_plan(self):
+        config = load_config()
+        self.assertEqual(FORMAL_NODE_CHECK_QUANTUM, 1024)
+        self.assertEqual(formal_node_ceiling(config["requested_nodes"]), 1_001_024)
+        plan, _ = make_plan("formal", config)
+        self.assertEqual(plan["max_reported_nodes"], formal_node_ceiling(config["requested_nodes"]))
 
     def test_pilot_points_are_first_middle_last_and_no_final_path(self):
         config = load_config()
@@ -1109,12 +1119,12 @@ class USIProcessTests(unittest.TestCase):
                 report = report_from_run(runtime / "runs/malformed-score-fixture")
             self.assertEqual(report["validity"]["technical_failure_count"], 90)
             self.assertFalse(report["validity"]["complete_evidence_valid"])
-            config["formal"]["max_reported_nodes"] = 2000
+            config["formal"]["max_reported_nodes"] = formal_node_ceiling(config["requested_nodes"])
             config["formal"]["pilot_evidence"] = {
                 "pilot_run_id": "malformed-score-fixture",
                 "pilot_fingerprint": pilot["fingerprint"],
                 "observed_max_reported_nodes": 2000,
-                "max_reported_nodes": 2000,
+                "max_reported_nodes": formal_node_ceiling(config["requested_nodes"]),
             }
             with self.assertRaisesRegex(ConfigurationError, "technical failures"):
                 validate_formal_gate(runtime, config)
@@ -1123,7 +1133,9 @@ class USIProcessTests(unittest.TestCase):
     def test_formal_run_is_refused_until_pilot_ceiling_is_frozen(self):
         from benchmark import execute_run
 
-        config = load_config()
+        config = copy.deepcopy(load_config())
+        config["formal"]["max_reported_nodes"] = None
+        config["formal"]["pilot_evidence"] = None
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaisesRegex(ConfigurationError, "ceiling"):
                 execute_run(temp, config, "formal", run_id="formal-before-pilot")
@@ -1155,12 +1167,12 @@ class USIProcessTests(unittest.TestCase):
                 for value in (record["result"].get("reported_nodes_at_score"), record["result"].get("last_reported_nodes"))
                 if value is not None
             )
-            config["formal"]["max_reported_nodes"] = observed
+            config["formal"]["max_reported_nodes"] = formal_node_ceiling(config["requested_nodes"])
             config["formal"]["pilot_evidence"] = {
                 "pilot_run_id": "gate-fixture",
                 "pilot_fingerprint": pilot["fingerprint"],
                 "observed_max_reported_nodes": observed,
-                "max_reported_nodes": observed,
+                "max_reported_nodes": formal_node_ceiling(config["requested_nodes"]),
             }
             self.assertEqual(validate_formal_gate(runtime, config)["pilot_run_id"], "gate-fixture")
             target = next(
@@ -1179,8 +1191,6 @@ class USIProcessTests(unittest.TestCase):
             with self.assertRaisesRegex(ConfigurationError, "execution identity"):
                 validate_formal_gate(runtime, changed_option)
             config["formal"]["pilot_evidence"]["observed_max_reported_nodes"] = observed + 1
-            config["formal"]["pilot_evidence"]["max_reported_nodes"] = observed + 1
-            config["formal"]["max_reported_nodes"] = observed + 1
             with self.assertRaisesRegex(ConfigurationError, "observed maximum mismatch"):
                 validate_formal_gate(runtime, config)
 
@@ -1216,12 +1226,12 @@ class USIProcessTests(unittest.TestCase):
                 if value is not None
             )
             self.assertLess(observed, config["requested_nodes"])
-            config["formal"]["max_reported_nodes"] = config["requested_nodes"]
+            config["formal"]["max_reported_nodes"] = formal_node_ceiling(config["requested_nodes"])
             config["formal"]["pilot_evidence"] = {
                 "pilot_run_id": "early-gate-fixture",
                 "pilot_fingerprint": pilot["fingerprint"],
                 "observed_max_reported_nodes": observed,
-                "max_reported_nodes": config["requested_nodes"],
+                "max_reported_nodes": formal_node_ceiling(config["requested_nodes"]),
             }
             self.assertEqual(validate_formal_gate(runtime, config)["pilot_run_id"], "early-gate-fixture")
 
@@ -1273,6 +1283,65 @@ class NodeEvidenceTests(unittest.TestCase):
         self.assertIsNone(observed_max_reported_nodes(records, strict=True))
         self.assertIsNone(positive_node_evidence(records, ("teacher",), strict=True)["teacher"]["observed_max"])
 
+    def test_formal_gate_rejects_coordinated_ceiling_tampering(self):
+        import benchmark
+
+        config = copy.deepcopy(load_config())
+        derived = formal_node_ceiling(config["requested_nodes"])
+        positions = [
+            {
+                "game_id": f"game-{index:02d}",
+                "ply": 1,
+                "position": "position startpos moves 7g7f",
+                "side_to_move": "white",
+            }
+            for index in range(1, 16)
+        ]
+        plan = {"positions": positions, "repetitions": 3}
+        manifest = {
+            "fingerprint": "pilot-fingerprint",
+            "fingerprint_payload": {"execution_identity": {}},
+        }
+        records = []
+        for engine_id in ("teacher", "sekirei"):
+            records.extend(
+                {
+                    "engine_id": engine_id,
+                    "status": "exact_cp",
+                    "result": {
+                        "status": "exact_cp",
+                        "reported_nodes_at_score": config["requested_nodes"],
+                        "last_reported_nodes": config["requested_nodes"],
+                        "max_reported_nodes_evidence": config["requested_nodes"],
+                    },
+                }
+                for _ in range(45)
+            )
+        config["formal"]["max_reported_nodes"] = derived
+        config["formal"]["pilot_evidence"] = {
+            "pilot_run_id": "pilot-test",
+            "pilot_fingerprint": "pilot-fingerprint",
+            "observed_max_reported_nodes": config["requested_nodes"],
+            "max_reported_nodes": derived,
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            runtime = Path(temp)
+            (runtime / "runs/pilot-test").mkdir(parents=True)
+            with mock.patch.object(
+                benchmark,
+                "validate_run_artifacts",
+                return_value=(manifest, plan, {}, records, {}, []),
+            ):
+                with mock.patch.object(benchmark, "make_plan", return_value=(plan, [])):
+                    with mock.patch.object(benchmark, "execution_identity", return_value={}):
+                        self.assertEqual(validate_formal_gate(runtime, config)["pilot_run_id"], "pilot-test")
+                        for tampered in (derived - 1, derived + 1):
+                            tampered_config = copy.deepcopy(config)
+                            tampered_config["formal"]["max_reported_nodes"] = tampered
+                            tampered_config["formal"]["pilot_evidence"]["max_reported_nodes"] = tampered
+                            with self.assertRaisesRegex(ConfigurationError, "runner-derived ceiling"):
+                                validate_formal_gate(runtime, tampered_config)
+
     def test_formal_gate_rejects_all_zero_or_one_engine_positive_evidence(self):
         import benchmark
 
@@ -1300,12 +1369,12 @@ class NodeEvidenceTests(unittest.TestCase):
                 )
             config = copy.deepcopy(load_config())
             config["requested_nodes"] = 1000
-            config["formal"]["max_reported_nodes"] = 1000
+            config["formal"]["max_reported_nodes"] = formal_node_ceiling(config["requested_nodes"])
             config["formal"]["pilot_evidence"] = {
                 "pilot_run_id": "pilot-test",
                 "pilot_fingerprint": "pilot-fingerprint",
                 "observed_max_reported_nodes": 1000,
-                "max_reported_nodes": 1000,
+                "max_reported_nodes": formal_node_ceiling(config["requested_nodes"]),
             }
             with tempfile.TemporaryDirectory() as temp:
                 runtime = Path(temp)

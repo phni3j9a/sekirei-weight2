@@ -92,6 +92,16 @@ python3 scripts/smoke.py
 - 自作の3手の CSA fixture を shogiesa で一局面に抽出し、教師ラベルを生成する。
 - 両エンジンの USI ログ、shogiesa の JSONL・manifest、全体の summary.json を保存する。
 
+### reviewed pilot v2 の診断結果
+
+`development-pilot-20260916-v2` は15局面・3 repetition・2 engineの90/90 attemptを完了した。strict validationでtechnical failureは0件、30個の engine-position tripleは30/30が安定した。status内訳はTeacherが `exact_cp=6 / bound_cp=30 / mate=9`、Sekireiが `exact_cp=42 / no_score=3` である。
+
+positive node evidenceはTeacherが42/45 attempt、positive observation 870、zero 3、missing/invalid 0、observed max 1,000,692 nodes、Sekireiが39/45 attempt、positive observation 39、zero 3、missing 3、invalid 0、observed max 1,000,001 nodesだった。Sekireiのmissing 3件はterminal checkmateのno-scoreであり、技術失敗には数えない。
+
+development-04 p108は `forced_single_legal_move`（in check、合法手1、sole move `2i1g`）で、Teacherはmate、Sekireiは300 cpだった。development-05 p123は `terminal_checkmate`（in check、合法手0）で、Teacherは mate -1、Sekireiは `no_score` だった。pilotはbounds/matesを保持する再現性診断であり、五局完全なexact-cp headlineは作らない。
+
+v2のpilot fingerprint `6eb64a82e1673510438e3dcbc9e7ba1533c5b7042d9c04ec3c5e209e1c3904e4` と strict all-evidence observed maximum 1,000,692は、記録済みrunnerに対するstrict-validな診断結果として保持する。AX-102を受け、formalの唯一の絶対上限をrunnerソースの `formal_node_ceiling(requested_nodes) = requested_nodes + 1024` から導出するfail-closed規則にした。固定YaneuraOuのnode/time check cadence（`callsCnt = limits.nodes ? min(512, int(limits.nodes / 1024)) : 512`）に対応する1量子で、±2%の妥協幅ではない。`formal.max_reported_nodes` と `formal.pilot_evidence.max_reported_nodes` は導出値に完全一致しなければならず、`go nodes` は上限なので最低ノード目標は設けない。runner/parserの変更でexecution identityも変わったため、v2をformal launch evidenceへ使わず、設定は新しいpilot v3が完了するまで未凍結に戻した。v3の値は先取りして記録しない。旧 `development-pilot-20260916` は旧parser semanticsの診断証跡としてのみ保持する。
+
 ### 現時点の制約
 
 USI node grammar は、`go nodes <[0-9]+>`（ASCII 十進数字列、符号なし）から対応する `bestmove` までの各 structured `info` 行を左から解釈する。`info string` は free text として無視し、`pv`・`string`・`refutation`・`currline` の可変長 payload 内の token は解釈しない。payload 前の各行には `nodes <[0-9]+>` を高々一組だけ許容し、欠落・重複・負値・符号付き／非整数値は無効な node evidence として扱う。
@@ -142,4 +152,4 @@ python3 scripts/benchmark.py plan --run-type formal
 
 planの実測固定値はpilot 15 positions / 90 attempts、formal 570 positions / 1,140 attempts、development CSA aggregate SHA-256 `0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2`、分類manifest SHA-256 `33e8da8021f830dfb051a55a5e5c542a2080bf209793c2d0367fab66bbfa4469`、分類を含むcanonical universe SHA-256 `6b9b133f5c6dab2a55fd8f634d6f9eac020e3f982bf34056bd5fb830f43aec8c`。pilotはceilではない絶対上限なしで、`reported_nodes_at_score` と `last_reported_nodes` の最大値・min/median/p95/maxを保存する。`go nodes` は上限なので observed max は requested nodes 未満でもよいが、各engineに正の node evidenceが必要で、技術失敗や片側だけの証拠では gate を通さない。formalの `max_reported_nodes` と `pilot_evidence` は同じruntimeの完全な90-attempt pilotのfingerprint・再計算値と一致するまで未確定として拒否する。formal gateはrun type・repetition・pilot sample/full plan・post-pilot ceilingを除いた canonical execution identityを比較し、option、timeout、requested nodes、runner/parser、binary/model/weight、toolchain、development hash・分類hashの変更を拒否する。
 
-`benchmark_report.py report` はlocal詳細を書けるが、`export` は空の出力ディレクトリ直下へ `validation.md`、`reviewed.svg`、`validation.json`、`manifest.json` の4 redacted public fileだけを書く。local/や局面別ファイルは作らず、絶対パス、ユーザー名、source game ID、raw position履歴、model path、free-form provenanceを入れない。生成物は実行結果が揃い、MainがSVGを目視レビューしてから追跡対象にする。Issue #7の実装時点では90-request pilotも1,140-request formalも起動していない。
+`benchmark_report.py report` はlocal詳細を書けるが、`export` は空の出力ディレクトリ直下へ `validation.md`、`reviewed.svg`、`validation.json`、`manifest.json` の4 redacted public fileだけを書く。local/や局面別ファイルは作らず、絶対パス、ユーザー名、source game ID、raw position履歴、model path、free-form provenanceを入れない。生成物は実行結果が揃い、MainがSVGを目視レビューしてから追跡対象にする。Issue #7のreviewed pilot v2は90/90 attempt・technical failure 0件で完了したが、runner変更後のformal launch evidenceではなくstrict-validな診断結果である。AX-102対応後の正式なpilot v3が未実行のため、formalは未実行のままであり、v3の値は先取りしない。pilotのTeacher exact coverageはサンプル診断に限られ、bound/mateを含む五局完全なexact-cp headlineは作らない。

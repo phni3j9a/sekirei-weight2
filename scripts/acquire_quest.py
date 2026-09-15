@@ -698,7 +698,73 @@ def write_snapshot(root, output):
         "games": records,
     }
     atomic_write(output / "manifest.json", json_bytes(manifest))
+    verify_snapshot(output)
     print(f"PASS: wrote {len(records)} frozen benchmark games to {output}")
+
+
+def verify_snapshot(snapshot_root):
+    cshogi, csa = require_cshogi()
+    manifest_path = snapshot_root / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("schema_version") != 1:
+        raise RuntimeError("snapshot manifest has an unsupported schema")
+    if manifest.get("frozen_before_engine_analysis") is not True:
+        raise RuntimeError("snapshot is not marked as frozen before analysis")
+    if manifest.get("source_corpus_accepted_games", 0) < CONFIG["target_games"]:
+        raise RuntimeError("snapshot source corpus is smaller than the fixed target")
+    records = manifest.get("games")
+    if not isinstance(records, list) or len(records) != 10:
+        raise RuntimeError("snapshot manifest must contain exactly ten games")
+
+    expected_buckets = Counter({
+        (bucket["split"], bucket["game_type"]): bucket["count"]
+        for bucket in CONFIG["selection"]["buckets"]
+    })
+    actual_buckets = Counter()
+    canonical_hashes = set()
+    source_ids = set()
+    expected_paths = set()
+    for record in records:
+        split = record.get("split")
+        snapshot_id = record.get("snapshot_id")
+        game_type = record.get("game_type")
+        source_id = record.get("source_game_id")
+        if split not in ("development", "final"):
+            raise RuntimeError("snapshot has an unexpected split")
+        if not isinstance(snapshot_id, str) or not re.fullmatch(
+                rf"{split}-[0-9]{{2}}", snapshot_id):
+            raise RuntimeError("snapshot has an invalid ID")
+        if not isinstance(source_id, str) or not GAME_ID_RE.fullmatch(source_id):
+            raise RuntimeError(f"snapshot has an invalid source ID: {snapshot_id}")
+        path = snapshot_root / split / f"{snapshot_id}.csa"
+        expected_paths.add(path)
+        if sha256(path) != record.get("snapshot_csa_sha256"):
+            raise RuntimeError(f"snapshot CSA hash mismatch: {snapshot_id}")
+        text = path.read_text()
+        if "N+black\nN-white\n" not in text or "(" in text:
+            raise RuntimeError(f"snapshot CSA identity was not replaced: {snapshot_id}")
+        parsed = parse_csa(text)
+        validate_legal_csa(text, parsed["plies"], cshogi, csa)
+        if parsed["plies"] != record.get("plies"):
+            raise RuntimeError(f"snapshot move count mismatch: {snapshot_id}")
+        if parsed["canonical_sha256"] != record.get("canonical_sha256"):
+            raise RuntimeError(f"snapshot canonical hash mismatch: {snapshot_id}")
+        if parsed["canonical_sha256"] in canonical_hashes or source_id in source_ids:
+            raise RuntimeError(f"snapshot contains a duplicate game: {snapshot_id}")
+        canonical_hashes.add(parsed["canonical_sha256"])
+        source_ids.add(source_id)
+        actual_buckets[(split, game_type)] += 1
+    actual_paths = set(snapshot_root.glob("*/*.csa"))
+    if actual_paths != expected_paths:
+        raise RuntimeError("snapshot files differ from the manifest")
+    if actual_buckets != expected_buckets:
+        raise RuntimeError(
+            f"snapshot buckets differ: expected {expected_buckets}, found {actual_buckets}"
+        )
+    print(
+        f"PASS: verified {len(records)} frozen snapshot games; "
+        f"manifest {sha256(manifest_path)}"
+    )
 
 
 def parse_args():
@@ -722,6 +788,12 @@ def parse_args():
     )
     snapshot_parser.add_argument(
         "--output", type=Path, default=REPO / "benchmarks/shogiquest-v1"
+    )
+    verify_snapshot_parser = subparsers.add_parser(
+        "verify-snapshot", help="verify the tracked benchmark without network access"
+    )
+    verify_snapshot_parser.add_argument(
+        "--input", type=Path, default=REPO / "benchmarks/shogiquest-v1"
     )
     return parser.parse_args()
 
@@ -751,6 +823,9 @@ def main():
             "network_requests": False,
             "config_sha256": sha256(CONFIG_PATH),
         }, indent=2, ensure_ascii=False))
+        return
+    if args.command == "verify-snapshot":
+        verify_snapshot(args.input.resolve())
         return
     root.mkdir(parents=True, exist_ok=True)
     with (root / ".acquire.lock").open("a") as lockfile:

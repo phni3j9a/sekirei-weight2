@@ -21,5 +21,7 @@ jobs:
           python3 -m json.tool config/toolchain.lock.json >/dev/null
           python3 -m json.tool config/smoke.json >/dev/null
           python3 -m json.tool config/quest-corpus.json >/dev/null
+          python3 -m json.tool benchmarks/shogiquest-v1/manifest.json >/dev/null
+          test "$(find benchmarks/shogiquest-v1 -name '*.csa' -type f | wc -l)" -eq 10
           git diff --check
       # The real engine smoke is run locally: the teacher is not redistributed to CI.

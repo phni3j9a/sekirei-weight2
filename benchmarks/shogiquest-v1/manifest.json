@@ -1,0 +1,185 @@
+{
+  "anonymization": "CSA player names and ratings replaced; source game IDs retained for provenance",
+  "benchmark_id": "shogiquest-benchmark-v1",
+  "frozen_before_engine_analysis": true,
+  "games": [
+    {
+      "canonical_sha256": "7e948a8a5e3a2ed135cffd2e766fc3620df0729c20ba7a43b0a9b047c6b306c0",
+      "created": "2026-09-14T02:32:10.716Z",
+      "final_status": "LOSE:RESIGN",
+      "game_type": "shogi10",
+      "plies": 86,
+      "selection_rank": "006fa1f4b0ac7dd1c85d1ba65605e005471a262f982a829128b5ffc52c3819a0",
+      "snapshot_csa_sha256": "be943675351774a1269cbf0f909c3a165bad5963573c48bb0f2336f1cf468da7",
+      "snapshot_id": "development-01",
+      "source_csa_sha256": "de8bcdd423a3e937442019668d7f2e3a91efd8fed163a3bff77a2269da6ca0da",
+      "source_game_id": "bxwa2tdvznqw",
+      "source_url": "https://kifu.questgames.net/shogi/games/bxwa2tdvznqw",
+      "split": "development"
+    },
+    {
+      "canonical_sha256": "2c237d5340e971a1bae0de3052cfce6f225f0ebd0a295d81c81ee88f61f3e304",
+      "created": "2026-09-14T02:40:52.083Z",
+      "final_status": "LOSE:TIMEUP",
+      "game_type": "shogi10",
+      "plies": 126,
+      "selection_rank": "00bd71840c26fddd57cdbfad837531ebebbfda14e18fb2aa0d01715d34c5edad",
+      "snapshot_csa_sha256": "5f5f84152e9074b91ed1623cbfd2d6c0f627f41a5f8cee4605c2104911d82c9b",
+      "snapshot_id": "development-02",
+      "source_csa_sha256": "30c7a80eafa85649c87dc38419e5dfb6a8a29ab8c0db14829725bd8bb665f351",
+      "source_game_id": "rtf1sglk2vyb",
+      "source_url": "https://kifu.questgames.net/shogi/games/rtf1sglk2vyb",
+      "split": "development"
+    },
+    {
+      "canonical_sha256": "d248cdfe1d7a1fb72a6aee8a9f30c3fafad4db120fcab6a922e65afc739597c4",
+      "created": "2026-09-12T17:18:51.356Z",
+      "final_status": "LOSE:TIMEUP",
+      "game_type": "shogi10",
+      "plies": 127,
+      "selection_rank": "01275316f970595548e75eeeec087576fec941a799b086d119579f0a3cca8155",
+      "snapshot_csa_sha256": "f994a26c957f9148c84ee7e99917b45ad406d6e103903873b47173974672e8a4",
+      "snapshot_id": "development-03",
+      "source_csa_sha256": "0cbe61200a7de52bfd94e55c628b13c470e6efc513c75a01221588b8c009f79e",
+      "source_game_id": "capj3jy76y0a",
+      "source_url": "https://kifu.questgames.net/shogi/games/capj3jy76y0a",
+      "split": "development"
+    },
+    {
+      "canonical_sha256": "1649e2f67cd0e99b6c639d85a440fe1f93bbc88e69597f6cf6629eb2ad0cac02",
+      "created": "2026-09-13T18:55:02.721Z",
+      "final_status": "LOSE:RESIGN",
+      "game_type": "shogi",
+      "plies": 108,
+      "selection_rank": "00680f972c19484b6a2055b0c256a42545ff12cdf5c96f12a8ff623131d39b8d",
+      "snapshot_csa_sha256": "ca71b4d29a459e9e6a83d491d06d1a3246261658c2f3fba0016199a9535c53ea",
+      "snapshot_id": "development-04",
+      "source_csa_sha256": "c25bf6eb523b4084ed8fb116d010790427dc58ed2f11475900b97099f7205bcb",
+      "source_game_id": "q0vni32mx8iq",
+      "source_url": "https://kifu.questgames.net/shogi/games/q0vni32mx8iq",
+      "split": "development"
+    },
+    {
+      "canonical_sha256": "6490758090a75ddb1cf0747f02605b6ae5e4b33d3d30d8bdf16bcf20425705ab",
+      "created": "2026-09-13T09:33:55.333Z",
+      "final_status": "WIN:MATE",
+      "game_type": "shogi",
+      "plies": 123,
+      "selection_rank": "032c32f743a848dc776d8056c5a631dce29f87cd5768ac9c78a124682536af1f",
+      "snapshot_csa_sha256": "ff344c066da2a1774adee90ef16eb5749679375f532c779373f9419e407e0882",
+      "snapshot_id": "development-05",
+      "source_csa_sha256": "2c55540d030b6d9c61cfc39bf135b31aa666cd99d9945611856c65c713afcde7",
+      "source_game_id": "8crj0790784a",
+      "source_url": "https://kifu.questgames.net/shogi/games/8crj0790784a",
+      "split": "development"
+    },
+    {
+      "canonical_sha256": "784975bd8fe5897e45ae3f594eb0ab8e3120646ba9f3b765e6a6d1787db76527",
+      "created": "2026-09-13T03:26:36.212Z",
+      "final_status": "LOSE:RESIGN",
+      "game_type": "shogi10",
+      "plies": 97,
+      "selection_rank": "0154c62c38b976b125bf698be7b1409e323db38c9fec3c176df85a09fe015901",
+      "snapshot_csa_sha256": "88838c911570aae3bdffe47353abaef614305f44b911d8015d81ab2c6c17b9ee",
+      "snapshot_id": "final-01",
+      "source_csa_sha256": "028ce5ca011a942cf7b9627661b648104ed96816be7d93039b62c41fdf25bf2f",
+      "source_game_id": "ha55d3snitra",
+      "source_url": "https://kifu.questgames.net/shogi/games/ha55d3snitra",
+      "split": "final"
+    },
+    {
+      "canonical_sha256": "aed2b8e2efbef847b6084673e1a6d3841dec8b46a010a6d979cdb23dadd1d78d",
+      "created": "2026-09-13T05:37:43.146Z",
+      "final_status": "WIN:MATE",
+      "game_type": "shogi10",
+      "plies": 89,
+      "selection_rank": "015adafe46de5daf83234984030c03ce5ced5075e74445a834667cb1d48264e3",
+      "snapshot_csa_sha256": "b53aadf8124d0ff0460e55aec70af501f96e1066a613c3790891a50c686e1168",
+      "snapshot_id": "final-02",
+      "source_csa_sha256": "93752ebf8e50ee1ac881227a6d7b2ddf4e0d6c78ba563e141f25d855fcd9c138",
+      "source_game_id": "0r5mlbtpwp8i",
+      "source_url": "https://kifu.questgames.net/shogi/games/0r5mlbtpwp8i",
+      "split": "final"
+    },
+    {
+      "canonical_sha256": "a486a45450896596affc8b3e89359f7b1b4efefd3eb238fd3256574d8b418a6f",
+      "created": "2026-09-14T20:02:20.450Z",
+      "final_status": "LOSE:TIMEUP",
+      "game_type": "shogi",
+      "plies": 125,
+      "selection_rank": "06d0eee49208902a21c05fd3dc2c6e498705db5039fef30c7d0085c53c4150ac",
+      "snapshot_csa_sha256": "efd32cc15c376426ae0e71d34d52c03bdb9b5c3b56183d4c73e5e71b99afafa0",
+      "snapshot_id": "final-03",
+      "source_csa_sha256": "6cbf426affc0c73443240fa5904fe6020f86cae67b2336dc62feae164e9408fd",
+      "source_game_id": "9wht4kjmmeem",
+      "source_url": "https://kifu.questgames.net/shogi/games/9wht4kjmmeem",
+      "split": "final"
+    },
+    {
+      "canonical_sha256": "c2eae19643660053eeb4c4c01f199554917e3f9703f6d2d315c8579ac7f36536",
+      "created": "2026-09-13T11:55:58.323Z",
+      "final_status": "WIN:MATE",
+      "game_type": "shogi",
+      "plies": 78,
+      "selection_rank": "07a9e3181b07230108e86e4cab9ca5190452d922673f3cf89a900b341d3205de",
+      "snapshot_csa_sha256": "7959e326be95075463b73bc67996499037c605e995c38164856088af6c9e2e17",
+      "snapshot_id": "final-04",
+      "source_csa_sha256": "471438bffc7f8624f303bdae7465cedb327f338533f8e03846cb64ec60eb8136",
+      "source_game_id": "hp704rhl63iw",
+      "source_url": "https://kifu.questgames.net/shogi/games/hp704rhl63iw",
+      "split": "final"
+    },
+    {
+      "canonical_sha256": "da16312dae62ce5ed35c4543e694fd81e53765aa3001495266d98385c487f3ab",
+      "created": "2026-09-14T19:50:48.737Z",
+      "final_status": "LOSE:RESIGN",
+      "game_type": "shogi",
+      "plies": 124,
+      "selection_rank": "07fc665965f8fe5d17c2ec1bc422aa29acfc4f50046932f550b9413fbbca3450",
+      "snapshot_csa_sha256": "389918baddaa296285cb2f4b1b79e7c9a9557cb47a9732536034b3ccbd7b6be5",
+      "snapshot_id": "final-05",
+      "source_csa_sha256": "a32328fbe98734f6d10699d93f13e7bed5ea1dc93467ac2c90caa0d78c2e5f41",
+      "source_game_id": "9sf8eddb5l3k",
+      "source_url": "https://kifu.questgames.net/shogi/games/9sf8eddb5l3k",
+      "split": "final"
+    }
+  ],
+  "human_game_check": "both list records lack known bot markers and official page contains opp:human",
+  "legality_check": "all moves replayed by pinned cshogi",
+  "schema_version": 1,
+  "selection": {
+    "buckets": [
+      {
+        "count": 3,
+        "game_type": "shogi10",
+        "split": "development"
+      },
+      {
+        "count": 2,
+        "game_type": "shogi",
+        "split": "development"
+      },
+      {
+        "count": 2,
+        "game_type": "shogi10",
+        "split": "final"
+      },
+      {
+        "count": 3,
+        "game_type": "shogi",
+        "split": "final"
+      }
+    ],
+    "max_plies": 160,
+    "max_rating_gap": 500,
+    "min_plies": 60,
+    "min_rating": 1200,
+    "seed": "sekirei-weight2-shogiquest-benchmark-v1"
+  },
+  "source": "Shogi Quest",
+  "source_corpus_accepted_games": 1000,
+  "source_corpus_canonical_sha256": "0616c867ba6ccc2a6c1d9a469bec444f7e992b6e5bc19229efa9066b19a7ec72",
+  "source_corpus_id": "shogiquest-human-v1",
+  "source_terms_checked_date": "2026-09-15",
+  "source_terms_url": "https://d26termck8rp2x.cloudfront.net/static/questterms/term_ja.html"
+}

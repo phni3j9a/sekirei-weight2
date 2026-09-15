@@ -8,14 +8,14 @@
 
 ## 現在の段階
 
-Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) で初期環境を整備した。Issue [#3](https://github.com/phni3j9a/sekirei-weight2/issues/3) で主教師を水匠11βへ切り替え、生成済み教師データを監査している。
+Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) で初期環境を整備し、Issue [#3](https://github.com/phni3j9a/sekirei-weight2/issues/3) / [PR #4](https://github.com/phni3j9a/sekirei-weight2/pull/4) で主教師を水匠11βへ切り替えて生成済み教師データを監査した。Issue [#5](https://github.com/phni3j9a/sekirei-weight2/issues/5) では独立評価棋譜を固定した。
 
 - Sekirei と付属学習器、shogiesa、水匠11β用やねうら王V9.20のソースを commit 単位で固定。
 - ビルド・重み照合・USI疎通はPython標準ライブラリで実行。`.pack` の局面復号と外部CSAの合法手確認だけは専用venvに固定したcshogi / NumPyを使う。
 - β・100万ノードとして配布された `.pack` 15本を取り込み、同一内容の2本を除いた13本（534,175,084 bytes）をローカルで管理。ゲーム境界を保つストリーム復号と標本再解析が可能。
 - 実機で両エンジンの100万ノード指定探索と shogiesa の一局面ラベル生成を確認済み。[β環境と教師監査](docs/validation/suisho11beta-2026-09-15.md)。旧Plus環境の結果は[初期検証](docs/validation/environment-2026-09-14.md)に残す。
 - 10標本の固定V9.20再解析では、確定値6件のMAE 3.167 cp（最大11 cp）、境界値4件、保存指し手一致6件。互換性の小規模確認であり、元の生成環境との完全同一性の証明ではない。
-- 正式ベンチマーク用に、将棋クエストの公開棋譜から人間同士・平手・合法手・重複なしの1,000局をローカルへ固定し、その中から解析前に development 5局 / final 5局を選ぶ。
+- 正式ベンチマーク用に、将棋クエストの公開棋譜から人間同士・平手・合法手・重複なしの1,000局をローカルへ固定し、その中から解析前に development 5局 / final 5局を選定済み。[取得・分割の検証記録](docs/validation/shogiquest-corpus-2026-09-15.md)。
 - `.pack` から学習器への入力経路、本格学習、モデル採用判定、定期自動実行は次の段階。
 - Sekirei の今回の初期疎通は **駒得評価へのフォールバック**。学習済みモデルはまだない。
 
@@ -44,6 +44,8 @@ python3 scripts/smoke.py
   scripts/acquire_quest.py verify
 ~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
   scripts/acquire_quest.py snapshot
+~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
+  scripts/acquire_quest.py verify-snapshot
 ```
 
 `--runtime /absolute/path` で保存先を変更できる。既定は `~/.local/share/sekirei-weight2/suisho11beta-v1`。旧Plus環境を上書きせず、複数 worktree で固定したβ環境を共有する。実験でソース版・構造を変える場合は別 runtime を使う。
@@ -68,6 +70,7 @@ python3 scripts/smoke.py
 
 - [研究方針・比較条件](docs/RESEARCH.md)
 - [固定環境・再現手順・制約](docs/ENVIRONMENT.md)
+- [将棋クエスト独立棋譜の取得・分割](docs/validation/shogiquest-corpus-2026-09-15.md)
 - [開発運用](AGENTS.md)
 - [外部ソフト・資料の出典](docs/PROVENANCE.md)
 

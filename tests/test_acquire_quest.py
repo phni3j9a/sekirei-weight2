@@ -11,6 +11,7 @@ from acquire_quest import (
     choose_snapshot,
     looks_like_bot,
     parse_csa,
+    parse_history,
     parse_official_attrs,
 )
 
@@ -24,6 +25,12 @@ class HumanMarkerTests(unittest.TestCase):
         self.assertTrue(looks_like_bot({"id": ":shogi8bot"}))
         self.assertTrue(looks_like_bot({"id": "x", "avatar": "bot_s"}))
         self.assertFalse(looks_like_bot({"id": "human", "avatar": "s_02"}))
+
+    def test_history_response_shape(self):
+        games = parse_history(b'{"games":[{"id":"abcdefgh"}]}')
+        self.assertEqual(games[0]["id"], "abcdefgh")
+        with self.assertRaisesRegex(ValueError, "games list"):
+            parse_history(b'{"games":"wrong"}')
 
 
 class CsaTests(unittest.TestCase):
@@ -45,6 +52,11 @@ class CsaTests(unittest.TestCase):
         snapshot = anonymized_csa(parsed)
         self.assertIn("N+black", snapshot)
         self.assertNotIn("1500", snapshot)
+
+    def test_identity_changes_do_not_evade_move_deduplication(self):
+        first = parse_csa(self.fixture())
+        second = parse_csa(self.fixture().replace("Alice", "Carol").replace("Bob", "Dave"))
+        self.assertEqual(first["canonical_sha256"], second["canonical_sha256"])
 
     def test_rejects_broken_turn_order(self):
         with self.assertRaisesRegex(ValueError, "turn order"):
@@ -74,6 +86,7 @@ class SnapshotSelectionTests(unittest.TestCase):
                     },
                 }
         selected = choose_snapshot({"games": games})
+        self.assertEqual(selected, choose_snapshot({"games": games}))
         self.assertEqual(len(selected), 10)
         players = []
         for _split, _rank, _game_id, game in selected:

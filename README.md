@@ -37,6 +37,8 @@ python3 scripts/smoke.py
 ~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
   scripts/audit_pack.py --samples 10
 ~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
+  scripts/acquire_quest.py crawl --dry-run
+~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
   scripts/acquire_quest.py crawl
 ~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
   scripts/acquire_quest.py verify

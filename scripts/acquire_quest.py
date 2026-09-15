@@ -102,6 +102,17 @@ def parse_official_attrs(html):
     return attrs
 
 
+def parse_history(payload):
+    try:
+        history = json.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("history endpoint returned invalid JSON") from error
+    games = history.get("games") if isinstance(history, dict) else None
+    if not isinstance(games, list) or not all(isinstance(game, dict) for game in games):
+        raise ValueError("history response has no valid games list")
+    return games
+
+
 def parse_csa(text):
     """Parse the small CSA subset used by the public download endpoint.
 
@@ -497,13 +508,7 @@ def crawl(root, args):
                     params={"userId": current_user, "gtype": game_type},
                     accept="application/json",
                 )
-                try:
-                    history = json.loads(payload)
-                except json.JSONDecodeError as error:
-                    raise RuntimeError("history endpoint returned invalid JSON") from error
-                games = history.get("games")
-                if not isinstance(games, list):
-                    raise RuntimeError("history response has no games list")
+                games = parse_history(payload)
                 for game in games:
                     if not isinstance(game, dict):
                         continue
@@ -702,6 +707,10 @@ def parse_args():
     )
     crawl_parser.add_argument("--max-network-requests", type=int)
     crawl_parser.add_argument("--progress-every", type=int, default=10)
+    crawl_parser.add_argument(
+        "--dry-run", action="store_true",
+        help="print the immutable acquisition plan without writing or requesting",
+    )
     subparsers.add_parser("verify", help="verify all local accepted games")
     snapshot_parser = subparsers.add_parser(
         "snapshot", help="freeze the deterministic development/final benchmark"
@@ -718,7 +727,26 @@ def main():
         raise SystemExit("--target must be positive")
     if getattr(args, "progress_every", 1) < 1:
         raise SystemExit("--progress-every must be positive")
+    if args.command == "crawl" and args.delay < 1.0:
+        raise SystemExit("--delay must be at least 1.0 second")
+    if (getattr(args, "max_network_requests", None) is not None
+            and args.max_network_requests < 1):
+        raise SystemExit("--max-network-requests must be positive")
     root = args.root.expanduser().resolve()
+    if args.command == "crawl" and args.dry_run:
+        print(json.dumps({
+            "corpus_root": str(root),
+            "target_games": args.target,
+            "game_types": CONFIG["game_types"],
+            "seed_users": CONFIG["seed_users"],
+            "request_delay_seconds": args.delay,
+            "max_network_requests": args.max_network_requests,
+            "minimum_game_request_seconds": round(2 * args.target * args.delay, 1),
+            "writes": False,
+            "network_requests": False,
+            "config_sha256": sha256(CONFIG_PATH),
+        }, indent=2, ensure_ascii=False))
+        return
     root.mkdir(parents=True, exist_ok=True)
     with (root / ".acquire.lock").open("a") as lockfile:
         try:

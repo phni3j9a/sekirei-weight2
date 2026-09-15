@@ -86,7 +86,7 @@ rfkit-rs の Planner → 一つの Issue → Worker → 検証済み PR の骨�
 
 ## Issue #7 開発baselineの固定契約
 
-### reviewed pilot v2 の診断結果と formal gate
+### reviewed pilot v2 の診断結果
 
 `development-pilot-20260916-v2` は、固定された15局面を両エンジン・3 repetitionで解析し、90/90 attemptを完了した。strict validatorで technical failure は0件、30個の engine-position triple（15局面×2エンジン）は30/30がrepetition間で安定した。Teacherの内訳は `exact_cp=6`、`bound_cp=30`、`mate=9`、Sekireiは `exact_cp=42`、`no_score=3` である。
 
@@ -94,7 +94,15 @@ positive node evidence もengine別に保持する。Teacherは45 attempt中42 a
 
 typed occurrenceでは、development-04 p108を `forced_single_legal_move`（in check、合法手1、sole move `2i1g`）として保持し、Teacherはmate distance 2、Sekireiは300 cpを返した。development-05 p123は `terminal_checkmate`（in check、合法手0）として保持し、Teacherは mate -1、Sekireiは `no_score` の裸の resignとして扱った。詰みやboundを巨大cpへ変換せず、pilotのTeacher exact coverageだけで五局の正式headlineを定義しない。
 
-このpilotのfingerprint `6eb64a82e1673510438e3dcbc9e7ba1533c5b7042d9c04ec3c5e209e1c3904e4` と strict all-evidence observed maximum 1,000,692は、記録済みrunnerに対するstrict-validな診断結果として保持する。AX-102を受け、formalの唯一の絶対上限はrunnerソースの `formal_node_ceiling(requested_nodes) = requested_nodes + 1024` から導出するfail-closed規則にした。固定YaneuraOuの node/time check cadence（`callsCnt = limits.nodes ? min(512, int(limits.nodes / 1024)) : 512`）に対応する1,024-node量子であり、±2%のvalidity bandではない。`formal.max_reported_nodes` と `formal.pilot_evidence.max_reported_nodes` はこの導出値に完全一致しなければならず、`go nodes` は上限なので最低ノード目標は設けない。runner/parserの変更でexecution identityも変わるため、v2をformal launch evidenceへ昇格させず、設定のformal ceilingとpilot evidenceは新しいpilot v3が完了するまで未凍結に戻した。v3のfingerprint、observed maximum、ceiling値は先取りして記録しない。
+このpilotのfingerprint `6eb64a82e1673510438e3dcbc9e7ba1533c5b7042d9c04ec3c5e209e1c3904e4` と strict all-evidence observed maximum 1,000,692は、記録済みrunnerに対するstrict-validな診断結果として保持する。AX-102を受け、formalの唯一の絶対上限はrunnerソースの `formal_node_ceiling(requested_nodes) = requested_nodes + 1024` から導出するfail-closed規則にした。固定YaneuraOuの node/time check cadence（`callsCnt = limits.nodes ? min(512, int(limits.nodes / 1024)) : 512`）に対応する1,024-node量子であり、±2%のvalidity bandではない。`formal.max_reported_nodes` と `formal.pilot_evidence.max_reported_nodes` はこの導出値に完全一致しなければならず、`go nodes` は上限なので最低ノード目標は設けない。runner/parserの変更でexecution identityも変わったため、v2はprior strict-valid diagnosticとしてのみ保持し、formal launch evidenceには使わない。
+
+### reviewed pilot v3 の実測と formal gate
+
+`development-pilot-20260916-v3` は、clean commit `8847fa07081b8dbd9e67f0d12c361dda096bfd92` と runner SHA-256 `46d48dcdd97ef0a651abc9d47b2ae53889e1f463fcdbd3c73c6e6d247da69876` の下で、固定15局面・3 repetition・両エンジンの90/90 attemptを完了した。strict validatorでtechnical failureは0件、30個のengine-position tripleは30/30がrepetition間でstableだった。v3はformal launch evidenceとして凍結し、formal自体はまだ実行していない。
+
+Teacherは `exact_cp=6`、`bound_cp=30`、`mate=9`、positive attempt 42/45、positive observation 870、strict observed max 1,000,692 nodesだった。Sekireiは `exact_cp=42`、`no_score=3`、positive attempt 39/45、positive observation 39、zero 3、terminal no-scoreのmissing 3、observed max 1,000,001 nodesだった。strict overall maximumは1,000,692 nodesで、凍結したformal ceilingはrunner導出値 `formal_node_ceiling(1,000,000) = 1,001,024` である。
+
+typed resultは既存分類を維持し、development-04 p108の `forced_single_legal_move`（in check、合法手1、sole move `2i1g`）でTeacherはmate、Sekireiは300 cp、development-05 p123の `terminal_checkmate`（in check、合法手0）でTeacherはmate -1、Sekireiはterminal no-scoreだった。bound/mateをcpへ変換せず、v3でも五局完全なexact-cp headlineは定義しない。AX-102は独立したrunner-derived ceiling ruleで閉じ、両ceiling fieldを導出値へ厳密に束縛する。旧 `development-pilot-20260916-v2` はprior strict-valid diagnostic、旧 `development-pilot-20260916` は旧parser semanticsの診断証跡としてのみ保持する。
 
 node evidence の厳密文法は、`go nodes <[0-9]+>`（ASCII 十進数字列、符号なし）から対応する `bestmove` までの各 structured `info` 行を対象にする。`info string` は free text として無視し、`pv`・`string`・`refutation`・`currline` の可変長 payload 内は読まない。payload 前の各行には `nodes <[0-9]+>` を高々一組だけ許容し、欠落・重複・負値・符号付き／非整数値は無効または曖昧として失敗させる。
 

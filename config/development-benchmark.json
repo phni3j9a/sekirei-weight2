@@ -103,7 +103,12 @@
   },
   "formal": {
     "repetitions": 1,
-    "max_reported_nodes": null,
-    "pilot_evidence": null
+    "max_reported_nodes": 1001024,
+    "pilot_evidence": {
+      "pilot_run_id": "development-pilot-20260916-v3",
+      "pilot_fingerprint": "3c3eef97c4080c569819930ed2f7d19beed269aabe1ae114ab5e6bc795169deb",
+      "observed_max_reported_nodes": 1000692,
+      "max_reported_nodes": 1001024
+    }
   }
 }

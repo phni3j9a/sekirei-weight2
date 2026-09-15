@@ -70,7 +70,7 @@ python3 scripts/prepare.py import-corpus --archive \
 
 それぞれのアーカイブ全体を固定SHA-256で照合し、記事で水匠11β・100万ノードと説明された `1000000a/` と `1000000b/` の `.pack` だけを標準出力経由で安全に抽出する。個々のファイルはSHA-256名で保存し、同じ内容を複数回保持しない。実機では収録15本のうち2本が重複し、13本、534,175,084 bytesになった。由来と重複関係はローカルの `manifest.json` に残る。
 
-`.pack` の復号と取得したCSAの合法手再生には cshogi 1.0.4 / NumPy 1.26.4 を専用venvへ固定する。これはCPU用で、GPU環境は導入しない。
+`.pack` の復号と取得したCSAの完全な合法手再生には cshogi 1.0.4 / NumPy 1.26.4 を専用venvへ固定する。benchmark runner内の標準ライブラリboard trackerは、固定hashに対する厳密な移動遷移／擬似合法性を検査するが、それだけで完全合法性を主張しない。これはCPU用で、GPU環境は導入しない。
 
 ```sh
 python3 scripts/prepare.py audit-deps
@@ -106,3 +106,35 @@ shogiesa の固定版は `position sfen ...` で局面を渡し、同じプロ�
 固定版の `sekirei-train` と `shogiesa` はGenSfen `.pack` を直接は読まない。ストリーム復号から学習入力への接続、固定棋譜の100万ノード比較、複数棋譜の採点、CPUでの小規模学習は次の到達点。βへの切替と監査結果は [β環境と教師監査](validation/suisho11beta-2026-09-15.md)、旧Plus環境は [初期検証](validation/environment-2026-09-14.md) に記録する。
 
 公開 GitHub Actions では Python の構文、USI スコア受理のテスト、設定 JSON を検証する。教師重みを CI へアップロードせず、実エンジンと教師の smoke は Mac mini で実行する。
+
+## 開発baseline runnerのruntime
+
+Issue #7の計画・実行は `scripts/benchmark.py`、採点・図・公開境界は `scripts/benchmark_report.py` が担当する。既定の保存先は次のruntime配下で、リポジトリへコピーしない。
+
+USI supervisorのcleanup契約は、engineの終了コードと監督結果を分離する。監督は `waitid(WNOWAIT)` でengine exitを観測し、`/proc/<supervisor>/task/<supervisor>/children` の直接子をreap前に識別してpidfdを取得する。再親化で元のsession/PGIDを離れた子にも `signal.pidfd_send_signal` でTERM→KILLを送り、全子のreap/ECHILDと入力・出力relay閉鎖を、一つのcleanup deadline内で確認する。能力・列挙・signal・reapの証明失敗、監督terminal status欠落、runnerによるanchorのforce-killはcleanup failureとしてraw outcomeに保存し、成功扱いにしない。
+
+```text
+~/.local/share/sekirei-weight2/suisho11beta-v1/
+  .prepare.lock       # prepare.pyと共有するロック
+  .benchmark.lock     # benchmark全体の排他ロック
+  runs/<run-id>/
+    .run.lock
+    manifest.json     # fingerprint、execution identity、attempt matrix、commit/dirty、toolchain、host、option、limit
+    universe.json     # canonical development occurrence universe
+    plan.json         # run type固有の位置集合とhash
+    attempts/*.json   # 成功・失敗を含む確定attempt
+    logs/*.jsonl      # send/receive各行、runner outcome、monotonic offset
+```
+
+prepareの共有non-blocking lock、benchmark-wide排他non-blocking lock、run lockを同時に保持する。attempt JSONとraw logは一時ファイルへ書いてfsync後にreplaceする。resume・report・exportは同じ厳密validatorで、現在のdevelopment configのsplit/benchmark ID、全position/repetition/engineのexact attempt matrix、options/requested nodes、raw JSONLのgo-bound score evidenceとhashを照合する。成功・no-scoreの raw transcript については、広告された全option、`usi` → `setoption`（設定順）→ `isready` → `usinewgame` → exact `position` → exact `go nodes` →対応`bestmove`→`quit` の lifecycle も検証し、recorded binary identity をruntime manifestのpath/hash/bytesに束縛する。raw log は engine 行を改変せず、cleanup後に一つだけ structured runner outcome を末尾へ置く。各USIはrunner所有のLinux supervisor/subreaperをsession leader・PGID anchorとして起動し、supervisorがengineをshellなしの直接argvでexecして子孫をreapする。engine親が即時終了してもanchorは子孫cleanupまで存続するため、runnerのscheduler依存pollで正当な子を発見する必要がない。validな成功・失敗は再実行せず、欠落したattemptだけを実行する。破損・不一致は上書きせず停止する。timeoutのdeadline後に遅れて届いた score/bestmove は採点へ昇格しない。timeoutや親プロセス先行終了でも、捕捉したsupervisorのsession leader PID/PGIDを検証してTERM→KILLし、実行可能な子が消えたことを確認してからpipeを閉じる。未知の同一PGIDが現れて所有権が曖昧になった場合は一切signalせず、cleanup failureとして以後のbenchmarkを中止する。Popen前のstartup failureにもrunner eventを含むraw logを残す。
+
+実行前の確認は次のとおり。
+
+```sh
+python3 scripts/benchmark.py plan --run-type pilot
+python3 scripts/benchmark.py plan --run-type formal
+```
+
+planの実測固定値はpilot 15 positions / 90 attempts、formal 570 positions / 1,140 attempts、development CSA aggregate SHA-256 `0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2`、canonical universe SHA-256 `8cbe47d916a56e44722167b9b4680e3fd9d57cb267bd656e34bd8a43f9fb3a73`。pilotはceilではない絶対上限なしで、`reported_nodes_at_score` と `last_reported_nodes` の最大値・min/median/p95/maxを保存する。`go nodes` は上限なので observed max は requested nodes 未満でもよいが、node evidence が皆無なら gate は拒否する。formalの `max_reported_nodes` と `pilot_evidence` は同じruntimeの完全な90-attempt pilotのfingerprint・再計算値と一致するまで未確定として拒否する。formal gateはrun type・repetition・pilot sample/full plan・post-pilot ceilingを除いた canonical execution identityを比較し、option、timeout、requested nodes、runner/parser、binary/model/weight、toolchain、development hashの変更を拒否する。
+
+`benchmark_report.py report` はlocal詳細を書けるが、`export` は空の出力ディレクトリ直下へ `validation.md`、`reviewed.svg`、`validation.json`、`manifest.json` の4 redacted public fileだけを書く。local/や局面別ファイルは作らず、絶対パス、ユーザー名、source game ID、raw position履歴、model path、free-form provenanceを入れない。生成物は実行結果が揃い、MainがSVGを目視レビューしてから追跡対象にする。Issue #7の実装時点では90-request pilotも1,140-request formalも起動していない。

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "shogiquest-benchmark-v1",
+  "split": "development",
+  "description": "Fixed five-game development universe for the first 1M-node baseline",
+  "requested_nodes": 1000000,
+  "timeout_seconds": 180,
+  "games": [
+    {
+      "id": "development-01",
+      "path": "development/development-01.csa",
+      "plies": 86,
+      "sha256": "0d8597c9bed80098bdd51a34d79c308486897aa63522ee248a53247238c52970",
+      "canonical_sha256": "7e948a8a5e3a2ed135cffd2e766fc3620df0729c20ba7a43b0a9b047c6b306c0"
+    },
+    {
+      "id": "development-02",
+      "path": "development/development-02.csa",
+      "plies": 126,
+      "sha256": "4ef3ab11fc2e27e7413447b82c5b4114ff05c6b34b0dc8c7d66ad675eb7bec55",
+      "canonical_sha256": "2c237d5340e971a1bae0de3052cfce6f225f0ebd0a295d81c81ee88f61f3e304"
+    },
+    {
+      "id": "development-03",
+      "path": "development/development-03.csa",
+      "plies": 127,
+      "sha256": "675361f09050faa605602254498c1993437a9c628c6fc8ad34bd49a99cbc196d",
+      "canonical_sha256": "d248cdfe1d7a1fb72a6aee8a9f30c3fafad4db120fcab6a922e65afc739597c4"
+    },
+    {
+      "id": "development-04",
+      "path": "development/development-04.csa",
+      "plies": 108,
+      "sha256": "170f3fc96fd72eaf8359aee417890d83d96d56df9639f1963c2a5ce760ed6c32",
+      "canonical_sha256": "1649e2f67cd0e99b6c639d85a440fe1f93bbc88e69597f6cf6629eb2ad0cac02"
+    },
+    {
+      "id": "development-05",
+      "path": "development/development-05.csa",
+      "plies": 123,
+      "sha256": "d676450cdbfca6c604e915b1d266b01cf8365ef7d4bb3ec0c360376f72953569",
+      "canonical_sha256": "6490758090a75ddb1cf0747f02605b6ae5e4b33d3d30d8bdf16bcf20425705ab"
+    }
+  ],
+  "universe": {
+    "occurrence_rule": "one occurrence after each recorded move; initial position excluded",
+    "total_occurrences": 570,
+    "plies": {
+      "development-01": 86,
+      "development-02": 126,
+      "development-03": 127,
+      "development-04": 108,
+      "development-05": 123
+    },
+    "pilot_plies": "1, ceil(game_plies / 2), game_plies"
+  },
+  "hashes": {
+    "benchmark_manifest_sha256": "d7ee0cce928be4a45b43733dc8d34d568583b0451586078e19df98892ad9e5fc",
+    "development_csa_aggregate_sha256": "0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2",
+    "universe_sha256": "8cbe47d916a56e44722167b9b4680e3fd9d57cb267bd656e34bd8a43f9fb3a73"
+  },
+  "engines": {
+    "teacher": {
+      "binary": "yaneuraou",
+      "weight_required": true,
+      "options": {
+        "Threads": "1",
+        "USI_Hash": "128",
+        "MultiPV": "1",
+        "USI_Ponder": "false",
+        "BookFile": "no_book",
+        "FV_SCALE": "28",
+        "OutputFailLHPV": "false",
+        "PvInterval": "0"
+      }
+    },
+    "sekirei": {
+      "binary": "sekirei",
+      "weight_required": false,
+      "options": {
+        "Threads": "1",
+        "Hash": "128",
+        "SearchMode": "Speculative",
+        "SpecTopN": "0",
+        "MultiPV": "1",
+        "Ponder": "false",
+        "UseBook": "false"
+      }
+    }
+  },
+  "candidate_model": {
+    "kind": "material_fallback",
+    "path": null
+  },
+  "pilot": {
+    "repetitions": 3,
+    "max_reported_nodes": null
+  },
+  "formal": {
+    "repetitions": 1,
+    "max_reported_nodes": null,
+    "pilot_evidence": null
+  }
+}

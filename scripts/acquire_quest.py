@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import fcntl
 import hashlib
 import importlib
+import importlib.metadata
 import json
 from pathlib import Path
 import re
@@ -164,6 +165,16 @@ def require_cshogi():
             "`python3 scripts/prepare.py audit-deps` and invoke this script "
             "with <runtime>/venv/bin/python"
         ) from error
+    expected = None
+    for line in (REPO / "config/audit-requirements.txt").read_text().splitlines():
+        if line.casefold().startswith("cshogi=="):
+            expected = line.split("==", 1)[1]
+            break
+    actual = importlib.metadata.version("cshogi")
+    if expected is None or actual != expected:
+        raise RuntimeError(
+            f"cshogi version mismatch: expected {expected!r}, found {actual!r}"
+        )
     return cshogi, csa
 
 

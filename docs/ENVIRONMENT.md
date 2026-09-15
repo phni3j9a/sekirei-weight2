@@ -9,14 +9,14 @@
 | パス | 用途 |
 | --- | --- |
 | `/home/server/projects/sekirei-weight2` | main 同期用 checkout、既存資料の保持 |
-| `/home/server/worktrees/sekirei-weight2/issue-3-beta-teacher` | Issue #3 の開発 worktree |
+| `/home/server/worktrees/sekirei-weight2/<作業名>` | Issueごとの開発worktree。統合後は安全確認して削除 |
 | `/home/server/projects/sekirei-weight2/docs/pixiv_fanbox_yaneurao` | ユーザー提供のローカル資料。Git 対象外 |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/sources` | β固定版の upstream ソース |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/build` | β固定環境のビルド生成物 |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/bin` | β固定環境の実行ファイルへのリンク |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/models/suisho11beta-concerto-202512` | 主教師重み |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/data/teachers/suisho11beta-1m` | 内容ハッシュで重複除外した教師 `.pack` とmanifest |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/venv` | `.pack` 監査専用の固定Python環境 |
+| `~/.local/share/sekirei-weight2/suisho11beta-v1/venv` | `.pack` 監査・CSA合法手確認用の固定Python環境 |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/runs` | smoke・監査・今後の個別実験成果物 |
 | `~/.local/share/sekirei-weight2/shogiquest-human-v1` | 公開棋譜1,000局、取得cache、再開状態、ローカルmanifest |
 

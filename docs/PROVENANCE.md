@@ -9,7 +9,7 @@
 | β・100万ノード教師（`1000000a/`） | https://www.fanbox.cc/@yaneurao/posts/12184084 | 記事上の由来とアーカイブSHAを記録。生 `.pack` はそのまま再配布しない |
 | β・100万ノード教師（`1000000b/`） | https://www.fanbox.cc/@yaneurao/posts/12338760 | 記事上の由来とアーカイブSHAを記録。生 `.pack` はそのまま再配布しない |
 | GenSfen / pack形式 | https://github.com/yaneurao/YaneuraOu-ScriptCollection/tree/main/GenSfen | 公開仕様を参照してストリーム監査器を実装。上流コード自体は同梱しない |
-| cshogi | https://github.com/TadaoYamaoka/cshogi | GPL-3.0パッケージをローカルvenvで局面復号に使用。GitやCIへ同梱しない |
+| cshogi | https://github.com/TadaoYamaoka/cshogi | GPL-3.0パッケージをローカルvenvで局面復号とCSA合法手再生に使用。GitやCIへ同梱しない |
 | Suisho11Plus | https://www.fanbox.cc/@yaneurao/posts/12349386 | 旧固定環境を参考教師として保持。重み・記事・同梱コードを Git に入れない |
 | 将棋クエスト利用規約 | https://d26termck8rp2x.cloudfront.net/static/questterms/term_ja.html | 棋譜の公開と取得した棋譜の利用に関する現行記載を取得前に確認 |
 | 将棋クエスト棋譜WEB | https://kifu.questgames.net/shogi/ | 各候補の公開ページにある人間対局属性を確認。ページ本文や利用者名はGitへ保存しない |

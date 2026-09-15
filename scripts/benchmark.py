@@ -66,6 +66,14 @@ CSA_MOVE_RE = re.compile(
 USI_NORMAL_RE = re.compile(r"^[1-9][a-i][1-9][a-i]\+?$")
 USI_DROP_RE = re.compile(r"^[PLNSGBR]\*[1-9][a-i]$")
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+POSITION_CLASSIFICATION_TYPES = (
+    "normal",
+    "forced_single_legal_move",
+    "terminal_checkmate",
+    "terminal_stalemate",
+)
+POSITION_CLASSIFICATION_METADATA_KEY = "position_classifications"
+PARSER_ID = "usi-observation-v2"
 
 
 class BenchmarkError(RuntimeError):
@@ -132,6 +140,13 @@ OBSERVATION_COMPARE_FIELDS = (
     "winner_sente",
     "reported_nodes_at_score",
     "last_reported_nodes",
+    "max_reported_nodes_evidence",
+    "node_evidence_count",
+    "node_evidence_valid_count",
+    "node_evidence_invalid_count",
+    "node_evidence_positive_count",
+    "node_evidence_zero_count",
+    "node_evidence_errors",
     "engine_time_ms",
     "engine_time",
     "wall_go_to_bestmove_ns",
@@ -140,7 +155,10 @@ OBSERVATION_COMPARE_FIELDS = (
     "raw_bestmove_line",
     "info_count",
     "failure_reason",
+    "position_type",
+    "position_classification",
 )
+PARSER_RESULT_REQUIRED_FIELDS = ("schema_version", *OBSERVATION_COMPARE_FIELDS)
 
 
 def canonical_json_bytes(value):
@@ -593,9 +611,8 @@ def development_csa_hash(games):
     return json_sha256(records)
 
 
-def build_universe(config=None):
-    config = config or load_config()
-    games = load_development_games(config)
+def _build_base_universe(config, games):
+    """Build the occurrence universe before cshogi classification metadata."""
     records = []
     for game in games:
         occurrences = []
@@ -626,6 +643,186 @@ def build_universe(config=None):
         "split": "development",
         "games": records,
     }
+    return universe, games
+
+
+def _position_classification_path(config):
+    spec = config.get(POSITION_CLASSIFICATION_METADATA_KEY)
+    if not isinstance(spec, dict):
+        raise ConfigurationError("position classification metadata configuration is missing")
+    relative = spec.get("path")
+    if not isinstance(relative, str) or not relative:
+        raise ConfigurationError("position classification metadata path is missing")
+    path = Path(relative)
+    if path.is_absolute() or ".." in path.parts:
+        raise ConfigurationError("position classification metadata path must be repository-relative")
+    resolved = (REPO / path).resolve()
+    try:
+        resolved.relative_to(REPO.resolve())
+    except ValueError as error:
+        raise ConfigurationError("position classification metadata is outside the repository") from error
+    expected_sha256 = spec.get("sha256")
+    if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        raise ConfigurationError("position classification metadata SHA-256 is invalid")
+    if not resolved.is_file():
+        raise ConfigurationError(f"position classification metadata is missing: {resolved}")
+    actual_sha256 = sha256(resolved)
+    if actual_sha256 != expected_sha256:
+        raise ConfigurationError(
+            f"position classification metadata hash mismatch: expected {expected_sha256}, got {actual_sha256}"
+        )
+    return resolved, actual_sha256
+
+
+def position_classification_metadata_sha256(config=None):
+    config = config or load_config()
+    _path, metadata_sha256 = _position_classification_path(config)
+    return metadata_sha256
+
+
+def _classification_entry_value(entry):
+    result = {"type": entry["type"]}
+    for key in ("in_check", "legal_move_count", "sole_legal_move"):
+        if key in entry:
+            result[key] = entry[key]
+    return result
+
+
+def load_position_classifications(config=None, base_universe=None):
+    """Load and fail closed on the hash-bound cshogi classification manifest.
+
+    The normal runner does not import cshogi.  It trusts only this compact,
+    checked-in exception list after binding it to the complete input-derived
+    universe and source hashes.  ``compare_cshogi`` independently recomputes
+    all 570 classifications when the pinned audit dependency is available.
+    """
+    config = config or load_config()
+    metadata_path, _metadata_sha256 = _position_classification_path(config)
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ConfigurationError(f"position classification metadata is invalid: {metadata_path}") from error
+    if not isinstance(metadata, dict) or metadata.get("schema_version") != 1:
+        raise ConfigurationError("position classification metadata has an unsupported schema")
+    if metadata.get("benchmark_id") != config.get("benchmark_id") or metadata.get("split") != "development":
+        raise ConfigurationError("position classification metadata is not for the fixed development split")
+    verifier = metadata.get("verifier")
+    if not isinstance(verifier, dict):
+        raise ConfigurationError("position classification verifier metadata is missing")
+    total_occurrences = sum(int(value) for value in config.get("universe", {}).get("plies", {}).values())
+    if (
+        verifier.get("name") != "cshogi"
+        or verifier.get("version") != "1.0.4"
+        or verifier.get("algorithm") != "legal_moves_and_side_to_move_check"
+        or verifier.get("checked_occurrences") != total_occurrences
+        or verifier.get("checked_moves") != total_occurrences
+    ):
+        raise ConfigurationError("position classification verifier metadata is not pinned to all development moves")
+    if base_universe is None:
+        games = load_development_games(config)
+        base_universe, _ = _build_base_universe(config, games)
+    binding = metadata.get("binding")
+    if not isinstance(binding, dict):
+        raise ConfigurationError("position classification metadata binding is missing")
+    expected_binding = {
+        "benchmark_manifest_sha256": sha256(BENCHMARK_MANIFEST_PATH),
+        "development_csa_aggregate_sha256": development_csa_hash(base_universe["games"]),
+        "base_universe_sha256": json_sha256(base_universe),
+        "games": {
+            game["game_id"]: {
+                "csa_sha256": game["csa_sha256"],
+                "canonical_sha256": game["canonical_sha256"],
+                "plies": game["plies"],
+            }
+            for game in base_universe["games"]
+        },
+    }
+    if binding != expected_binding:
+        raise ConfigurationError("position classification metadata source/universe binding mismatch")
+
+    base_occurrences = {
+        occurrence["occurrence_id"]: occurrence
+        for game in base_universe["games"]
+        for occurrence in game["occurrences"]
+    }
+    entries = metadata.get("occurrences")
+    if not isinstance(entries, list):
+        raise ConfigurationError("position classification metadata occurrences must be a list")
+    by_id = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ConfigurationError("position classification entry is not an object")
+        occurrence_id = entry.get("occurrence_id")
+        if occurrence_id in by_id:
+            raise ConfigurationError(f"duplicate position classification: {occurrence_id}")
+        occurrence = base_occurrences.get(occurrence_id)
+        if occurrence is None:
+            raise ConfigurationError(f"position classification references an unknown occurrence: {occurrence_id}")
+        if entry.get("game_id") != occurrence["game_id"] or entry.get("ply") != occurrence["ply"]:
+            raise ConfigurationError(f"position classification identity mismatch: {occurrence_id}")
+        classification_type = entry.get("type")
+        if classification_type not in POSITION_CLASSIFICATION_TYPES or classification_type == "normal":
+            raise ConfigurationError(f"position classification type is invalid: {occurrence_id}")
+        if entry.get("side_to_move") != occurrence["side_to_move"]:
+            raise ConfigurationError(f"position classification side mismatch: {occurrence_id}")
+        if entry.get("position_sha256") != digest_bytes(occurrence["position"].encode("utf-8")):
+            raise ConfigurationError(f"position classification position hash mismatch: {occurrence_id}")
+        if entry.get("history_sha256") != json_sha256(occurrence["moves"]):
+            raise ConfigurationError(f"position classification history hash mismatch: {occurrence_id}")
+        in_check = entry.get("in_check")
+        legal_move_count = entry.get("legal_move_count")
+        if not isinstance(in_check, bool) or isinstance(legal_move_count, bool) or not isinstance(legal_move_count, int):
+            raise ConfigurationError(f"position classification facts have invalid types: {occurrence_id}")
+        if classification_type == "forced_single_legal_move":
+            if not in_check or legal_move_count != 1:
+                raise ConfigurationError(f"forced position classification facts are inconsistent: {occurrence_id}")
+            sole_move = entry.get("sole_legal_move")
+            if not isinstance(sole_move, str) or not USI_NORMAL_RE.fullmatch(sole_move) and not USI_DROP_RE.fullmatch(sole_move):
+                raise ConfigurationError(f"forced position classification move is invalid: {occurrence_id}")
+        elif classification_type == "terminal_checkmate":
+            if not in_check or legal_move_count != 0 or "sole_legal_move" in entry:
+                raise ConfigurationError(f"terminal checkmate classification facts are inconsistent: {occurrence_id}")
+        elif classification_type == "terminal_stalemate":
+            if in_check or legal_move_count != 0 or "sole_legal_move" in entry:
+                raise ConfigurationError(f"terminal stalemate classification facts are inconsistent: {occurrence_id}")
+        by_id[occurrence_id] = _classification_entry_value(entry)
+
+    counts = metadata.get("classification_counts")
+    if not isinstance(counts, dict):
+        raise ConfigurationError("position classification counts are missing")
+    actual_counts = {classification_type: 0 for classification_type in POSITION_CLASSIFICATION_TYPES}
+    actual_counts["normal"] = len(base_occurrences) - len(by_id)
+    for value in by_id.values():
+        actual_counts[value["type"]] += 1
+    expected_counts = {
+        classification_type: counts.get(classification_type)
+        for classification_type in POSITION_CLASSIFICATION_TYPES
+    }
+    if expected_counts != actual_counts or sum(actual_counts.values()) != total_occurrences:
+        raise ConfigurationError(
+            f"position classification counts mismatch: expected {expected_counts}, got {actual_counts}"
+        )
+    return {
+        "metadata": metadata,
+        "by_occurrence_id": by_id,
+        "counts": actual_counts,
+        "path": str(metadata_path),
+        "sha256": _metadata_sha256,
+    }
+
+
+def build_universe(config=None):
+    config = config or load_config()
+    games = load_development_games(config)
+    universe, _ = _build_base_universe(config, games)
+    classifications = load_position_classifications(config, base_universe=universe)
+    for game in universe["games"]:
+        for occurrence in game["occurrences"]:
+            classification = classifications["by_occurrence_id"].get(
+                occurrence["occurrence_id"], {"type": "normal"}
+            )
+            occurrence["position_type"] = classification["type"]
+            occurrence["classification"] = dict(classification)
     return universe, games
 
 
@@ -662,6 +859,13 @@ def validate_config_and_universe(config=None):
     if expected_universe_hash != actual_universe_hash:
         raise ConfigurationError(
             f"development universe hash mismatch: expected {expected_universe_hash}, got {actual_universe_hash}"
+        )
+    expected_classification_hash = hashes.get("position_classifications_sha256")
+    actual_classification_hash = position_classification_metadata_sha256(config)
+    if expected_classification_hash != actual_classification_hash:
+        raise ConfigurationError(
+            "position classification metadata hash is not bound in the benchmark config: "
+            f"expected {expected_classification_hash}, got {actual_classification_hash}"
         )
     expected_total = config.get("universe", {}).get("total_occurrences")
     actual_total = sum(game["plies"] for game in games)
@@ -742,6 +946,7 @@ def make_plan(run_type, config=None):
             "benchmark_manifest_sha256": sha256(BENCHMARK_MANIFEST_PATH),
             "development_csa_aggregate_sha256": development_csa_hash(games),
             "universe_sha256": universe_hash(universe),
+            "position_classifications_sha256": position_classification_metadata_sha256(config),
         },
     }
     payload["plan_sha256"] = plan_hash(payload)
@@ -781,10 +986,165 @@ _INFO_INTEGER_FIELDS = {
     "nps",
     "hashfull",
     "tbhits",
+    "cpuload",
     "currmovenumber",
     "multipv",
 }
 _INFO_SINGLE_VALUE_FIELDS = {"currmove"}
+_INFO_NODE_VALUE_RE = re.compile(r"[0-9]+")
+_INFO_NEGATIVE_NODE_VALUE_RE = re.compile(r"-[0-9]+")
+_INFO_CP_VALUE_RE = re.compile(r"[+-]?[0-9]+")
+_INFO_MATE_VALUE_RE = re.compile(r"(?:[+-]?[0-9]+|[+-])")
+_INFO_PAYLOAD_FIELDS = {"pv", "string", "refutation", "currline"}
+_INFO_SUBCOMMAND_FIELDS = _INFO_INTEGER_FIELDS | _INFO_SINGLE_VALUE_FIELDS | {
+    "score",
+    "pv",
+    "string",
+    "refutation",
+    "currline",
+}
+
+
+def _scan_usi_info_structure(tokens):
+    """Find the first real payload boundary and malformed score slots.
+
+    Payload-looking words are boundaries only after a complete score
+    subcommand.  When one occupies score's required kind/value slot, consume
+    it as malformed score data so a later ``nodes`` token remains visible to
+    the independent node scanner.
+    """
+    score_errors = []
+    index = 1
+    while index < len(tokens):
+        key = tokens[index]
+        if key in _INFO_PAYLOAD_FIELDS:
+            return index, score_errors
+        if key != "score":
+            index += 1
+            continue
+        kind_index = index + 1
+        if kind_index >= len(tokens):
+            score_errors.append("malformed_score")
+            index += 1
+            continue
+        kind = tokens[kind_index]
+        raw_index = kind_index + 1
+        if raw_index >= len(tokens):
+            score_errors.append("malformed_score")
+            index += 2
+            continue
+        raw = tokens[raw_index]
+        valid_kind = kind in ("cp", "mate")
+        valid_value = (
+            _INFO_CP_VALUE_RE.fullmatch(raw) is not None
+            if kind == "cp"
+            else _INFO_MATE_VALUE_RE.fullmatch(raw) is not None
+            if kind == "mate"
+            else False
+        )
+        if not valid_kind or not valid_value:
+            score_errors.append("malformed_score")
+            # Both positions are score grammar slots, even when the token in
+            # one of them spells a payload marker such as ``pv`` or
+            # ``string``.  Do not let it terminate node evidence scanning.
+            index = raw_index + 1
+            continue
+        index = raw_index + 1
+        if index < len(tokens) and tokens[index] in ("lowerbound", "upperbound"):
+            index += 1
+    return len(tokens), score_errors
+
+
+def _scan_usi_node_evidence(line):
+    """Collect every structured ``nodes`` occurrence without score recovery.
+
+    Score parsing is intentionally allowed to stop on an unknown or malformed
+    field.  Node evidence has a smaller, independent grammar: scan tokens
+    until the first variable-length USI payload, using score-slot awareness so
+    a payload-looking malformed score value is not mistaken for that payload
+    boundary.  Inspect every ``nodes`` token in that prefix while still
+    excluding free text and PV move tokens.
+    """
+    tokens = line.split()
+    empty = {
+        "node_occurrences": [],
+        "node_errors": [],
+        "nodes": None,
+        "node_evidence": "missing",
+        "node_malformed_fields": [],
+        "score_errors": [],
+    }
+    if len(tokens) < 2 or tokens[0] != "info" or tokens[1] == "string":
+        return empty
+    boundary, score_errors = _scan_usi_info_structure(tokens)
+    structured_tokens = tokens[:boundary]
+    occurrences = []
+    errors = []
+    malformed_fields = []
+    index = 1
+    while index < len(structured_tokens):
+        if structured_tokens[index] != "nodes":
+            index += 1
+            continue
+        missing_value = (
+            index + 1 >= len(structured_tokens)
+            or structured_tokens[index + 1] in _INFO_SUBCOMMAND_FIELDS
+        )
+        if missing_value:
+            occurrences.append({"state": "missing", "value": None})
+            errors.append("missing_nodes_value")
+            malformed_fields.append("nodes")
+            index += 1
+            continue
+        raw_nodes = structured_tokens[index + 1]
+        if _INFO_NEGATIVE_NODE_VALUE_RE.fullmatch(raw_nodes):
+            try:
+                node_value = int(raw_nodes)
+            except ValueError:
+                node_value = None
+            if node_value is not None:
+                occurrences.append({"state": "negative", "value": node_value, "raw": raw_nodes})
+                errors.append("negative_nodes_value")
+                index += 2
+                continue
+        if not _INFO_NODE_VALUE_RE.fullmatch(raw_nodes):
+            occurrences.append({"state": "malformed", "value": None, "raw": raw_nodes})
+            errors.append("malformed_nodes_value")
+            malformed_fields.append("nodes")
+        else:
+            try:
+                node_value = int(raw_nodes)
+            except ValueError:
+                occurrences.append({"state": "malformed", "value": None, "raw": raw_nodes})
+                errors.append("malformed_nodes_value")
+                malformed_fields.append("nodes")
+            else:
+                occurrences.append({"state": "valid", "value": node_value, "raw": raw_nodes})
+        index += 2
+    if len(occurrences) > 1:
+        # USI does not define which duplicate nodes value is authoritative.
+        errors.append("duplicate_nodes_on_info_line")
+    if errors:
+        if "duplicate_nodes_on_info_line" in errors:
+            evidence = "ambiguous"
+        elif "negative_nodes_value" in errors:
+            evidence = "negative"
+        elif "malformed_nodes_value" in errors:
+            evidence = "malformed"
+        else:
+            evidence = "missing"
+    elif occurrences:
+        evidence = "present"
+    else:
+        evidence = "missing"
+    return {
+        "node_occurrences": occurrences,
+        "node_errors": errors,
+        "nodes": occurrences[0]["value"] if len(occurrences) == 1 else None,
+        "node_evidence": evidence,
+        "node_malformed_fields": malformed_fields,
+        "score_errors": score_errors,
+    }
 
 
 def _parse_usi_info_line(line):
@@ -797,21 +1157,39 @@ def _parse_usi_info_line(line):
     tokens = line.split()
     if len(tokens) < 2 or tokens[0] != "info" or tokens[1] == "string":
         return None
+    _unused_boundary, score_errors = _scan_usi_info_structure(tokens)
     if "string" in tokens[2:]:
         # Truncate before parsing any subcommand after the free-text marker.
         # This also covers a malformed ``string`` token placed after a PV,
         # whose move list otherwise consumes the rest of the line.
         tokens = tokens[:tokens.index("string", 2)]
-    values = {"tokens": tokens, "line": line}
+    values = {
+        "tokens": tokens,
+        "line": line,
+        "malformed_fields": [],
+        "parse_error": score_errors[0] if score_errors else None,
+        "score_errors": score_errors,
+        "node_occurrences": [],
+        "node_errors": [],
+    }
     index = 1
     while index < len(tokens):
         key = tokens[index]
         if key == "score":
             if index + 2 >= len(tokens):
-                return None
+                values["parse_error"] = "malformed_score"
+                break
             kind, raw = tokens[index + 1:index + 3]
             if kind not in ("cp", "mate"):
-                return None
+                values["parse_error"] = "malformed_score"
+                break
+            if (
+                kind == "cp" and _INFO_CP_VALUE_RE.fullmatch(raw) is None
+            ) or (
+                kind == "mate" and _INFO_MATE_VALUE_RE.fullmatch(raw) is None
+            ):
+                values["parse_error"] = "malformed_score"
+                break
             values["score_kind"] = kind
             values["score_raw"] = raw
             index += 3
@@ -829,18 +1207,35 @@ def _parse_usi_info_line(line):
             # score/nodes/pv token is diagnostic free text, not another USI
             # subcommand.  Fields parsed before this token remain available.
             break
+        if key == "nodes":
+            # Node validity and collection are handled by the independent
+            # scanner below, so malformed score/field parsing cannot hide a
+            # later node token on this line.
+            if index + 1 < len(tokens) and tokens[index + 1] not in _INFO_SUBCOMMAND_FIELDS:
+                index += 2
+            else:
+                # Leave the next structured subcommand (especially ``pv``)
+                # for the score parser; the independent scanner records this
+                # as a missing node value.
+                index += 1
+            continue
         if key in _INFO_INTEGER_FIELDS:
             if index + 1 >= len(tokens):
-                return None
+                values["malformed_fields"].append(key)
+                values["parse_error"] = f"missing_{key}_value"
+                break
             try:
                 values[key] = int(tokens[index + 1])
             except ValueError:
-                return None
+                values["malformed_fields"].append(key)
+                values[key] = None
+                values["parse_error"] = f"malformed_{key}_value"
             index += 2
             continue
         if key in _INFO_SINGLE_VALUE_FIELDS:
             if index + 1 >= len(tokens):
-                return None
+                values["parse_error"] = f"missing_{key}_value"
+                break
             index += 2
             continue
         # These fields contain a variable-length move list.  They are valid
@@ -849,7 +1244,16 @@ def _parse_usi_info_line(line):
             break
         # Unknown tokens are not treated as a reason to search the remainder
         # of the line for a substring that happens to look like a score.
-        return None
+        values["parse_error"] = f"unknown_info_field:{key}"
+        break
+    node_evidence = _scan_usi_node_evidence(line)
+    values.update(
+        {
+            key: node_evidence[key]
+            for key in ("node_occurrences", "node_errors", "nodes", "node_evidence")
+        }
+    )
+    values["malformed_fields"].extend(node_evidence["node_malformed_fields"])
     return values
 
 
@@ -858,8 +1262,14 @@ def _observation_window(lines):
     values = list(lines)
     has_events = any(isinstance(item, dict) for item in values)
     if not has_events:
+        go_indexes = [
+            index
+            for index, item in enumerate(values)
+            if re.fullmatch(r"go nodes [0-9]+", str(item))
+        ]
+        start = go_indexes[-1] + 1 if go_indexes else 0
         window = []
-        for item in values:
+        for item in values[start:]:
             window.append(item)
             if str(item).startswith("bestmove "):
                 break
@@ -884,8 +1294,7 @@ def _observation_window(lines):
     return window
 
 
-def _primary_scored_infos(lines):
-    infos = []
+def _structured_info_parses(lines):
     for item in _observation_window(lines):
         if isinstance(item, dict):
             if item.get("direction") != "receive":
@@ -896,8 +1305,40 @@ def _primary_scored_infos(lines):
         if line.startswith("bestmove "):
             continue
         parsed = _parse_usi_info_line(line)
-        if parsed is None or "score_kind" not in parsed or not parsed.get("pv"):
+        if parsed is not None:
+            yield parsed
+
+
+def _node_evidence_summary(lines):
+    occurrences = []
+    errors = []
+    score_errors = []
+    for parsed in _structured_info_parses(lines):
+        occurrences.extend(parsed.get("node_occurrences", []))
+        errors.extend(parsed.get("node_errors", []))
+        score_errors.extend(parsed.get("score_errors", []))
+    valid_values = [
+        occurrence["value"]
+        for occurrence in occurrences
+        if occurrence.get("state") == "valid"
+    ]
+    return {
+        "occurrences": occurrences,
+        "valid_values": valid_values,
+        "last_valid_nodes": valid_values[-1] if valid_values else None,
+        "max_valid_nodes": max(valid_values) if valid_values else None,
+        "has_zero": 0 in valid_values,
+        "errors": errors,
+        "score_errors": score_errors,
+    }
+
+
+def _primary_scored_infos(lines):
+    infos = []
+    for parsed in _structured_info_parses(lines):
+        if parsed.get("parse_error") is not None or "score_kind" not in parsed or not parsed.get("pv"):
             continue
+        line = parsed["line"]
         tokens = parsed["tokens"]
         if "multipv" in tokens:
             index = tokens.index("multipv")
@@ -912,6 +1353,7 @@ def _primary_scored_infos(lines):
             "pv": parsed["pv"],
             "nodes": parsed.get("nodes"),
             "time_ms": parsed.get("time"),
+            "node_evidence": parsed.get("node_evidence", "missing"),
         })
     return infos
 
@@ -919,20 +1361,13 @@ def _primary_scored_infos(lines):
 def _last_info_measurements(lines):
     last_nodes = None
     last_time = None
-    for item in _observation_window(lines):
-        if isinstance(item, dict):
-            if item.get("direction") != "receive":
-                continue
-            line = item.get("line", "")
-        else:
-            line = str(item)
-        parsed = _parse_usi_info_line(line)
-        if parsed is None:
+    for parsed in _structured_info_parses(lines):
+        for occurrence in parsed.get("node_occurrences", []):
+            if occurrence.get("state") == "valid":
+                last_nodes = occurrence["value"]
+        if parsed.get("parse_error") is not None:
             continue
-        nodes = parsed.get("nodes")
         engine_time = parsed.get("time")
-        if nodes is not None:
-            last_nodes = nodes
         if engine_time is not None:
             last_time = engine_time
     return last_nodes, last_time
@@ -995,6 +1430,98 @@ def _winner_stm_for_mate(raw):
     return None
 
 
+def _normalise_position_classification(position_type=None, position_classification=None):
+    """Return the small semantic classification carried with one occurrence."""
+    if position_classification is None:
+        classification = {"type": position_type or "normal"}
+    elif not isinstance(position_classification, dict):
+        raise ValueError("position classification must be an object")
+    else:
+        classification = dict(position_classification)
+        if position_type is not None and classification.get("type") != position_type:
+            raise ValueError("position type and classification type do not match")
+    classification_type = classification.get("type", "normal")
+    if classification_type not in POSITION_CLASSIFICATION_TYPES:
+        raise ValueError(f"unknown position classification type: {classification_type}")
+    normalised = {"type": classification_type}
+    for key in ("in_check", "legal_move_count", "sole_legal_move"):
+        if key in classification:
+            normalised[key] = classification[key]
+    return normalised
+
+
+def _node_evidence_state(value):
+    if value is None:
+        return "missing"
+    if isinstance(value, bool) or not isinstance(value, int):
+        return "malformed"
+    if value < 0:
+        return "negative"
+    if value == 0:
+        return "zero"
+    return "positive"
+
+
+def _negative_mate_direction(raw):
+    """Accept a known/unknown negative direction, but not lexical -0."""
+    if raw == "-":
+        return True
+    if not isinstance(raw, str) or not raw.startswith("-"):
+        return False
+    try:
+        return int(raw) < 0
+    except ValueError:
+        return False
+
+
+def _is_forced_single_zero_response(result, engine_id, classification, board, lifecycle_valid):
+    if not lifecycle_valid or engine_id != "sekirei":
+        return False
+    if (
+        classification.get("type") != "forced_single_legal_move"
+        or classification.get("in_check") is not True
+    ):
+        return False
+    if classification.get("legal_move_count") != 1:
+        return False
+    sole_move = classification.get("sole_legal_move")
+    if not isinstance(sole_move, str):
+        return False
+    if (
+        result.get("bestmove_kind") != "normal"
+        or result.get("bestmove") != sole_move
+        or result.get("pv_head") != sole_move
+    ):
+        return False
+    if board is not None and not board.is_legal_usi(sole_move):
+        return False
+    return True
+
+
+def _is_terminal_mate_resign_response(result, info, engine_id, classification, lifecycle_valid):
+    """Recognise only the pinned terminal-checkmate teacher response."""
+    if not lifecycle_valid or engine_id != "teacher":
+        return False
+    if (
+        classification.get("type") != "terminal_checkmate"
+        or classification.get("in_check") is not True
+        or classification.get("legal_move_count") != 0
+    ):
+        return False
+    return (
+        result.get("bestmove_kind") == "resign"
+        and result.get("raw_bestmove_line", "").split() == ["bestmove", "resign"]
+        and info.get("kind") == "mate"
+        and info.get("raw") == "-1"
+        and info.get("bound_stm") == "exact"
+        and _negative_mate_direction(info.get("raw"))
+        and info.get("pv") == ["resign"]
+        and result.get("reported_nodes_at_score") == 0
+        and result.get("last_reported_nodes") == 0
+        and info.get("node_evidence") == "present"
+    )
+
+
 def parse_usi_observation(
     lines,
     side_to_move,
@@ -1004,6 +1531,10 @@ def parse_usi_observation(
     max_reported_nodes=None,
     anomaly_ceiling=None,
     wall_go_to_bestmove_ns=None,
+    engine_id=None,
+    position_type=None,
+    position_classification=None,
+    lifecycle_valid=True,
 ):
     """Parse the final primary USI score without converting mate to cp.
 
@@ -1017,8 +1548,11 @@ def parse_usi_observation(
         side = -1
     else:
         raise ValueError(f"invalid side to move: {side_to_move!r}")
+    classification = _normalise_position_classification(position_type, position_classification)
     best_line = _bestmove_line(lines)
-    last_nodes, last_time = _last_info_measurements(lines)
+    _ignored_last_nodes, last_time = _last_info_measurements(lines)
+    node_summary = _node_evidence_summary(lines)
+    last_nodes = node_summary["last_valid_nodes"]
     infos = _primary_scored_infos(lines)
     result = {
         "schema_version": 1,
@@ -1043,6 +1577,13 @@ def parse_usi_observation(
         "winner_sente": None,
         "reported_nodes_at_score": None,
         "last_reported_nodes": last_nodes,
+        "max_reported_nodes_evidence": node_summary["max_valid_nodes"],
+        "node_evidence_count": len(node_summary["occurrences"]),
+        "node_evidence_valid_count": len(node_summary["valid_values"]),
+        "node_evidence_invalid_count": len(node_summary["errors"]),
+        "node_evidence_positive_count": sum(value > 0 for value in node_summary["valid_values"]),
+        "node_evidence_zero_count": sum(value == 0 for value in node_summary["valid_values"]),
+        "node_evidence_errors": list(node_summary["errors"]),
         "engine_time_ms": last_time,
         "engine_time": last_time,
         "wall_go_to_bestmove_ns": wall_go_to_bestmove_ns,
@@ -1051,6 +1592,8 @@ def parse_usi_observation(
         "raw_bestmove_line": best_line,
         "info_count": len(infos),
         "failure_reason": None,
+        "position_type": classification["type"],
+        "position_classification": classification,
     }
     if best_line is None:
         result["failure_reason"] = "missing_bestmove"
@@ -1071,7 +1614,11 @@ def parse_usi_observation(
     else:
         result["bestmove_kind"] = "other_special"
     if not infos:
-        result["failure_reason"] = "no_primary_scored_pv"
+        if node_summary["score_errors"]:
+            result["status"] = "protocol_failure"
+            result["failure_reason"] = "malformed_score"
+        else:
+            result["failure_reason"] = "no_primary_scored_pv"
         return result
     info = infos[-1]
     result.update(
@@ -1130,30 +1677,77 @@ def parse_usi_observation(
             result["status"] = "protocol_failure"
             result["failure_reason"] = "illegal_bestmove"
     elif result["bestmove_kind"] is not None:
-        # A special bestmove is retained as a special outcome, not a numeric
-        # success, even if an engine printed a stale score before it.
-        result["status"] = "no_score"
-        result["failure_reason"] = "special_bestmove"
+        if _is_terminal_mate_resign_response(result, info, engine_id, classification, lifecycle_valid):
+            # This is the one terminal exception: the score, special PV, and
+            # resign bestmove are all part of the same validated request.
+            result["status"] = "mate"
+            result["failure_reason"] = None
+        else:
+            # A special bestmove is retained as a special outcome, not a
+            # numeric success, even if an engine printed a stale score before
+            # it.  In particular, Sekirei's bare resign is never synthesized
+            # into mate or a node count.
+            result["status"] = "no_score"
+            result["failure_reason"] = "special_bestmove"
+    if node_summary["score_errors"]:
+        # A malformed score subcommand is a protocol failure for the whole
+        # current-go attempt.  A later valid score cannot make the malformed
+        # line disappear from the raw evidence.
+        result["status"] = "protocol_failure"
+        result["failure_reason"] = "malformed_score"
+        return result
     if (
         result["status"] in ("exact_cp", "bound_cp", "mate")
         and requested_nodes is not None
     ):
-        if last_nodes is None or last_nodes <= 0:
+        node_states = {
+            "reported_nodes_at_score": _node_evidence_state(result.get("reported_nodes_at_score")),
+            "last_reported_nodes": _node_evidence_state(last_nodes),
+        }
+        node_errors = node_summary["errors"]
+        if any(error == "malformed_nodes_value" for error in node_errors):
             result["status"] = "node_budget_failure"
-            result["failure_reason"] = "missing_or_nonpositive_nodes"
+            result["failure_reason"] = "malformed_node_evidence"
+        elif any(error == "missing_nodes_value" for error in node_errors):
+            result["status"] = "node_budget_failure"
+            result["failure_reason"] = "missing_node_evidence"
+        elif any(error == "negative_nodes_value" for error in node_errors):
+            result["status"] = "node_budget_failure"
+            result["failure_reason"] = "negative_node_evidence"
+        elif any(error == "duplicate_nodes_on_info_line" for error in node_errors):
+            result["status"] = "node_budget_failure"
+            result["failure_reason"] = "ambiguous_node_evidence"
+        elif any(state == "malformed" for state in node_states.values()):
+            result["status"] = "node_budget_failure"
+            result["failure_reason"] = "malformed_node_evidence"
+        elif any(state == "missing" for state in node_states.values()):
+            result["status"] = "node_budget_failure"
+            result["failure_reason"] = "missing_node_evidence"
+        elif any(state == "negative" for state in node_states.values()):
+            result["status"] = "node_budget_failure"
+            result["failure_reason"] = "negative_node_evidence"
         else:
-            # ``anomaly_ceiling`` is retained only for callers of the old
-            # helper API.  Benchmark plans use the unambiguous absolute
-            # ``max_reported_nodes`` field.
-            if max_reported_nodes is None and anomaly_ceiling is not None:
-                max_reported_nodes = math.ceil(requested_nodes * (1 + anomaly_ceiling))
-            observed_nodes = max(
-                last_nodes,
-                result["reported_nodes_at_score"] or 0,
+            observed_nodes = node_summary["max_valid_nodes"]
+            zero_allowed = (
+                _is_forced_single_zero_response(result, engine_id, classification, board, lifecycle_valid)
+                or (
+                    result["status"] == "mate"
+                    and _is_terminal_mate_resign_response(result, info, engine_id, classification, lifecycle_valid)
+                )
             )
-            if max_reported_nodes is not None and observed_nodes > max_reported_nodes:
+            if node_summary["has_zero"] and not zero_allowed:
                 result["status"] = "node_budget_failure"
-                result["failure_reason"] = "node_count_above_ceiling"
+                result["failure_reason"] = "zero_nodes_without_verified_exception"
+            else:
+                # ``anomaly_ceiling`` is retained only for callers of the old
+                # helper API.  Benchmark plans use the unambiguous absolute
+                # ``max_reported_nodes`` field.  The comparison includes zero
+                # and positive evidence alike.
+                if max_reported_nodes is None and anomaly_ceiling is not None:
+                    max_reported_nodes = math.ceil(requested_nodes * (1 + anomaly_ceiling))
+                if max_reported_nodes is not None and observed_nodes > max_reported_nodes:
+                    result["status"] = "node_budget_failure"
+                    result["failure_reason"] = "node_count_above_ceiling"
     return result
 
 
@@ -2339,8 +2933,13 @@ def run_engine_attempt(
     max_reported_nodes=None,
     board=None,
     raw_log_path=None,
+    engine_id=None,
+    position_type=None,
+    position_classification=None,
+    lifecycle_valid=True,
 ):
     """Run one engine lifecycle and return an observation plus raw events."""
+    classification = _normalise_position_classification(position_type, position_classification)
     process = None
     result = None
     phase = "popen"
@@ -2392,6 +2991,10 @@ def run_engine_attempt(
             max_reported_nodes=max_reported_nodes,
             anomaly_ceiling=anomaly_ceiling,
             wall_go_to_bestmove_ns=elapsed_ns,
+            engine_id=engine_id,
+            position_type=classification["type"],
+            position_classification=classification,
+            lifecycle_valid=lifecycle_valid,
         )
         normal_close = True
         phase = "complete"
@@ -2473,6 +3076,8 @@ def run_engine_attempt(
         result.setdefault("engine_returncode", engine_returncode)
         result.setdefault("supervisor_status", supervisor_status)
         result.setdefault("supervisor_failure", supervisor_failure)
+        result.setdefault("position_type", classification["type"])
+        result.setdefault("position_classification", classification)
         if cleanup_failure is not None:
             result = _mark_cleanup_failure(result, cleanup_failure)
         elif result.get("cleanup_status") == "pending":
@@ -2641,7 +3246,7 @@ def execution_identity(config, plan, runtime):
             "sha256": runner_hash,
         },
         "parser": {
-            "id": "usi-observation-v1",
+            "id": PARSER_ID,
             "sha256": runner_hash,
         },
         "benchmark": {
@@ -2650,6 +3255,7 @@ def execution_identity(config, plan, runtime):
             "manifest_sha256": plan["hashes"]["benchmark_manifest_sha256"],
             "development_csa_aggregate_sha256": plan["hashes"]["development_csa_aggregate_sha256"],
             "universe_sha256": plan["hashes"]["universe_sha256"],
+            "position_classifications_sha256": plan.get("hashes", {}).get("position_classifications_sha256"),
         },
         "requested_nodes": config["requested_nodes"],
         "timeout_seconds": config["timeout_seconds"],
@@ -2682,6 +3288,7 @@ def fingerprint_payload(config, plan, runtime, run_type):
             "manifest_sha256": sha256(BENCHMARK_MANIFEST_PATH),
             "development_csa_aggregate_sha256": plan["hashes"]["development_csa_aggregate_sha256"],
             "universe_sha256": plan["hashes"]["universe_sha256"],
+            "position_classifications_sha256": plan.get("hashes", {}).get("position_classifications_sha256"),
             "plan_sha256": plan["plan_sha256"],
         },
         "toolchain_lock_sha256": sha256(REPO / "config/toolchain.lock.json"),
@@ -2933,6 +3540,21 @@ def _compare_raw_observation(record, observed, runner_status):
     saved_status = record["status"]
     observed_status = observed.get("status")
     parser_statuses = OBSERVATION_STATUSES | {"protocol_failure", "node_budget_failure"}
+    if saved_status in parser_statuses:
+        missing_saved = [field for field in PARSER_RESULT_REQUIRED_FIELDS if field not in saved]
+        if missing_saved:
+            raise BenchmarkError(
+                f"raw observation schema is missing required fields for {record['attempt_id']}: "
+                + ", ".join(missing_saved)
+            )
+        missing_observed = [field for field in PARSER_RESULT_REQUIRED_FIELDS if field not in observed]
+        if missing_observed:
+            raise BenchmarkError(
+                "parser observation schema is missing required fields: "
+                + ", ".join(missing_observed)
+            )
+        if saved.get("schema_version") != observed.get("schema_version"):
+            raise BenchmarkError(f"raw observation schema_version mismatch for {record['attempt_id']}")
     if saved_status in parser_statuses and observed_status != saved_status:
         raise BenchmarkError(
             f"raw observation status mismatch for {record['attempt_id']}: "
@@ -2943,9 +3565,10 @@ def _compare_raw_observation(record, observed, runner_status):
     for field in OBSERVATION_COMPARE_FIELDS:
         if field in ("status", "failure_reason"):
             continue
-        # Runner-generated technical failures intentionally contain only the
-        # fields available before the process failed.  There is no semantic
-        # value to compare for a field they did not save.
+        # Incomplete runner-generated technical failures intentionally contain
+        # only the fields available before the process failed.  Complete
+        # parser-derived statuses were required to have the full schema above,
+        # so only those incomplete records may omit a comparison field.
         if field not in saved:
             continue
         if saved.get(field) != observed.get(field):
@@ -3000,12 +3623,26 @@ def _validate_recorded_attempt(
         for field in ("ply", "repetition"):
             if isinstance(record.get(field), bool) or not isinstance(record.get(field), int):
                 raise BenchmarkError(f"attempt {field} has an invalid type: {path}")
-        for key in ("attempt_id", "engine_id", "game_id", "ply", "repetition", "position", "side_to_move"):
+        for key in (
+            "attempt_id",
+            "engine_id",
+            "game_id",
+            "ply",
+            "repetition",
+            "position",
+            "side_to_move",
+            "position_type",
+            "position_classification",
+        ):
             if record.get(key) != expected.get(key):
                 raise BenchmarkError(f"attempt identity/position mismatch: {path}")
         if record.get("attempt_id") != path.stem:
             raise BenchmarkError(f"attempt filename does not match attempt_id: {path}")
     result = record["result"]
+    if expected is not None:
+        for field in ("position_type", "position_classification"):
+            if result.get(field) != expected.get(field):
+                raise BenchmarkError(f"attempt {field} does not match its occurrence: {path}")
     if not isinstance(record.get("outcome"), dict) or set(record["outcome"]) != set(OUTCOME_FIELDS):
         raise BenchmarkError(f"attempt outcome is missing: {path}")
     if record["outcome"].get("status") != record.get("status"):
@@ -3065,6 +3702,10 @@ def _validate_recorded_attempt(
                 requested_nodes=requested_nodes,
                 max_reported_nodes=max_reported_nodes,
                 wall_go_to_bestmove_ns=_go_to_bestmove_ns(events),
+                engine_id=expected["engine_id"],
+                position_type=expected.get("position_type"),
+                position_classification=expected.get("position_classification"),
+                lifecycle_valid=runner["completed_before_deadline"] is True,
             )
             _compare_raw_observation(record, observed, runner["status"])
         elif record["status"] in TECHNICAL_FAILURE_STATUSES and not runner["completed_before_deadline"]:
@@ -3082,6 +3723,14 @@ def _validate_recorded_attempt(
                 "winner_stm",
                 "winner_sente",
                 "reported_nodes_at_score",
+                "last_reported_nodes",
+                "max_reported_nodes_evidence",
+                "node_evidence_count",
+                "node_evidence_valid_count",
+                "node_evidence_invalid_count",
+                "node_evidence_positive_count",
+                "node_evidence_zero_count",
+                "node_evidence_errors",
                 "raw_score_line",
             )
             if any(result.get(field) is not None for field in semantic_fields):
@@ -3101,6 +3750,10 @@ def expected_attempt_matrix(plan, config):
         for field in ("game_id", "ply", "position", "side_to_move"):
             if field not in occurrence:
                 raise BenchmarkError(f"run plan occurrence lacks {field}")
+        classification = _normalise_position_classification(
+            occurrence.get("position_type"),
+            occurrence.get("classification", occurrence.get("position_classification")),
+        )
         for repetition in range(1, plan["repetitions"] + 1):
             for engine_id in config["engines"]:
                 attempt_id = _attempt_id(engine_id, occurrence, repetition)
@@ -3114,6 +3767,8 @@ def expected_attempt_matrix(plan, config):
                     "repetition": repetition,
                     "position": occurrence["position"],
                     "side_to_move": occurrence["side_to_move"],
+                    "position_type": classification["type"],
+                    "position_classification": classification,
                 }
     return expected
 
@@ -3208,7 +3863,7 @@ def validate_run_artifacts(
     parser_identity = execution_payload.get("parser")
     if (
         not isinstance(parser_identity, dict)
-        or parser_identity.get("id") != "usi-observation-v1"
+        or parser_identity.get("id") != PARSER_ID
         or parser_identity.get("sha256") != sha256(Path(__file__))
     ):
         raise BenchmarkError("run manifest parser identity is invalid")
@@ -3234,6 +3889,7 @@ def validate_run_artifacts(
         "manifest_sha256": expected_hashes["benchmark_manifest_sha256"],
         "development_csa_aggregate_sha256": expected_hashes["development_csa_aggregate_sha256"],
         "universe_sha256": expected_hashes["universe_sha256"],
+        "position_classifications_sha256": expected_hashes["position_classifications_sha256"],
         "plan_sha256": expected_hashes.get("plan_sha256", plan["plan_sha256"]),
     }
     if not isinstance(fingerprint_benchmark, dict) or any(
@@ -3247,6 +3903,7 @@ def validate_run_artifacts(
         "manifest_sha256": expected_hashes["benchmark_manifest_sha256"],
         "development_csa_aggregate_sha256": expected_hashes["development_csa_aggregate_sha256"],
         "universe_sha256": expected_hashes["universe_sha256"],
+        "position_classifications_sha256": expected_hashes["position_classifications_sha256"],
     }:
         raise BenchmarkError("run manifest execution identity benchmark is not the fixed development benchmark")
     limits = fingerprint_payload.get("limits")
@@ -3346,16 +4003,137 @@ def validate_run_artifacts(
     return manifest, plan, universe, records, expected, games
 
 
-def observed_max_reported_nodes(records):
-    """Return the maximum of both node-evidence fields across all attempts."""
+def _record_result(record):
+    if not isinstance(record, dict):
+        return {}
+    result = record.get("result")
+    return result if isinstance(result, dict) else record
+
+
+def _valid_node_value(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _max_reported_nodes_from_record(record, *, strict=False):
+    """Return one attempt's all-evidence maximum.
+
+    Direct legacy report helpers may use the historical score/last fallback;
+    strict current-artifact validation deliberately disables that fallback so
+    a missing all-evidence field cannot undercount a ceiling or gate.
+    """
+    result = _record_result(record)
+    if "max_reported_nodes_evidence" in result:
+        value = result.get("max_reported_nodes_evidence")
+        return value if _valid_node_value(value) else None
+    if strict:
+        return None
     values = []
-    for record in records:
-        result = record.get("result", {})
-        for key in ("reported_nodes_at_score", "last_reported_nodes"):
-            value = result.get(key)
-            if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
-                values.append(value)
+    for key in ("reported_nodes_at_score", "last_reported_nodes"):
+        value = result.get(key)
+        if _valid_node_value(value):
+            values.append(value)
     return max(values) if values else None
+
+
+def observed_max_reported_nodes(records, *, strict=False):
+    """Return the maximum all-current-go node evidence across attempts."""
+    values = [
+        value
+        for record in records
+        for value in (_max_reported_nodes_from_record(record, strict=strict),)
+        if value is not None
+    ]
+    return max(values) if values else None
+
+
+def positive_node_evidence(records, engine_ids=("teacher", "sekirei"), *, strict=False):
+    """Summarise non-technical, nonnegative node evidence per engine.
+
+    A positive value from a timeout, cleanup failure, or other technical
+    failure is not allowed to satisfy the pilot gate.  The summary retains
+    invalid/missing counts so reports can distinguish absent evidence from a
+    valid zero-node exception.
+    """
+    summaries = {
+        engine_id: {
+            "attempt_count": 0,
+            "accepted_attempt_count": 0,
+            "positive_attempt_count": 0,
+            "positive_observation_count": 0,
+            "zero_observation_count": 0,
+            "missing_observation_count": 0,
+            "invalid_observation_count": 0,
+            "observed_max": None,
+            "has_positive": False,
+        }
+        for engine_id in engine_ids
+    }
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        engine_id = record.get("engine_id")
+        if engine_id not in summaries:
+            continue
+        summary = summaries[engine_id]
+        summary["attempt_count"] += 1
+        result = _record_result(record)
+        status = record.get("status")
+        if status is None:
+            status = result.get("status")
+        if status not in OBSERVATION_STATUSES or result.get("status") != status:
+            continue
+        summary["accepted_attempt_count"] += 1
+        values = (
+            result.get("reported_nodes_at_score"),
+            result.get("last_reported_nodes"),
+        )
+        if "node_evidence_positive_count" in result:
+            positive_count = result.get("node_evidence_positive_count")
+            zero_count = result.get("node_evidence_zero_count")
+            positive_count = positive_count if _valid_node_value(positive_count) else 0
+            zero_count = zero_count if _valid_node_value(zero_count) else 0
+            errors = result.get("node_evidence_errors")
+            if isinstance(errors, list):
+                missing_count = sum(error == "missing_nodes_value" for error in errors)
+                invalid_count = sum(error != "missing_nodes_value" for error in errors)
+            else:
+                missing_count = 0
+                invalid_count = result.get("node_evidence_invalid_count")
+                invalid_count = invalid_count if _valid_node_value(invalid_count) else 0
+        else:
+            positive_count = 0
+            zero_count = 0
+            missing_count = 0
+            invalid_count = 0
+            for value in values:
+                if _valid_node_value(value):
+                    if value == 0:
+                        zero_count += 1
+                    else:
+                        positive_count += 1
+                elif value is not None:
+                    invalid_count += 1
+                else:
+                    missing_count += 1
+        max_value = _max_reported_nodes_from_record(record, strict=strict)
+        if max_value is not None:
+            summary["observed_max"] = max_value if summary["observed_max"] is None else max(summary["observed_max"], max_value)
+        summary["positive_observation_count"] += positive_count
+        summary["zero_observation_count"] += zero_count
+        summary["missing_observation_count"] += missing_count
+        summary["invalid_observation_count"] += invalid_count
+        if (
+            max_value is None
+            and "max_reported_nodes_evidence" in result
+            and result.get("node_evidence_count") == 0
+            and not result.get("node_evidence_errors")
+        ):
+            summary["missing_observation_count"] += 1
+        if positive_count or (max_value is not None and max_value > 0):
+            summary["positive_attempt_count"] += 1
+            summary["has_positive"] = True
+            continue
+    return summaries
 
 
 def validate_formal_gate(runtime, config):
@@ -3399,12 +4177,30 @@ def validate_formal_gate(runtime, config):
         raise ConfigurationError("formal gate pilot artifact must contain exactly 90 attempts")
     if manifest.get("fingerprint") != gate["pilot_fingerprint"]:
         raise ConfigurationError("formal gate pilot fingerprint does not match the artifact")
+    technical_records = [
+        record for record in records
+        if record.get("status") in TECHNICAL_FAILURE_STATUSES
+    ]
+    if technical_records:
+        raise ConfigurationError(
+            "formal gate pilot contains technical failures; timeout/cleanup/protocol/node failures cannot be rescued"
+        )
+    positive = positive_node_evidence(records, tuple(config["engines"]), strict=True)
+    missing_positive = [
+        engine_id for engine_id, summary in positive.items()
+        if not summary["has_positive"]
+    ]
+    if missing_positive:
+        raise ConfigurationError(
+            "formal gate requires positive node evidence for each engine; missing: "
+            + ", ".join(missing_positive)
+        )
     formal_plan, _ = make_plan("formal", config)
     pilot_execution_identity = manifest.get("fingerprint_payload", {}).get("execution_identity")
     current_execution_identity = execution_identity(config, formal_plan, runtime)
     if pilot_execution_identity != current_execution_identity:
         raise ConfigurationError("formal gate execution identity does not match the current formal environment")
-    observed_actual = observed_max_reported_nodes(records)
+    observed_actual = observed_max_reported_nodes(records, strict=True)
     if observed_actual is None:
         raise ConfigurationError(
             "formal gate requires node evidence in at least one valid pilot result; "
@@ -3476,7 +4272,7 @@ def _execute_run_locked(runtime, config, run_type, *, run_id=None, resume=False)
         if any((run_dir / name).exists() for name in ("manifest.json", "plan.json", "attempts", "logs")):
             raise BenchmarkError(f"run already exists; use --resume: {run_dir}")
         plan, games = make_plan(run_type, config)
-        plan["cshogi"] = compare_cshogi(games)
+        plan["cshogi"] = compare_cshogi(games, config)
         validate_runtime(runtime, config)
         runtime_info = runtime_identity(runtime, config)
         payload = fingerprint_payload(config, plan, runtime, run_type)
@@ -3529,6 +4325,11 @@ def _execute_run_locked(runtime, config, run_type, *, run_id=None, resume=False)
                     "repetition": repetition,
                     "position": occurrence["position"],
                     "side_to_move": occurrence["side_to_move"],
+                    "position_type": occurrence.get("position_type", "normal"),
+                    "position_classification": occurrence.get(
+                        "classification",
+                        {"type": occurrence.get("position_type", "normal")},
+                    ),
                 }
                 expected_binary = manifest["runtime_identity"]["binaries"][engine["binary"]]
                 if attempt_path.exists():
@@ -3558,6 +4359,9 @@ def _execute_run_locked(runtime, config, run_type, *, run_id=None, resume=False)
                     max_reported_nodes=plan.get("max_reported_nodes"),
                     board=board,
                     raw_log_path=_log_path(run_dir, attempt_id),
+                    engine_id=engine_id,
+                    position_type=expected_attempt["position_type"],
+                    position_classification=expected_attempt["position_classification"],
                 )
                 record = {
                     "schema_version": 1,
@@ -3570,6 +4374,8 @@ def _execute_run_locked(runtime, config, run_type, *, run_id=None, resume=False)
                     "position": occurrence["position"],
                     "side_to_move": occurrence["side_to_move"],
                     "position_sha256": digest_bytes(occurrence["position"].encode("utf-8")),
+                    "position_type": expected_attempt["position_type"],
+                    "position_classification": expected_attempt["position_classification"],
                     "status": result["status"],
                     "outcome": _outcome_payload(result),
                     "result": result,
@@ -3630,8 +4436,16 @@ def execute_run(runtime, config, run_type, *, run_id=None, resume=False):
                 return _execute_run_locked(runtime, config, run_type, run_id=run_id, resume=resume)
 
 
-def compare_cshogi(games):
-    """Compare every converted move with pinned cshogi when importable."""
+def compare_cshogi(games, config=None):
+    """Compare every converted move and all position types with cshogi.
+
+    cshogi remains an audit-only dependency.  The runner can use the
+    hash-bound exception manifest without importing it, while this function
+    is the explicit pinned verification path for every after-move occurrence.
+    """
+    config = config or load_config()
+    base_universe, _ = _build_base_universe(config, games)
+    classifications = load_position_classifications(config, base_universe=base_universe)
     try:
         import importlib
         import importlib.metadata
@@ -3642,18 +4456,56 @@ def compare_cshogi(games):
     if version != "1.0.4":
         return {"available": False, "reason": f"cshogi version is {version}, expected 1.0.4", "checked_moves": 0}
     checked = 0
+    checked_occurrences = 0
+    actual_counts = {classification_type: 0 for classification_type in POSITION_CLASSIFICATION_TYPES}
     for game in games:
         board = cshogi.Board(STANDARD_SFEN)
-        for move in game["usi_moves"]:
+        for ply, move in enumerate(game["usi_moves"], 1):
             try:
                 move_id = board.move_from_usi(move)
                 if not board.is_legal(move_id):
                     raise ValueError("cshogi says converted move is illegal")
                 board.push(move_id)
+                in_check = bool(board.is_check())
+                legal_moves = list(board.legal_moves)
+                legal_usi = [cshogi.move_to_usi(value) for value in legal_moves]
+                if not legal_moves:
+                    position_type = "terminal_checkmate" if in_check else "terminal_stalemate"
+                elif len(legal_moves) == 1:
+                    position_type = "forced_single_legal_move"
+                else:
+                    position_type = "normal"
+                actual = {
+                    "type": position_type,
+                    "in_check": in_check,
+                    "legal_move_count": len(legal_moves),
+                }
+                if len(legal_moves) == 1:
+                    actual["sole_legal_move"] = legal_usi[0]
+                occurrence_id = f"{game['game_id']}:{ply:03d}"
+                expected = classifications["by_occurrence_id"].get(occurrence_id, {"type": "normal"})
+                if actual["type"] != expected["type"] or (
+                    expected["type"] != "normal"
+                    and _classification_entry_value(actual) != expected
+                ):
+                    raise ValueError(
+                        f"position type mismatch: expected {expected['type']}, got {actual['type']}"
+                    )
+                actual_counts[position_type] += 1
+                checked_occurrences += 1
             except Exception as error:
-                raise BenchmarkError(f"cshogi conversion mismatch at {game['game_id']} ply {checked + 1}: {error}") from error
+                raise BenchmarkError(f"cshogi conversion/classification mismatch at {game['game_id']} ply {ply}: {error}") from error
             checked += 1
-    return {"available": True, "version": version, "checked_moves": checked, "matched": True}
+    if checked != sum(game["plies"] for game in games) or checked_occurrences != checked:
+        raise BenchmarkError("cshogi did not verify every development occurrence")
+    return {
+        "available": True,
+        "version": version,
+        "checked_moves": checked,
+        "checked_occurrences": checked_occurrences,
+        "classification_counts": actual_counts,
+        "matched": True,
+    }
 
 
 def status(runtime):
@@ -3696,7 +4548,7 @@ def main(argv=None):
         plan, games = make_plan(run_type, config)
         # The check is opportunistic: CI's system Python remains dependency
         # free, while the pinned audit Python records all 570 matches.
-        plan["cshogi"] = compare_cshogi(games)
+        plan["cshogi"] = compare_cshogi(games, config)
         output = args.output or (runtime / "plans" / f"development-{run_type}.json")
         universe, _ = build_universe(config)
         universe_output = output.parent / "development-universe.json"

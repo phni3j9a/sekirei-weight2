@@ -57,7 +57,8 @@
   "hashes": {
     "benchmark_manifest_sha256": "d7ee0cce928be4a45b43733dc8d34d568583b0451586078e19df98892ad9e5fc",
     "development_csa_aggregate_sha256": "0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2",
-    "universe_sha256": "8cbe47d916a56e44722167b9b4680e3fd9d57cb267bd656e34bd8a43f9fb3a73"
+    "universe_sha256": "6b9b133f5c6dab2a55fd8f634d6f9eac020e3f982bf34056bd5fb830f43aec8c",
+    "position_classifications_sha256": "33e8da8021f830dfb051a55a5e5c542a2080bf209793c2d0367fab66bbfa4469"
   },
   "engines": {
     "teacher": {
@@ -91,6 +92,10 @@
   "candidate_model": {
     "kind": "material_fallback",
     "path": null
+  },
+  "position_classifications": {
+    "path": "config/development-position-classifications.json",
+    "sha256": "33e8da8021f830dfb051a55a5e5c542a2080bf209793c2d0367fab66bbfa4469"
   },
   "pilot": {
     "repetitions": 3,

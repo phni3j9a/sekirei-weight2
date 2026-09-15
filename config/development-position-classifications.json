@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "shogiquest-benchmark-v1",
+  "split": "development",
+  "description": "cshogi 1.0.4 classification exceptions for the fixed development occurrence universe",
+  "verifier": {
+    "name": "cshogi",
+    "version": "1.0.4",
+    "algorithm": "legal_moves_and_side_to_move_check",
+    "checked_occurrences": 570,
+    "checked_moves": 570
+  },
+  "binding": {
+    "benchmark_manifest_sha256": "d7ee0cce928be4a45b43733dc8d34d568583b0451586078e19df98892ad9e5fc",
+    "development_csa_aggregate_sha256": "0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2",
+    "base_universe_sha256": "8cbe47d916a56e44722167b9b4680e3fd9d57cb267bd656e34bd8a43f9fb3a73",
+    "games": {
+      "development-01": {
+        "csa_sha256": "0d8597c9bed80098bdd51a34d79c308486897aa63522ee248a53247238c52970",
+        "canonical_sha256": "7e948a8a5e3a2ed135cffd2e766fc3620df0729c20ba7a43b0a9b047c6b306c0",
+        "plies": 86
+      },
+      "development-02": {
+        "csa_sha256": "4ef3ab11fc2e27e7413447b82c5b4114ff05c6b34b0dc8c7d66ad675eb7bec55",
+        "canonical_sha256": "2c237d5340e971a1bae0de3052cfce6f225f0ebd0a295d81c81ee88f61f3e304",
+        "plies": 126
+      },
+      "development-03": {
+        "csa_sha256": "675361f09050faa605602254498c1993437a9c628c6fc8ad34bd49a99cbc196d",
+        "canonical_sha256": "d248cdfe1d7a1fb72a6aee8a9f30c3fafad4db120fcab6a922e65afc739597c4",
+        "plies": 127
+      },
+      "development-04": {
+        "csa_sha256": "170f3fc96fd72eaf8359aee417890d83d96d56df9639f1963c2a5ce760ed6c32",
+        "canonical_sha256": "1649e2f67cd0e99b6c639d85a440fe1f93bbc88e69597f6cf6629eb2ad0cac02",
+        "plies": 108
+      },
+      "development-05": {
+        "csa_sha256": "d676450cdbfca6c604e915b1d266b01cf8365ef7d4bb3ec0c360376f72953569",
+        "canonical_sha256": "6490758090a75ddb1cf0747f02605b6ae5e4b33d3d30d8bdf16bcf20425705ab",
+        "plies": 123
+      }
+    }
+  },
+  "classification_counts": {
+    "normal": 564,
+    "forced_single_legal_move": 5,
+    "terminal_checkmate": 1,
+    "terminal_stalemate": 0
+  },
+  "occurrences": [
+    {
+      "occurrence_id": "development-04:106",
+      "game_id": "development-04",
+      "ply": 106,
+      "type": "forced_single_legal_move",
+      "side_to_move": "black",
+      "in_check": true,
+      "legal_move_count": 1,
+      "sole_legal_move": "2h1h",
+      "history_sha256": "cd990709d70c90486b69d90e8d5aea5ddd030b6de9fcead52cfb4c10556d3633",
+      "position_sha256": "d4cd4e01d42d4dc86546bea6cceb94b4ffb0d7b3a43e22b2f7caf9d468575315"
+    },
+    {
+      "occurrence_id": "development-04:108",
+      "game_id": "development-04",
+      "ply": 108,
+      "type": "forced_single_legal_move",
+      "side_to_move": "black",
+      "in_check": true,
+      "legal_move_count": 1,
+      "sole_legal_move": "2i1g",
+      "history_sha256": "8df77ab8df5cb4cb3d8e9ecca77fd82d77277dfbd12bb0224a00ade643a44961",
+      "position_sha256": "dd9ea541ffc091dfedc2757466c0d249c208b87361a53b9bbb1111fcc2f01870"
+    },
+    {
+      "occurrence_id": "development-05:115",
+      "game_id": "development-05",
+      "ply": 115,
+      "type": "forced_single_legal_move",
+      "side_to_move": "white",
+      "in_check": true,
+      "legal_move_count": 1,
+      "sole_legal_move": "2d1e",
+      "history_sha256": "218fdb805118bcb8fa7ac8b4930ae5ef7f39f3f55a621142f5e72069dbd499ab",
+      "position_sha256": "6ec170c09b6c8850fb2ad3c02a3552443b62f5c5f1ac3aa971bc3a4443d787d4"
+    },
+    {
+      "occurrence_id": "development-05:117",
+      "game_id": "development-05",
+      "ply": 117,
+      "type": "forced_single_legal_move",
+      "side_to_move": "white",
+      "in_check": true,
+      "legal_move_count": 1,
+      "sole_legal_move": "1e2f",
+      "history_sha256": "063970c80e207e4ccf8118ae20d6e65f8ff37cc472cbb1c2d759ffbbc30aaecf",
+      "position_sha256": "ce0c30f2a5c2329fd0fef395c9429f21a3070fd9136296b7948c1824f3af4d32"
+    },
+    {
+      "occurrence_id": "development-05:121",
+      "game_id": "development-05",
+      "ply": 121,
+      "type": "forced_single_legal_move",
+      "side_to_move": "white",
+      "in_check": true,
+      "legal_move_count": 1,
+      "sole_legal_move": "3g4f",
+      "history_sha256": "e61536062c0c81141ac20c8094b692e08bffc313e3a892103a8baeb6e86a42c7",
+      "position_sha256": "2e1b3321aeaa95c980a2f145a3b92dc9f645c46e157a3fb9f00a7a96ab1f22f1"
+    },
+    {
+      "occurrence_id": "development-05:123",
+      "game_id": "development-05",
+      "ply": 123,
+      "type": "terminal_checkmate",
+      "side_to_move": "white",
+      "in_check": true,
+      "legal_move_count": 0,
+      "history_sha256": "27f78911f5bcea40806a2879716120f3405268e6d715cd3ce46a3bfc1b2283b2",
+      "position_sha256": "bf8928dcc86aec72a0bdd0644be6a5584ff43d02ba6e8a27617cdd8459ce946b"
+    }
+  ]
+}

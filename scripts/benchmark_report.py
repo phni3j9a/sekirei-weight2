@@ -20,6 +20,7 @@ import sys
 
 from benchmark import (
     OBSERVATION_STATUSES,
+    POSITION_CLASSIFICATION_TYPES,
     TECHNICAL_FAILURE_STATUSES,
     atomic_write,
     atomic_write_json,
@@ -27,6 +28,7 @@ from benchmark import (
     digest_bytes,
     load_config,
     observed_max_reported_nodes,
+    positive_node_evidence,
     plan_hash,
     sha256,
     validate_run_artifacts,
@@ -105,6 +107,97 @@ def _operational_category(row):
     if row is None:
         return "missing"
     return "failure" if _status(row) in FAILURE_STATUSES or _status(row) is None else "operational"
+
+
+def _position_type(value):
+    """Return a typed position label while keeping old synthetic fixtures usable."""
+    if isinstance(value, dict):
+        result = _value(value, "position_type")
+        if result is None:
+            classification = value.get("classification") or value.get("position_classification")
+            if isinstance(classification, dict):
+                result = classification.get("type")
+    else:
+        result = None
+    return result if result in POSITION_CLASSIFICATION_TYPES else "normal"
+
+
+def _node_evidence_diagnostics(teacher_rows, candidate_rows):
+    records = [
+        *(_with_engine(teacher_rows, "teacher")),
+        *(_with_engine(candidate_rows, "sekirei")),
+    ]
+    result = positive_node_evidence(records)
+    result["units"] = {
+        "reported_nodes_at_score": "nodes",
+        "last_reported_nodes": "nodes",
+        "max_reported_nodes_evidence": "nodes",
+    }
+    return result
+
+
+def _max_node_evidence(row):
+    """Read the all-current-go maximum, with compatibility for old fixtures."""
+    result = _result(row)
+    if "max_reported_nodes_evidence" in result:
+        value = result.get("max_reported_nodes_evidence")
+        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+    values = [
+        result.get(field)
+        for field in ("reported_nodes_at_score", "last_reported_nodes")
+        if isinstance(result.get(field), int)
+        and not isinstance(result.get(field), bool)
+        and result.get(field) >= 0
+    ]
+    return max(values) if values else None
+
+
+def _position_type_diagnostics(plan, teacher_rows, candidate_rows):
+    positions = list(_plan_occurrences(plan).values())
+    by_key = {
+        (occurrence["game_id"], int(occurrence["ply"])): _position_type(occurrence)
+        for occurrence in positions
+    }
+    counts = {position_type: 0 for position_type in POSITION_CLASSIFICATION_TYPES}
+    for position_type in by_key.values():
+        counts[position_type] += 1
+    by_engine = {
+        "teacher": teacher_rows,
+        "sekirei": candidate_rows,
+    }
+    by_type = {}
+    for position_type in POSITION_CLASSIFICATION_TYPES:
+        keys = {key for key, value in by_key.items() if value == position_type}
+        coverage = {}
+        for engine_id, rows in by_engine.items():
+            selected = [
+                row for row in rows
+                if (row.get("game_id"), int(row["ply"])) in keys
+            ]
+            node = positive_node_evidence(_with_engine(selected, engine_id), (engine_id,))[engine_id]
+            coverage[engine_id] = {
+                "attempt_count": len(selected),
+                "status_counts": {
+                    status: sum(1 for row in selected if _status(row) == status)
+                    for status in sorted(OBSERVATION_STATUSES | TECHNICAL_FAILURE_STATUSES)
+                },
+                "exact_cp_count": sum(1 for row in selected if _status(row) == "exact_cp"),
+                "bound_cp_count": sum(1 for row in selected if _status(row) == "bound_cp"),
+                "mate_count": sum(1 for row in selected if _status(row) == "mate"),
+                "positive_attempt_count": node["positive_attempt_count"],
+                "positive_observation_count": node["positive_observation_count"],
+                "has_positive": node["has_positive"],
+                "observed_max": node["observed_max"],
+            }
+        by_type[position_type] = {
+            "occurrence_count": counts[position_type],
+            "coverage": coverage,
+        }
+    return {
+        "counts": counts,
+        "total_occurrences": len(positions),
+        "by_type": by_type,
+    }
 
 
 def load_run(run_dir):
@@ -362,11 +455,15 @@ def _series(plan, teacher_index, candidate_index, *, repetition=1):
                     "engine": engine,
                     "repetition": repetition,
                     "ply": occurrence["ply"],
+                    "position_type": _position_type(occurrence),
                     "status": _status(row) if row is not None else "missing",
                     "cp_sente": point_cp,
                     "bound_sente": _bound(row),
                     "winner_sente": _winner(row),
                     "mate_distance": _mate_distance(row),
+                    "reported_nodes_at_score": _value(row, "reported_nodes_at_score"),
+                    "last_reported_nodes": _value(row, "last_reported_nodes"),
+                    "max_reported_nodes_evidence": _value(row, "max_reported_nodes_evidence"),
                 })
         series[game_id] = points
     return series
@@ -404,6 +501,8 @@ def _score_single(plan, teacher_rows, candidate_rows, *, accuracy_thresholds=Non
     exact_candidate_total = sum(per_game[game_id]["candidate_exact_count"] for game_id in game_ids)
     headline_valid = len(headline_values) == len(game_ids) and len(game_ids) == 5
     series_data = _series(plan, teacher_index, candidate_index, repetition=repetition)
+    position_type_diagnostics = _position_type_diagnostics(plan, teacher_rows, candidate_rows)
+    node_evidence = _node_evidence_diagnostics(teacher_rows, candidate_rows)
     graph_y_min, graph_y_max = shared_y_domain({"series": series_data})
     return {
         "schema_version": 1,
@@ -454,6 +553,8 @@ def _score_single(plan, teacher_rows, candidate_rows, *, accuracy_thresholds=Non
         "accuracy_curve": curve,
         "bound_diagnostic": _bound_diagnostics(plan, teacher_index, candidate_index),
         "mate_diagnostic": _mate_diagnostics(plan, teacher_index, candidate_index),
+        "position_type_diagnostics": position_type_diagnostics,
+        "node_evidence": node_evidence,
         "all_u_cross_table": _cross_table(plan, teacher_index, candidate_index),
         "all_u_operational_cross_table": _operational_cross_table(plan, teacher_index, candidate_index),
         "all_u_operational_type_cross_table": _operational_type_cross_table(plan, teacher_index, candidate_index),
@@ -520,12 +621,14 @@ def _repeatability_state(row):
         "score_mate_stm": _value(row, "score_mate_stm"),
         "bestmove": _value(row, "bestmove"),
         "bestmove_kind": _value(row, "bestmove_kind"),
+        "max_reported_nodes_evidence": _value(row, "max_reported_nodes_evidence"),
     }
 
 
 REPEATABILITY_FIELDS = (
     "reported_nodes_at_score",
     "last_reported_nodes",
+    "max_reported_nodes_evidence",
     "engine_time_ms",
     "wall_go_to_bestmove_ns",
 )
@@ -538,6 +641,7 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
         "teacher": teacher_rows,
         "sekirei": candidate_rows,
     }
+    positive_by_engine = _node_evidence_diagnostics(teacher_rows, candidate_rows)
     engines = {}
     for engine_id, rows in by_engine.items():
         position_rows = {}
@@ -565,6 +669,7 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
             position_report = {
                 "game_id": occurrence["game_id"],
                 "ply": occurrence["ply"],
+                "position_type": _position_type(occurrence),
                 "expected_repetitions": repetitions,
                 "attempt_count": len(values),
                 "status_counts": {
@@ -582,8 +687,8 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
                     (
                         value
                         for row in values
-                        for value in (_value(row, "reported_nodes_at_score"), _value(row, "last_reported_nodes"))
-                        if isinstance(value, int) and not isinstance(value, bool) and value >= 0
+                        for value in (_max_node_evidence(row),)
+                        if value is not None
                     ),
                     default=None,
                 ),
@@ -610,6 +715,10 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
             )
             for field in ("reported_nodes_at_score", "last_reported_nodes")
         }
+        node_fields["max_reported_nodes_evidence"] = max(
+            (value for row in rows for value in (_max_node_evidence(row),) if value is not None),
+            default=None,
+        )
         node_fields["max_both_fields"] = max(
             (value for value in node_fields.values() if value is not None),
             default=None,
@@ -623,14 +732,15 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
             "position_count": len(positions),
             "distributions": field_distributions,
             "max_reported_nodes_evidence": node_fields,
+            "positive_node_evidence": positive_by_engine[engine_id],
             "positions": position_reports,
         }
     all_nodes = [
         value
         for rows in by_engine.values()
         for row in rows
-        for value in (_value(row, "reported_nodes_at_score"), _value(row, "last_reported_nodes"))
-        if isinstance(value, int) and not isinstance(value, bool) and value >= 0
+        for value in (_max_node_evidence(row),)
+        if value is not None
     ]
     return {
         "expected_repetitions": repetitions,
@@ -638,9 +748,11 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
         "expected_attempts": len(positions) * repetitions * len(by_engine),
         "attempt_count": sum(len(rows) for rows in by_engine.values()),
         "observed_max_reported_nodes": max(all_nodes, default=None),
+        "positive_node_evidence": positive_by_engine,
         "units": {
             "reported_nodes_at_score": "nodes",
             "last_reported_nodes": "nodes",
+            "max_reported_nodes_evidence": "nodes",
             "engine_time_ms": "milliseconds",
             "wall_go_to_bestmove_ns": "nanoseconds",
         },
@@ -715,6 +827,7 @@ def _formal_validity(plan, teacher_rows, candidate_rows, *, evidence_validator_p
         "technical_failure_count": technical_count,
         "missing_count": missing_count,
         "teacher_reference_categories": teacher_reference_categories,
+        "positive_node_evidence": _node_evidence_diagnostics(teacher_rows, candidate_rows),
         "complete_evidence_valid": complete_valid,
         "formal_run_valid": complete_valid and plan.get("run_type") == "formal" and repetitions == 1,
     }
@@ -873,6 +986,8 @@ def score_observations(plan, teacher_rows, candidate_rows, *, accuracy_threshold
         "accuracy_curve_by_repetition": [report["accuracy_curve"] for report in repetition_reports],
         "bound_diagnostic": _aggregate_bound_diagnostics(repetition_reports),
         "mate_diagnostic": _aggregate_mate_diagnostics(repetition_reports),
+        "position_type_diagnostics": _position_type_diagnostics(plan, teacher_rows, candidate_rows),
+        "node_evidence": _node_evidence_diagnostics(teacher_rows, candidate_rows),
         "all_u_cross_table": _sum_cross_tables(repetition_reports, "all_u_cross_table", CROSS_CATEGORIES),
         "all_u_operational_cross_table": _sum_cross_tables(
             repetition_reports, "all_u_operational_cross_table", OPERATIONAL_CATEGORIES
@@ -1016,23 +1131,25 @@ def render_svg(report, *, public=False):
                     if point["status"] == "exact_cp" and point.get("cp_sente") is not None:
                         x = x_pos(game_id, point["ply"])
                         y = y_pos(point["cp_sente"])
-                        out.append(f'<circle class="exact" data-engine="{engine}" data-repetition="{repetition}" cx="{x:.3f}" cy="{y:.3f}" r="2"/>')
+                        position_type = html.escape(str(point.get("position_type", "normal")), quote=True)
+                        out.append(f'<circle class="exact" data-engine="{engine}" data-repetition="{repetition}" data-position-type="{position_type}" cx="{x:.3f}" cy="{y:.3f}" r="2"/>')
                 for point in points:
                     x = x_pos(game_id, point["ply"])
                     status = point["status"]
+                    position_type = html.escape(str(point.get("position_type", "normal")), quote=True)
                     if status == "bound_cp" and point.get("cp_sente") is not None:
                         y = y_pos(point["cp_sente"])
                         direction = -8 if point.get("bound_sente") == "lowerbound" else 8
-                        out.append(f'<line class="bound" x1="{x:.3f}" y1="{y:.3f}" x2="{x:.3f}" y2="{y + direction:.3f}" marker-end="url(#arrow)"/>')
+                        out.append(f'<line class="bound" data-position-type="{position_type}" x1="{x:.3f}" y1="{y:.3f}" x2="{x:.3f}" y2="{y + direction:.3f}" marker-end="url(#arrow)"/>')
                     elif status == "mate":
                         winner = point.get("winner_sente")
                         y = y_pos(limit * 0.96 if winner == "black" else -limit * 0.96 if winner == "white" else 0)
-                        out.append(f'<path class="mate" d="M {x - 3:.3f} {y + 3:.3f} L {x + 3:.3f} {y + 3:.3f} L {x:.3f} {y - 3:.3f} Z"/>')
+                        out.append(f'<path class="mate" data-position-type="{position_type}" d="M {x - 3:.3f} {y + 3:.3f} L {x + 3:.3f} {y + 3:.3f} L {x:.3f} {y - 3:.3f} Z"/>')
                     elif status not in ("exact_cp", "bound_cp"):
                         # A gap marker is outside the data line and is not a fake
                         # zero score; missing values remain missing in the graph.
                         y = margin_top + plot_height + 12
-                        out.append(f'<circle class="gap" cx="{x:.3f}" cy="{y:.3f}" r="1.8"/>')
+                        out.append(f'<circle class="gap" data-position-type="{position_type}" cx="{x:.3f}" cy="{y:.3f}" r="1.8"/>')
             counts = _category_counts(all_engine_points)
             legend_y = panel_height - 16 if engine == "teacher" else panel_height - 6
             summary = ", ".join(f"{key}={value}" for key, value in counts.items())
@@ -1057,6 +1174,17 @@ def _summary_markdown(report, *, public=False):
     operational_table = report.get("all_u_operational_type_cross_table", {})
     validity = report.get("validity", {})
     repeatability = report.get("repeatability", {})
+    position_counts = (report.get("position_type_diagnostics") or {}).get("counts", {})
+    node_evidence = report.get("node_evidence") or repeatability.get("positive_node_evidence") or {}
+    position_text = ", ".join(
+        f"{position_type}={position_counts.get(position_type, 0)}"
+        for position_type in POSITION_CLASSIFICATION_TYPES
+    )
+    node_text = "; ".join(
+        f"{engine_id}: {value.get('positive_observation_count', 0)} positive observations / "
+        f"{value.get('positive_attempt_count', 0)} attempts (has_positive={value.get('has_positive', False)})"
+        for engine_id, value in (("teacher", node_evidence.get("teacher", {})), ("sekirei", node_evidence.get("sekirei", {})))
+    )
     lines = [
         "# Development 1M-node baseline validation",
         "",
@@ -1071,6 +1199,8 @@ def _summary_markdown(report, *, public=False):
         f"- formal headline eligible: {headline.get('formal')} / evidence-valid run: {validity.get('complete_evidence_valid')}",
         f"- exact attempt matrix: {validity.get('exact_attempt_matrix', {}).get('observed_count')} / {validity.get('exact_attempt_matrix', {}).get('expected_count')} (missing {validity.get('missing_count')}, technical failures {validity.get('technical_failure_count')})",
         f"- retained repetitions / attempts: {repeatability.get('expected_repetitions')} / {repeatability.get('attempt_count')}; observed max node evidence: {repeatability.get('observed_max_reported_nodes')}",
+        f"- position types: {position_text}",
+        f"- positive node evidence: {node_text}",
         f"- diagnostic overlap micro MAE: {error.get('micro_mae_cp')} cp; mean signed error: {error.get('mean_signed_error_cp')} cp; max absolute error: {error.get('max_abs_error_cp')} cp",
         "",
         "## Fixed masks and diagnostics",
@@ -1121,7 +1251,15 @@ def write_local_reports(output_dir, report):
     atomic_write(output_dir / "evaluation.svg", render_svg(report))
     with (output_dir / "observations.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
-        writer.writerow(("game_id", "ply", "repetition", "teacher_status", "teacher_cp_sente", "candidate_status", "candidate_cp_sente", "signed_error_cp"))
+        writer.writerow((
+            "game_id", "ply", "repetition", "position_type",
+            "teacher_status", "teacher_cp_sente",
+            "teacher_reported_nodes_at_score", "teacher_last_reported_nodes",
+            "teacher_max_reported_nodes_evidence",
+            "candidate_status", "candidate_cp_sente",
+            "candidate_reported_nodes_at_score", "candidate_last_reported_nodes",
+            "candidate_max_reported_nodes_evidence", "signed_error_cp",
+        ))
         for game_id in report.get("universe", {}).get("game_ids", []):
             by_ply = {}
             for point in report.get("series", {}).get(game_id, []):
@@ -1138,7 +1276,23 @@ def write_local_reports(output_dir, report):
                     and teacher_cp is not None
                     and candidate_cp is not None
                 ) else None
-                writer.writerow((game_id, ply, repetition, teacher.get("status", "missing"), teacher_cp, candidate.get("status", "missing"), candidate_cp, signed))
+                writer.writerow((
+                    game_id,
+                    ply,
+                    repetition,
+                    teacher.get("position_type") or candidate.get("position_type") or "normal",
+                    teacher.get("status", "missing"),
+                    teacher_cp,
+                    teacher.get("reported_nodes_at_score"),
+                    teacher.get("last_reported_nodes"),
+                    teacher.get("max_reported_nodes_evidence"),
+                    candidate.get("status", "missing"),
+                    candidate_cp,
+                    candidate.get("reported_nodes_at_score"),
+                    candidate.get("last_reported_nodes"),
+                    candidate.get("max_reported_nodes_evidence"),
+                    signed,
+                ))
     return output_dir
 
 
@@ -1157,6 +1311,8 @@ def _public_report(report):
         "accuracy_curve": report.get("accuracy_curve"),
         "bound_diagnostic": report.get("bound_diagnostic"),
         "mate_diagnostic": report.get("mate_diagnostic"),
+        "position_type_diagnostics": report.get("position_type_diagnostics"),
+        "node_evidence": report.get("node_evidence"),
         "validity": _public_validity(report.get("validity")),
         "repeatability": _public_repeatability(report.get("repeatability")),
         "all_u_cross_table": report.get("all_u_cross_table"),
@@ -1191,9 +1347,18 @@ def _public_cshogi(value):
         result["available"] = value["available"]
     if isinstance(value.get("version"), str):
         result["version"] = value["version"]
-    for key in ("checked_moves",):
+    for key in ("checked_moves", "checked_occurrences"):
         if isinstance(value.get(key), int) and not isinstance(value.get(key), bool) and value[key] >= 0:
             result[key] = value[key]
+    counts = value.get("classification_counts")
+    if isinstance(counts, dict):
+        result["classification_counts"] = {
+            position_type: counts.get(position_type, 0)
+            for position_type in POSITION_CLASSIFICATION_TYPES
+            if isinstance(counts.get(position_type, 0), int)
+            and not isinstance(counts.get(position_type, 0), bool)
+            and counts.get(position_type, 0) >= 0
+        }
     if isinstance(value.get("matched"), bool):
         result["matched"] = value["matched"]
     return result or None
@@ -1220,6 +1385,7 @@ def _public_validity(value):
             "missing_count",
             "complete_evidence_valid",
             "formal_run_valid",
+            "positive_node_evidence",
         )
         if key in value
     }
@@ -1279,6 +1445,7 @@ def _public_repeatability(value):
                 "position_count",
                 "distributions",
                 "max_reported_nodes_evidence",
+                "positive_node_evidence",
             )
             if engine.get(key) is not None
         }

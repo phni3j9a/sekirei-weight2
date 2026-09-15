@@ -70,7 +70,7 @@ python3 scripts/prepare.py import-corpus --archive \
 
 それぞれのアーカイブ全体を固定SHA-256で照合し、記事で水匠11β・100万ノードと説明された `1000000a/` と `1000000b/` の `.pack` だけを標準出力経由で安全に抽出する。個々のファイルはSHA-256名で保存し、同じ内容を複数回保持しない。実機では収録15本のうち2本が重複し、13本、534,175,084 bytesになった。由来と重複関係はローカルの `manifest.json` に残る。
 
-`.pack` の復号と取得したCSAの完全な合法手再生には cshogi 1.0.4 / NumPy 1.26.4 を専用venvへ固定する。benchmark runner内の標準ライブラリboard trackerは、固定hashに対する厳密な移動遷移／擬似合法性を検査するが、それだけで完全合法性を主張しない。これはCPU用で、GPU環境は導入しない。
+`.pack` の復号と取得したCSAの完全な合法手再生には cshogi 1.0.4 / NumPy 1.26.4 を専用venvへ固定する。benchmark runner内の標準ライブラリboard trackerは、固定hashに対する厳密な移動遷移／擬似合法性を検査するが、それだけで完全合法性を主張しない。development runnerの `config/development-position-classifications.json` はこの pinned cshogi 1.0.4 で全570手・全after-move分類を検証した hash-bound metadata であり、通常の実行依存にはしない。これはCPU用で、GPU環境は導入しない。
 
 ```sh
 python3 scripts/prepare.py audit-deps
@@ -88,14 +88,17 @@ python3 scripts/smoke.py
 - バイナリ・重みを照合し、広告された USI オプションを確認してから設定する。
 - `usi` / `isready` を待ち、局面履歴を渡して100万ノード指定で解析する。
 - cp 形式、最終 PV と bestmove の一致、node 指定の実行、正常終了を確認する。最後が upperbound/lowerbound の場合はその種別を保持し、確定評価値を `null` にする。以前の exact スコアへのすり替えはしない。
+- accepted score の node evidence は存在する整数 `>=0` とし、0 は分類済み forced-single の Sekirei が sole legal move を PV head と bestmove に一致させた場合だけ許容する。terminal checkmate では teacher の同一要求内 `score mate -1 nodes 0 pv resign` と `bestmove resign` だけを mate として扱い、裸の resign や stale score は no_score にする。pilot gate は両エンジンそれぞれの正の node evidence と技術失敗ゼロを要求する。
 - 自作の3手の CSA fixture を shogiesa で一局面に抽出し、教師ラベルを生成する。
 - 両エンジンの USI ログ、shogiesa の JSONL・manifest、全体の summary.json を保存する。
 
 ### 現時点の制約
 
+USI node grammar は、`go nodes <[0-9]+>`（ASCII 十進数字列、符号なし）から対応する `bestmove` までの各 structured `info` 行を左から解釈する。`info string` は free text として無視し、`pv`・`string`・`refutation`・`currline` の可変長 payload 内の token は解釈しない。payload 前の各行には `nodes <[0-9]+>` を高々一組だけ許容し、欠落・重複・負値・符号付き／非整数値は無効な node evidence として扱う。
+
 Sekirei の `isready` は重み読込失敗後でも応答するため、将来のモデル評価ではファイルハッシュと読込成功の確認が必要。今回の smoke は明示的な駒得評価であり、旧モデルやランダム重みを学習済みとして扱わない。
 
-ノード上限到達が aspiration 探索の途中になると、やねうら王の最終 `info` に上限・下限が付くことがある。`OutputFailLHPV=false` でも最後の報告には付く場合がある。これはノード指定の疎通失敗ではないが、確定値の採点には使えない。smoke と監査では境界の向きと生の値を保存し、先後反転では上限／下限も反転する。また `go nodes` は上限であり、探索が完了すれば100万より手前で正常終了しうる。監査では正の値かつ上限超過が2%以内であることを確認し、実ノード数を保存する。
+ノード上限到達が aspiration 探索の途中になると、やねうら王の最終 `info` に上限・下限が付くことがある。`OutputFailLHPV=false` でも最後の報告には付く場合がある。これはノード指定の疎通失敗ではないが、確定値の採点には使えない。smoke と監査では境界の向きと生の値を保存し、先後反転では上限／下限も反転する。また `go nodes` は上限であり、探索が完了すれば100万より手前で正常終了しうる。current-go の対応bestmoveまでの structured `info` を走査し、`info string` と `pv` payload は境界として nodes を読まない。各行の nodes は一組だけを許容し、重複・欠落・負値・malformedを技術失敗として、選択score行・最後の有効値・全有効値の最大を別保存する。全有効値の最大を formal の絶対 ceiling に適用し、最低ノード目標は作らない。説明不能な0、timeout/cleanup/protocol failureは成功扱いにしない。
 
 GenSfen `.pack` はゲーム境界を保持するが、評価関数SHA、エンジンcommit、全option、score boundを持たない。今回の対象ファイルにはV9.20公開前の日付のものもあり、生成に使った開発版を特定できない。GenSfenは通常、1局につき先後用のプロセスを再利用する一方、監査は局面ごとに新しいプロセスと空のhashを使う。したがって監査は符号・尺度・大きな取り違えの検出であり、同一生成環境の証明ではない。
 
@@ -128,6 +131,8 @@ USI supervisorのcleanup契約は、engineの終了コードと監督結果を�
 
 prepareの共有non-blocking lock、benchmark-wide排他non-blocking lock、run lockを同時に保持する。attempt JSONとraw logは一時ファイルへ書いてfsync後にreplaceする。resume・report・exportは同じ厳密validatorで、現在のdevelopment configのsplit/benchmark ID、全position/repetition/engineのexact attempt matrix、options/requested nodes、raw JSONLのgo-bound score evidenceとhashを照合する。成功・no-scoreの raw transcript については、広告された全option、`usi` → `setoption`（設定順）→ `isready` → `usinewgame` → exact `position` → exact `go nodes` →対応`bestmove`→`quit` の lifecycle も検証し、recorded binary identity をruntime manifestのpath/hash/bytesに束縛する。raw log は engine 行を改変せず、cleanup後に一つだけ structured runner outcome を末尾へ置く。各USIはrunner所有のLinux supervisor/subreaperをsession leader・PGID anchorとして起動し、supervisorがengineをshellなしの直接argvでexecして子孫をreapする。engine親が即時終了してもanchorは子孫cleanupまで存続するため、runnerのscheduler依存pollで正当な子を発見する必要がない。validな成功・失敗は再実行せず、欠落したattemptだけを実行する。破損・不一致は上書きせず停止する。timeoutのdeadline後に遅れて届いた score/bestmove は採点へ昇格しない。timeoutや親プロセス先行終了でも、捕捉したsupervisorのsession leader PID/PGIDを検証してTERM→KILLし、実行可能な子が消えたことを確認してからpipeを閉じる。未知の同一PGIDが現れて所有権が曖昧になった場合は一切signalせず、cleanup failureとして以後のbenchmarkを中止する。Popen前のstartup failureにもrunner eventを含むraw logを残す。
 
+resume・report・exportの再検証では、position type、分類別coverage、accepted node evidence（存在する整数 `>=0`、forced-singleの0例外、terminal teacherの厳密なmate/resign例外）を同じparser semanticsで照合する。timeout・cleanup・protocol failureの遅い出力や保存値を成功へ救済しない。旧 `development-pilot-20260916` は旧parser semanticsの診断証跡として immutable に扱い、formal evidenceには使わない。
+
 実行前の確認は次のとおり。
 
 ```sh
@@ -135,6 +140,6 @@ python3 scripts/benchmark.py plan --run-type pilot
 python3 scripts/benchmark.py plan --run-type formal
 ```
 
-planの実測固定値はpilot 15 positions / 90 attempts、formal 570 positions / 1,140 attempts、development CSA aggregate SHA-256 `0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2`、canonical universe SHA-256 `8cbe47d916a56e44722167b9b4680e3fd9d57cb267bd656e34bd8a43f9fb3a73`。pilotはceilではない絶対上限なしで、`reported_nodes_at_score` と `last_reported_nodes` の最大値・min/median/p95/maxを保存する。`go nodes` は上限なので observed max は requested nodes 未満でもよいが、node evidence が皆無なら gate は拒否する。formalの `max_reported_nodes` と `pilot_evidence` は同じruntimeの完全な90-attempt pilotのfingerprint・再計算値と一致するまで未確定として拒否する。formal gateはrun type・repetition・pilot sample/full plan・post-pilot ceilingを除いた canonical execution identityを比較し、option、timeout、requested nodes、runner/parser、binary/model/weight、toolchain、development hashの変更を拒否する。
+planの実測固定値はpilot 15 positions / 90 attempts、formal 570 positions / 1,140 attempts、development CSA aggregate SHA-256 `0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2`、分類manifest SHA-256 `33e8da8021f830dfb051a55a5e5c542a2080bf209793c2d0367fab66bbfa4469`、分類を含むcanonical universe SHA-256 `6b9b133f5c6dab2a55fd8f634d6f9eac020e3f982bf34056bd5fb830f43aec8c`。pilotはceilではない絶対上限なしで、`reported_nodes_at_score` と `last_reported_nodes` の最大値・min/median/p95/maxを保存する。`go nodes` は上限なので observed max は requested nodes 未満でもよいが、各engineに正の node evidenceが必要で、技術失敗や片側だけの証拠では gate を通さない。formalの `max_reported_nodes` と `pilot_evidence` は同じruntimeの完全な90-attempt pilotのfingerprint・再計算値と一致するまで未確定として拒否する。formal gateはrun type・repetition・pilot sample/full plan・post-pilot ceilingを除いた canonical execution identityを比較し、option、timeout、requested nodes、runner/parser、binary/model/weight、toolchain、development hash・分類hashの変更を拒否する。
 
 `benchmark_report.py report` はlocal詳細を書けるが、`export` は空の出力ディレクトリ直下へ `validation.md`、`reviewed.svg`、`validation.json`、`manifest.json` の4 redacted public fileだけを書く。local/や局面別ファイルは作らず、絶対パス、ユーザー名、source game ID、raw position履歴、model path、free-form provenanceを入れない。生成物は実行結果が揃い、MainがSVGを目視レビューしてから追跡対象にする。Issue #7の実装時点では90-request pilotも1,140-request formalも起動していない。

@@ -22,6 +22,8 @@ from benchmark import (  # noqa: E402
     CleanupError,
     ConfigurationError,
     OUTCOME_FIELDS,
+    PARSER_ID,
+    POSITION_CLASSIFICATION_TYPES,
     atomic_write,
     atomic_write_json,
     build_universe,
@@ -30,8 +32,11 @@ from benchmark import (  # noqa: E402
     execute_run,
     load_config,
     load_development_games,
+    load_position_classifications,
+    observed_max_reported_nodes,
     parse_csa_text,
     parse_usi_observation,
+    positive_node_evidence,
     run_engine_attempt,
     sha256,
     USIProcess,
@@ -90,6 +95,38 @@ class UniverseTests(unittest.TestCase):
         self.assertIn("available", result)
         if result["available"]:
             self.assertEqual(result["checked_moves"], 570)
+            self.assertEqual(result["checked_occurrences"], 570)
+            self.assertEqual(
+                result["classification_counts"],
+                {"normal": 564, "forced_single_legal_move": 5, "terminal_checkmate": 1, "terminal_stalemate": 0},
+            )
+
+    def test_position_types_are_hash_bound_and_leave_terminal_in_universe(self):
+        config = load_config()
+        universe, _games = build_universe(config)
+        values = {
+            occurrence["occurrence_id"]: occurrence
+            for game in universe["games"]
+            for occurrence in game["occurrences"]
+        }
+        self.assertEqual(
+            {kind: sum(occurrence["position_type"] == kind for occurrence in values.values()) for kind in POSITION_CLASSIFICATION_TYPES},
+            {"normal": 564, "forced_single_legal_move": 5, "terminal_checkmate": 1, "terminal_stalemate": 0},
+        )
+        self.assertEqual(values["development-05:123"]["position_type"], "terminal_checkmate")
+        self.assertEqual(values["development-04:106"]["classification"]["sole_legal_move"], "2h1h")
+        self.assertEqual(load_position_classifications(config)["counts"], {
+            "normal": 564,
+            "forced_single_legal_move": 5,
+            "terminal_checkmate": 1,
+            "terminal_stalemate": 0,
+        })
+
+    def test_position_metadata_hash_mismatch_fails_closed(self):
+        config = copy.deepcopy(load_config())
+        config["position_classifications"]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(ConfigurationError, "hash mismatch"):
+            load_position_classifications(config)
 
 
 class USIParserTests(unittest.TestCase):
@@ -107,6 +144,18 @@ class USIParserTests(unittest.TestCase):
         self.assertEqual(result["score_cp_sente"], 20)
         self.assertEqual(result["reported_nodes_at_score"], 1000)
         self.assertEqual(result["info_count"], 1)
+
+    def test_plain_line_window_starts_at_the_latest_go_nodes(self):
+        result = parse_usi_observation([
+            "info depth 1 score cp 999 nodes 2000 pv 7g7f",
+            "bestmove 7g7f",
+            "go nodes 1000",
+            "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+            "bestmove 7g7f",
+        ], "black", requested_nodes=1000, max_reported_nodes=1000)
+        self.assertEqual(result["status"], "exact_cp")
+        self.assertEqual(result["node_evidence_count"], 1)
+        self.assertEqual(result["max_reported_nodes_evidence"], 1000)
 
     def test_info_string_consumes_the_remainder_at_any_position(self):
         cases = (
@@ -183,6 +232,206 @@ class USIParserTests(unittest.TestCase):
         self.assertIsNone(result["score_cp_sente"])
         self.assertEqual(result["reported_cp_stm"], 20)
 
+    def test_all_current_go_nodes_drive_maximum_before_selected_score(self):
+        result = parse_usi_observation([
+            "info depth 9 score cp 10 nodes 2000 pv 7g7f",
+            "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+            "bestmove 7g7f",
+        ], "black", requested_nodes=1000, max_reported_nodes=1000)
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "node_count_above_ceiling")
+        self.assertEqual(result["reported_nodes_at_score"], 1000)
+        self.assertEqual(result["last_reported_nodes"], 1000)
+        self.assertEqual(result["max_reported_nodes_evidence"], 2000)
+
+    def test_all_current_go_nodes_drive_maximum_after_selected_score(self):
+        result = parse_usi_observation([
+            "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+            "info depth 11 nodes 2000",
+            "info depth 12 nodes 1000",
+            "bestmove 7g7f",
+        ], "black", requested_nodes=1000, max_reported_nodes=1000)
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "node_count_above_ceiling")
+        self.assertEqual(result["reported_nodes_at_score"], 1000)
+        self.assertEqual(result["last_reported_nodes"], 1000)
+        self.assertEqual(result["max_reported_nodes_evidence"], 2000)
+
+    def test_invalid_node_evidence_cannot_be_hidden_by_a_later_valid_value(self):
+        for bad_line, reason in (
+            ("info depth 9 nodes -1", "negative_node_evidence"),
+            ("info depth 9 nodes -0", "negative_node_evidence"),
+            ("info depth 9 nodes xyz", "malformed_node_evidence"),
+            ("info depth 9 nodes True", "malformed_node_evidence"),
+            ("info depth 9 nodes 1.5", "malformed_node_evidence"),
+        ):
+            result = parse_usi_observation([
+                bad_line,
+                "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+                "bestmove 7g7f",
+            ], "black", requested_nodes=1000)
+            self.assertEqual(result["status"], "node_budget_failure", bad_line)
+            self.assertEqual(result["failure_reason"], reason, bad_line)
+            self.assertEqual(result["last_reported_nodes"], 1000, bad_line)
+
+    def test_malformed_score_or_unknown_field_cannot_hide_later_nodes(self):
+        cases = (
+            ("info score bogus 0 nodes 2000", "protocol_failure", "malformed_score", 2000),
+            ("info score bogus 0 nodes -1", "protocol_failure", "malformed_score", 1000),
+            ("info vendor_noise payload nodes 2000", "node_budget_failure", "node_count_above_ceiling", 2000),
+        )
+        for preceding, status, reason, expected_max in cases:
+            result = parse_usi_observation(
+                [
+                    preceding,
+                    "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+                    "bestmove 7g7f",
+                ],
+                "black",
+                requested_nodes=1000,
+                max_reported_nodes=1000,
+            )
+            self.assertEqual(result["status"], status, preceding)
+            self.assertEqual(result["failure_reason"], reason, preceding)
+            self.assertEqual(result["max_reported_nodes_evidence"], expected_max, preceding)
+
+    def test_payload_words_in_malformed_score_slots_cannot_hide_later_nodes(self):
+        cases = (
+            "info score pv 0 nodes 2000",
+            "info score bogus pv nodes 2000",
+            "info score cp pv nodes 2000",
+            "info score bogus string nodes -1",
+            "info score refutation 0 nodes 2000",
+            "info score cp currline nodes 2000",
+        )
+        for preceding in cases:
+            result = parse_usi_observation(
+                [
+                    preceding,
+                    "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+                    "bestmove 7g7f",
+                ],
+                "black",
+                requested_nodes=1000,
+                max_reported_nodes=1000,
+            )
+            self.assertEqual(result["status"], "protocol_failure", preceding)
+            self.assertEqual(result["failure_reason"], "malformed_score", preceding)
+            expected_max = 2000 if "2000" in preceding else 1000
+            self.assertEqual(result["max_reported_nodes_evidence"], expected_max, preceding)
+
+    def test_truncated_score_subcommands_fail_closed_even_with_a_later_score(self):
+        cases = (
+            "info score",
+            "info score cp",
+            "info score mate",
+            "info score cp lowerbound",
+            "info score mate pv nodes 2000",
+            "info score cp nodes 2000",
+        )
+        for preceding in cases:
+            result = parse_usi_observation(
+                [
+                    preceding,
+                    "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+                    "bestmove 7g7f",
+                ],
+                "black",
+                requested_nodes=1000,
+                max_reported_nodes=1000,
+            )
+            self.assertEqual(result["status"], "protocol_failure", preceding)
+            self.assertEqual(result["failure_reason"], "malformed_score", preceding)
+
+    def test_valid_score_payload_boundary_remains_compatible(self):
+        for payload in ("pv 7g7f nodes 2000", "string diagnostic nodes 2000"):
+            result = parse_usi_observation(
+                [
+                    f"info score cp 20 {payload}",
+                    "info depth 10 score cp 30 nodes 1000 pv 7g7f",
+                    "bestmove 7g7f",
+                ],
+                "black",
+                requested_nodes=1000,
+                max_reported_nodes=1000,
+            )
+            self.assertEqual(result["status"], "exact_cp", payload)
+            self.assertEqual(result["score_cp_sente"], 30, payload)
+            self.assertEqual(result["max_reported_nodes_evidence"], 1000, payload)
+
+    def test_unknown_info_noise_without_nodes_does_not_invent_evidence(self):
+        result = parse_usi_observation(
+            [
+                "info vendor_noise payload",
+                "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+                "bestmove 7g7f",
+            ],
+            "black",
+            requested_nodes=1000,
+            max_reported_nodes=1000,
+        )
+        self.assertEqual(result["status"], "exact_cp")
+        self.assertEqual(result["node_evidence_count"], 1)
+        self.assertEqual(result["max_reported_nodes_evidence"], 1000)
+
+    def test_nodes_after_known_payload_boundary_are_not_scanned(self):
+        result = parse_usi_observation(
+            [
+                "info vendor_noise payload pv 7g7f nodes 2000",
+                "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+                "bestmove 7g7f",
+            ],
+            "black",
+            requested_nodes=1000,
+            max_reported_nodes=1000,
+        )
+        self.assertEqual(result["status"], "exact_cp")
+        self.assertEqual(result["node_evidence_count"], 1)
+        self.assertEqual(result["max_reported_nodes_evidence"], 1000)
+
+    def test_nodes_in_string_and_pv_payload_are_not_structured_evidence(self):
+        result = parse_usi_observation([
+            "info string score cp 99 nodes 3000 pv 3c3d",
+            "info depth 10 score cp 20 nodes 1000 pv 7g7f nodes 4000",
+            "bestmove 7g7f",
+        ], "black", requested_nodes=1000, max_reported_nodes=1000)
+        self.assertEqual(result["status"], "exact_cp")
+        self.assertEqual(result["node_evidence_count"], 1)
+        self.assertEqual(result["max_reported_nodes_evidence"], 1000)
+
+    def test_last_and_max_node_evidence_are_distinct_for_valid_values(self):
+        result = parse_usi_observation([
+            "info depth 9 nodes 400",
+            "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+            "info depth 11 nodes 700",
+            "bestmove 7g7f",
+        ], "black", requested_nodes=1000, max_reported_nodes=1000)
+        self.assertEqual(result["status"], "exact_cp")
+        self.assertEqual(result["reported_nodes_at_score"], 1000)
+        self.assertEqual(result["last_reported_nodes"], 700)
+        self.assertEqual(result["max_reported_nodes_evidence"], 1000)
+        self.assertEqual(result["node_evidence_count"], 3)
+
+    def test_duplicate_nodes_on_one_line_fail_closed(self):
+        result = parse_usi_observation([
+            "info depth 10 score cp 20 nodes 1000 nodes 1001 pv 7g7f",
+            "bestmove 7g7f",
+        ], "black", requested_nodes=1000, max_reported_nodes=1001)
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "ambiguous_node_evidence")
+        self.assertEqual(result["node_evidence_count"], 2)
+        self.assertEqual(result["max_reported_nodes_evidence"], 1001)
+
+    def test_zero_in_earlier_current_go_evidence_is_not_hidden_by_later_positive(self):
+        result = parse_usi_observation([
+            "info depth 9 nodes 0",
+            "info depth 10 score cp 20 nodes 1000 pv 7g7f",
+            "bestmove 7g7f",
+        ], "black", requested_nodes=1000)
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "zero_nodes_without_verified_exception")
+        self.assertEqual(result["max_reported_nodes_evidence"], 1000)
+
     def test_mate_lexical_forms_are_retained(self):
         for raw, sign, winner in (("+3", "+", "black"), ("-3", "-", "white"), ("-0", "-", "white"), ("0", "", None)):
             result = parse_usi_observation(
@@ -205,6 +454,133 @@ class USIParserTests(unittest.TestCase):
         ], "black", requested_nodes=1000)
         self.assertEqual(result["status"], "protocol_failure")
         self.assertEqual(result["failure_reason"], "pv_bestmove_mismatch")
+
+    def test_forced_single_sekirei_zero_nodes_requires_the_sole_move(self):
+        classification = {
+            "type": "forced_single_legal_move",
+            "in_check": True,
+            "legal_move_count": 1,
+            "sole_legal_move": "7g7f",
+        }
+        result = parse_usi_observation(
+            ["info score cp 20 nodes 0 pv 7g7f", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(result["status"], "exact_cp")
+        self.assertEqual(result["position_type"], "forced_single_legal_move")
+        result = parse_usi_observation(
+            ["info score cp 20 nodes 0 pv 7g7f", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification={**classification, "sole_legal_move": "3c3d"},
+        )
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "zero_nodes_without_verified_exception")
+
+    def test_zero_nodes_is_not_accepted_for_an_unexplained_normal_score(self):
+        result = parse_usi_observation(
+            ["info score cp 20 nodes 0 pv 7g7f", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+        )
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "zero_nodes_without_verified_exception")
+
+    def test_missing_negative_and_malformed_nodes_are_technical_failures(self):
+        for line, reason in (
+            ("info score cp 20 pv 7g7f", "missing_node_evidence"),
+            ("info score cp 20 nodes pv 7g7f", "missing_node_evidence"),
+            ("info score cp 20 nodes -1 pv 7g7f", "negative_node_evidence"),
+            ("info score cp 20 nodes invalid pv 7g7f", "malformed_node_evidence"),
+        ):
+            result = parse_usi_observation(
+                [line, "bestmove 7g7f"],
+                "black",
+                requested_nodes=1000,
+                engine_id="teacher",
+            )
+            self.assertEqual(result["status"], "node_budget_failure", line)
+            self.assertEqual(result["failure_reason"], reason, line)
+
+    def test_zero_bound_is_only_accepted_for_the_forced_sekirei_exception(self):
+        classification = {
+            "type": "forced_single_legal_move",
+            "in_check": True,
+            "legal_move_count": 1,
+            "sole_legal_move": "7g7f",
+        }
+        result = parse_usi_observation(
+            ["info score cp 20 upperbound nodes 0 pv 7g7f", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(result["status"], "bound_cp")
+        result = parse_usi_observation(
+            ["info score cp 20 upperbound nodes 0 pv 7g7f", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="teacher",
+        )
+        self.assertEqual(result["status"], "node_budget_failure")
+
+    def test_terminal_teacher_mate_resign_is_typed_and_strict(self):
+        classification = {
+            "type": "terminal_checkmate",
+            "in_check": True,
+            "legal_move_count": 0,
+        }
+        result = parse_usi_observation(
+            ["info score mate -1 nodes 0 pv resign", "bestmove resign"],
+            "white",
+            requested_nodes=1000,
+            engine_id="teacher",
+            position_classification=classification,
+        )
+        self.assertEqual(result["status"], "mate")
+        self.assertEqual(result["score_mate_stm"], "-1")
+        self.assertEqual(result["position_type"], "terminal_checkmate")
+        for lines, kwargs, expected in (
+            (["bestmove resign"], {}, "no_score"),
+            (["info score mate +1 nodes 0 pv resign", "bestmove resign"], {"engine_id": "teacher", "position_classification": classification}, "no_score"),
+            (["info score mate -2 nodes 0 pv resign", "bestmove resign"], {"engine_id": "teacher", "position_classification": classification}, "no_score"),
+            (["info score mate -1 nodes 0 pv resign", "bestmove resign"], {"engine_id": "teacher", "position_classification": classification, "lifecycle_valid": False}, "no_score"),
+            (["info score cp 20 nodes 1000 pv 7g7f", "bestmove resign"], {"engine_id": "teacher", "position_type": "normal"}, "no_score"),
+        ):
+            value = parse_usi_observation(lines, "white", requested_nodes=1000, **kwargs)
+            self.assertEqual(value["status"], expected, lines)
+
+    def test_node_ceiling_applies_to_positive_evidence(self):
+        result = parse_usi_observation(
+            ["info score cp 20 nodes 1001 pv 7g7f", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            max_reported_nodes=1000,
+        )
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "node_count_above_ceiling")
+
+    def test_protocol_pv_mismatch_is_not_rescued_by_zero_node_exception(self):
+        classification = {
+            "type": "forced_single_legal_move",
+            "in_check": True,
+            "legal_move_count": 1,
+            "sole_legal_move": "7g7f",
+        }
+        result = parse_usi_observation(
+            ["info score cp 20 nodes 0 pv 3c3d", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(result["status"], "protocol_failure")
 
 
 @contextmanager
@@ -475,6 +851,31 @@ class USIProcessTests(unittest.TestCase):
             log_path = runtime / "runs/resume-fixture/logs" / json.loads(original_record)["raw_log"]
             original_log = log_path.read_text()
 
+            for field in (
+                "schema_version",
+                "reported_nodes_at_score",
+                "last_reported_nodes",
+                "max_reported_nodes_evidence",
+                "node_evidence_count",
+                "node_evidence_valid_count",
+                "node_evidence_invalid_count",
+                "node_evidence_positive_count",
+                "node_evidence_zero_count",
+                "node_evidence_errors",
+                "position_type",
+                "position_classification",
+            ):
+                missing_field = copy.deepcopy(original_record_value)
+                self.assertIn(field, missing_field["result"])
+                del missing_field["result"][field]
+                atomic_write_json(target, missing_field)
+                with self.assertRaises(BenchmarkError):
+                    execute_run(runtime, config, "pilot", run_id="resume-fixture", resume=True)
+                if field == "max_reported_nodes_evidence":
+                    with self.assertRaisesRegex(ValueError, "raw observation schema"):
+                        report_from_run(runtime / "runs/resume-fixture")
+                target.write_text(original_record)
+
             def rewrite_raw(mutator, *, record=None):
                 values = [json.loads(line) for line in original_log.splitlines()]
                 mutator(values)
@@ -605,7 +1006,10 @@ class USIProcessTests(unittest.TestCase):
                 "score_cp_sente", "reported_cp_stm", "reported_cp_sente", "score_bound_stm",
                 "score_bound_sente", "score_mate_stm", "mate_distance", "mate_distance_known",
                 "mate_sign", "winner", "winner_stm", "winner_sente", "reported_nodes_at_score",
-                "last_reported_nodes", "engine_time_ms", "engine_time", "wall_go_to_bestmove_ns",
+                "last_reported_nodes", "max_reported_nodes_evidence", "node_evidence_count",
+                "node_evidence_valid_count", "node_evidence_invalid_count", "node_evidence_positive_count",
+                "node_evidence_zero_count", "node_evidence_errors", "engine_time_ms", "engine_time",
+                "wall_go_to_bestmove_ns",
                 "wall_go_to_bestmove_seconds", "raw_score_line", "raw_bestmove_line", "info_count",
             ):
                 timeout_result[field] = None
@@ -673,6 +1077,49 @@ class USIProcessTests(unittest.TestCase):
             with self.assertRaisesRegex(BenchmarkError, "fingerprint mismatch"):
                 execute_run(runtime, changed, "pilot", run_id="resume-fixture", resume=True)
 
+
+    def test_malformed_score_artifact_is_revalidated_and_rejected_by_gate(self):
+        config = copy.deepcopy(load_config())
+        config["requested_nodes"] = 1000
+        config["engines"]["teacher"]["binary"] = "fake-usi.py"
+        config["engines"]["teacher"]["weight_required"] = False
+        config["engines"]["sekirei"]["binary"] = "fake-usi.py"
+        with tempfile.TemporaryDirectory() as temp:
+            runtime = Path(temp) / "runtime"
+            binary = runtime / "bin/fake-usi.py"
+            binary.parent.mkdir(parents=True)
+            shutil.copy2(FAKE, binary)
+            binary.chmod(0o755)
+            atomic_write_json(runtime / "build-manifest.json", {
+                "lock_sha256": sha256(Path(__file__).resolve().parents[1] / "config/toolchain.lock.json"),
+                "binaries": {"fake-usi.py": {"path": str(binary), "sha256": sha256(binary)}},
+            })
+            with mock.patch.dict(os.environ, {"FAKE_USI_MODE": "malformed-score"}, clear=False):
+                with mock.patch("sys.stdout"), mock.patch("sys.stderr"):
+                    pilot = execute_run(runtime, config, "pilot", run_id="malformed-score-fixture")
+            records = [
+                json.loads(path.read_text())
+                for path in (runtime / "runs/malformed-score-fixture/attempts").glob("*.json")
+            ]
+            self.assertEqual(len(records), 90)
+            self.assertTrue(all(record["status"] == "protocol_failure" for record in records))
+            self.assertTrue(all(record["result"]["failure_reason"] == "malformed_score" for record in records))
+            self.assertTrue(all(record["result"]["max_reported_nodes_evidence"] == 2000 for record in records))
+            with mock.patch("benchmark_report.load_config", return_value=config):
+                report = report_from_run(runtime / "runs/malformed-score-fixture")
+            self.assertEqual(report["validity"]["technical_failure_count"], 90)
+            self.assertFalse(report["validity"]["complete_evidence_valid"])
+            config["formal"]["max_reported_nodes"] = 2000
+            config["formal"]["pilot_evidence"] = {
+                "pilot_run_id": "malformed-score-fixture",
+                "pilot_fingerprint": pilot["fingerprint"],
+                "observed_max_reported_nodes": 2000,
+                "max_reported_nodes": 2000,
+            }
+            with self.assertRaisesRegex(ConfigurationError, "technical failures"):
+                validate_formal_gate(runtime, config)
+
+
     def test_formal_run_is_refused_until_pilot_ceiling_is_frozen(self):
         from benchmark import execute_run
 
@@ -698,7 +1145,7 @@ class USIProcessTests(unittest.TestCase):
                 "lock_sha256": sha256(Path(__file__).resolve().parents[1] / "config/toolchain.lock.json"),
                 "binaries": {"fake-usi.py": {"path": str(binary), "sha256": sha256(binary)}},
             })
-            with mock.patch.dict(os.environ, {"FAKE_USI_MODE": "exact"}, clear=False):
+            with mock.patch.dict(os.environ, {"FAKE_USI_MODE": "gate"}, clear=False):
                 with mock.patch("sys.stdout"), mock.patch("sys.stderr"):
                     pilot = execute_run(runtime, config, "pilot", run_id="gate-fixture")
             records = [json.loads(path.read_text()) for path in (runtime / "runs/gate-fixture/attempts").glob("*.json")]
@@ -716,6 +1163,17 @@ class USIProcessTests(unittest.TestCase):
                 "max_reported_nodes": observed,
             }
             self.assertEqual(validate_formal_gate(runtime, config)["pilot_run_id"], "gate-fixture")
+            target = next(
+                path for path in (runtime / "runs/gate-fixture/attempts").glob("*.json")
+                if path.is_file()
+            )
+            original_record = target.read_text()
+            missing_max = json.loads(original_record)
+            del missing_max["result"]["max_reported_nodes_evidence"]
+            atomic_write_json(target, missing_max)
+            with self.assertRaisesRegex(BenchmarkError, "raw observation schema"):
+                validate_formal_gate(runtime, config)
+            target.write_text(original_record)
             changed_option = copy.deepcopy(config)
             changed_option["engines"]["sekirei"]["options"]["Hash"] = "64"
             with self.assertRaisesRegex(ConfigurationError, "execution identity"):
@@ -741,7 +1199,7 @@ class USIProcessTests(unittest.TestCase):
                 "lock_sha256": sha256(Path(__file__).resolve().parents[1] / "config/toolchain.lock.json"),
                 "binaries": {"fake-usi.py": {"path": str(binary), "sha256": sha256(binary)}},
             })
-            with mock.patch.dict(os.environ, {"FAKE_USI_MODE": "early"}, clear=False):
+            with mock.patch.dict(os.environ, {"FAKE_USI_MODE": "gate-early"}, clear=False):
                 with mock.patch("sys.stdout"), mock.patch("sys.stderr"):
                     pilot = execute_run(runtime, config, "pilot", run_id="early-gate-fixture")
             records = [
@@ -766,6 +1224,97 @@ class USIProcessTests(unittest.TestCase):
                 "max_reported_nodes": config["requested_nodes"],
             }
             self.assertEqual(validate_formal_gate(runtime, config)["pilot_run_id"], "early-gate-fixture")
+
+
+
+class NodeEvidenceTests(unittest.TestCase):
+    def test_positive_node_evidence_is_per_engine_and_ignores_technical_rows(self):
+        records = [
+            {"engine_id": "teacher", "result": {"status": "exact_cp", "reported_nodes_at_score": 0, "last_reported_nodes": 0}},
+            {"engine_id": "sekirei", "result": {"status": "exact_cp", "reported_nodes_at_score": 1, "last_reported_nodes": 1}},
+            {"engine_id": "teacher", "result": {"status": "node_budget_failure", "reported_nodes_at_score": 9999, "last_reported_nodes": 9999}},
+            {"engine_id": "teacher", "status": "node_budget_failure", "result": {"status": "exact_cp", "reported_nodes_at_score": 9999, "last_reported_nodes": 9999}},
+        ]
+        summary = positive_node_evidence(records)
+        self.assertFalse(summary["teacher"]["has_positive"])
+        self.assertTrue(summary["sekirei"]["has_positive"])
+        self.assertEqual(summary["sekirei"]["positive_observation_count"], 2)
+        self.assertEqual(summary["teacher"]["attempt_count"], 3)
+
+    def test_observed_max_uses_all_evidence_maximum(self):
+        self.assertEqual(
+            observed_max_reported_nodes([
+                {
+                    "engine_id": "teacher",
+                    "result": {
+                        "reported_nodes_at_score": 1000,
+                        "last_reported_nodes": 700,
+                        "max_reported_nodes_evidence": 2000,
+                    },
+                }
+            ]),
+            2000,
+        )
+
+    def test_strict_node_helpers_do_not_fallback_from_missing_maximum(self):
+        records = [{
+            "engine_id": "teacher",
+            "status": "exact_cp",
+            "result": {
+                "status": "exact_cp",
+                "reported_nodes_at_score": 1000,
+                "last_reported_nodes": 1000,
+                "node_evidence_positive_count": 2,
+                "node_evidence_zero_count": 0,
+                "node_evidence_errors": [],
+                "node_evidence_count": 2,
+            },
+        }]
+        self.assertIsNone(observed_max_reported_nodes(records, strict=True))
+        self.assertIsNone(positive_node_evidence(records, ("teacher",), strict=True)["teacher"]["observed_max"])
+
+    def test_formal_gate_rejects_all_zero_or_one_engine_positive_evidence(self):
+        import benchmark
+
+        positions = [
+            {"game_id": f"game-{index:02d}", "ply": 1, "position": "position startpos moves 7g7f", "side_to_move": "white"}
+            for index in range(1, 16)
+        ]
+        plan = {"positions": positions, "repetitions": 3}
+        manifest = {"fingerprint": "pilot-fingerprint", "fingerprint_payload": {"execution_identity": {}}}
+        for positive_engine in ("teacher", "sekirei"):
+            records = []
+            for engine_id in ("teacher", "sekirei"):
+                nodes = 1000 if engine_id == positive_engine else 0
+                records.extend(
+                    {
+                        "engine_id": engine_id,
+                        "status": "exact_cp",
+                        "result": {
+                            "status": "exact_cp",
+                            "reported_nodes_at_score": nodes,
+                            "last_reported_nodes": nodes,
+                        },
+                    }
+                    for _ in range(45)
+                )
+            config = copy.deepcopy(load_config())
+            config["requested_nodes"] = 1000
+            config["formal"]["max_reported_nodes"] = 1000
+            config["formal"]["pilot_evidence"] = {
+                "pilot_run_id": "pilot-test",
+                "pilot_fingerprint": "pilot-fingerprint",
+                "observed_max_reported_nodes": 1000,
+                "max_reported_nodes": 1000,
+            }
+            with tempfile.TemporaryDirectory() as temp:
+                runtime = Path(temp)
+                (runtime / "runs/pilot-test").mkdir(parents=True)
+                with mock.patch.object(benchmark, "validate_run_artifacts", return_value=(manifest, plan, {}, records, {}, [])):
+                    with mock.patch.object(benchmark, "make_plan", return_value=(plan, [])):
+                        with mock.patch.object(benchmark, "execution_identity", return_value={}):
+                            with self.assertRaisesRegex(ConfigurationError, "positive node evidence"):
+                                validate_formal_gate(runtime, config)
 
 
 def small_plan():
@@ -796,6 +1345,49 @@ def row(game_id, ply, status, **values):
 
 
 class ReportTests(unittest.TestCase):
+    def test_report_exposes_position_types_and_per_engine_positive_nodes(self):
+        plan = small_plan()
+        plan["positions"][0].update(
+            position_type="forced_single_legal_move",
+            classification={
+                "type": "forced_single_legal_move",
+                "in_check": True,
+                "legal_move_count": 1,
+                "sole_legal_move": "7g7f",
+            },
+        )
+        plan["positions"][-1].update(
+            position_type="terminal_checkmate",
+            classification={
+                "type": "terminal_checkmate",
+                "in_check": True,
+                "legal_move_count": 0,
+            },
+        )
+        teacher = [
+            row(game_id, ply, "exact_cp", score_cp_sente=10, reported_nodes_at_score=1000, last_reported_nodes=1000)
+            for game_id in (f"game-{index:02d}" for index in range(1, 6))
+            for ply in (1, 2)
+        ]
+        candidate = [
+            row(game_id, ply, "exact_cp", score_cp_sente=10, reported_nodes_at_score=900, last_reported_nodes=900)
+            for game_id in (f"game-{index:02d}" for index in range(1, 6))
+            for ply in (1, 2)
+        ]
+        report = score_observations(plan, teacher, candidate, accuracy_thresholds=[0])
+        self.assertEqual(report["position_type_diagnostics"]["counts"]["forced_single_legal_move"], 1)
+        self.assertEqual(report["position_type_diagnostics"]["counts"]["terminal_checkmate"], 1)
+        for engine_id in ("teacher", "sekirei"):
+            self.assertTrue(report["node_evidence"][engine_id]["has_positive"])
+        svg = render_svg(report)
+        self.assertIn('data-position-type="forced_single_legal_move"', svg)
+        with tempfile.TemporaryDirectory() as temp:
+            export_public(temp, report)
+            public_json = (Path(temp) / "validation.json").read_text()
+            self.assertIn("forced_single_legal_move", public_json)
+            self.assertIn("terminal_checkmate", public_json)
+            self.assertNotIn("position startpos moves", public_json)
+
     def test_pilot_retains_all_repetitions_and_reports_repeatability(self):
         plan = small_plan()
         plan["repetitions"] = 3
@@ -813,6 +1405,40 @@ class ReportTests(unittest.TestCase):
         self.assertIsNone(report["headline"]["mae_cp"])
         self.assertEqual(report["repeatability"]["observed_max_reported_nodes"], 1003)
         self.assertEqual(report["repeatability"]["engines"]["teacher"]["stable_position_count"], 10)
+
+    def test_report_propagates_explicit_all_evidence_maximum(self):
+        plan = small_plan()
+        teacher, candidate = [], []
+        for index in range(1, 6):
+            for ply in (1, 2):
+                teacher.append(row(
+                    f"game-{index:02d}",
+                    ply,
+                    "exact_cp",
+                    score_cp_sente=100,
+                    reported_nodes_at_score=1000,
+                    last_reported_nodes=1000,
+                    max_reported_nodes_evidence=2000 if (index, ply) == (1, 1) else 1000,
+                ))
+                candidate.append(row(
+                    f"game-{index:02d}",
+                    ply,
+                    "exact_cp",
+                    score_cp_sente=100,
+                    reported_nodes_at_score=900,
+                    last_reported_nodes=900,
+                    max_reported_nodes_evidence=1500,
+                ))
+        report = score_observations(plan, teacher, candidate, accuracy_thresholds=[0])
+        self.assertEqual(report["repeatability"]["observed_max_reported_nodes"], 2000)
+        self.assertEqual(
+            report["repeatability"]["engines"]["teacher"]["max_reported_nodes_evidence"]["max_reported_nodes_evidence"],
+            2000,
+        )
+        self.assertEqual(
+            report["series"]["game-01"][0]["max_reported_nodes_evidence"],
+            2000,
+        )
 
     def test_fixed_denominator_headline_and_accuracy_curve(self):
         plan = small_plan()

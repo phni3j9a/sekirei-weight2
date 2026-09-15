@@ -98,6 +98,22 @@ def run_search():
     if MODE == "other-special":
         emit("bestmove 0000")
         return
+    if MODE in ("gate", "gate-early"):
+        nodes = 900 if MODE == "gate-early" else 1000
+        # This fixture intentionally uses a non-scored special bestmove so it
+        # is legal at every arbitrary test position while still carrying
+        # positive node evidence for formal-gate tests.
+        emit(f"info depth 10 score cp 20 nodes {nodes} pv 7g7f")
+        emit("bestmove resign")
+        return
+    if MODE == "malformed-score":
+        # The malformed score value must not turn the following ``nodes``
+        # token into a payload boundary.  The later valid score is present to
+        # prove that parser failure cannot be rescued by score recovery.
+        emit("info score cp pv nodes 2000")
+        emit("info depth 10 score cp 20 nodes 1000 pv 7g7f")
+        emit("bestmove 7g7f")
+        return
     if MODE == "mismatch":
         emit("info depth 10 score cp 12 nodes 1000 pv 7g7f")
         emit("bestmove 3c3d")

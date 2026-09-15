@@ -126,7 +126,9 @@ def parse_csa(text):
     lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     lines = [line for line in lines if line]
     board = tuple(line for line in lines if re.match(r"^P[1-9]", line))
-    if board != STANDARD_BOARD:
+    standard_explicit = board == STANDARD_BOARD and "PI" not in lines
+    standard_compact = not board and lines.count("PI") == 1
+    if not (standard_explicit or standard_compact):
         raise ValueError("CSA is not a standard-even starting position")
     turns = [line for line in lines if line in ("+", "-")]
     if turns != ["+"]:
@@ -161,7 +163,7 @@ def anonymized_csa(parsed):
         "V2.2",
         "N+black",
         "N-white",
-        *STANDARD_BOARD,
+        "PI",
         "+",
         *parsed["moves"],
         "",

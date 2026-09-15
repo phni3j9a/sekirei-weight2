@@ -58,7 +58,7 @@
 | development | 5 | 3 / 2 | 570 | 投了2、時間切れ2、詰み1 |
 | final | 5 | 2 / 3 | 513 | 投了2、時間切れ1、詰み2 |
 
-snapshot manifest SHA-256は `883b2bbf7a3ef5165f62491ae9ae923ae33e82c837c180f72f71bb963f5084af`。final 5局は改善仮説、モデル、閾値の選択に使わず節目だけで確認する。公開repositoryに収録するため秘密のtest setではなく、運用上のholdoutである。
+snapshot manifest SHA-256は `d7ee0cce928be4a45b43733dc8d34d568583b0451586078e19df98892ad9e5fc`。final 5局は改善仮説、モデル、閾値の選択に使わず節目だけで確認する。公開repositoryに収録するため秘密のtest setではなく、運用上のholdoutである。
 
 名前をCSAから除いただけで、完全な匿名化ではない。manifestに残した公開対局IDから元ページをたどれる。再現性・出典追跡と利用者情報最小化の折衷として明記する。
 

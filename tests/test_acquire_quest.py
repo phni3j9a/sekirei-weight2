@@ -52,6 +52,9 @@ class CsaTests(unittest.TestCase):
         snapshot = anonymized_csa(parsed)
         self.assertIn("N+black", snapshot)
         self.assertNotIn("1500", snapshot)
+        self.assertIn("\nPI\n", snapshot)
+        self.assertEqual(parse_csa(snapshot)["canonical_sha256"],
+                         parsed["canonical_sha256"])
 
     def test_identity_changes_do_not_evade_move_deduplication(self):
         first = parse_csa(self.fixture())

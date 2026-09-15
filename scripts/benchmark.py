@@ -74,7 +74,7 @@ POSITION_CLASSIFICATION_TYPES = (
     "terminal_stalemate",
 )
 POSITION_CLASSIFICATION_METADATA_KEY = "position_classifications"
-PARSER_ID = "usi-observation-v3"
+PARSER_ID = "usi-observation-v4"
 
 # This is an operational, one-sided envelope around ``go nodes N``.  It is
 # deliberately named and versioned because it is a policy for accepting
@@ -1646,8 +1646,35 @@ def _negative_mate_direction(raw):
         return False
 
 
-def _is_forced_single_zero_response(result, engine_id, classification, board, lifecycle_valid):
+def _is_forced_single_zero_response(
+    result,
+    engine_id,
+    classification,
+    board,
+    node_summary,
+    lifecycle_valid,
+):
+    """Recognise the pinned Sekirei forced-single zero-node exception."""
     if not lifecycle_valid or engine_id != "sekirei":
+        return False
+    score_values = (
+        result.get("reported_cp_stm"),
+        result.get("reported_cp_sente"),
+        result.get("score_cp_stm"),
+        result.get("score_cp_sente"),
+    )
+    if (
+        result.get("status") != "exact_cp"
+        or result.get("score_kind") != "cp"
+        or result.get("score_bound_stm") != "exact"
+        or result.get("score_bound_sente") != "exact"
+        or any(
+            isinstance(value, bool) or not isinstance(value, int)
+            for value in score_values
+        )
+        or result.get("reported_cp_stm") != result.get("score_cp_stm")
+        or result.get("reported_cp_sente") != result.get("score_cp_sente")
+    ):
         return False
     if (
         classification.get("type") != "forced_single_legal_move"
@@ -1666,6 +1693,23 @@ def _is_forced_single_zero_response(result, engine_id, classification, board, li
     ):
         return False
     if board is not None and not board.is_legal_usi(sole_move):
+        return False
+    valid_values = node_summary.get("valid_values", [])
+    if (
+        not valid_values
+        or any(value != 0 for value in valid_values)
+        or node_summary.get("errors") != []
+        or node_summary.get("missing_structured_info_count") != 0
+        or len(node_summary.get("occurrences", [])) != len(valid_values)
+        or result.get("reported_nodes_at_score") != 0
+        or result.get("last_reported_nodes") != 0
+        or result.get("max_reported_nodes_evidence") != 0
+        or result.get("node_evidence_count") != len(valid_values)
+        or result.get("node_evidence_valid_count") != len(valid_values)
+        or result.get("node_evidence_zero_count") != len(valid_values)
+        or result.get("node_evidence_invalid_count") != 0
+        or result.get("node_evidence_positive_count") != 0
+    ):
         return False
     return True
 
@@ -1968,7 +2012,14 @@ def parse_usi_observation(
         else:
             observed_nodes = node_summary["max_valid_nodes"]
             zero_allowed = (
-                _is_forced_single_zero_response(result, engine_id, classification, board, lifecycle_valid)
+                _is_forced_single_zero_response(
+                    result,
+                    engine_id,
+                    classification,
+                    board,
+                    node_summary,
+                    lifecycle_valid,
+                )
                 or _is_mate_in_one_zero_response(
                     result,
                     info,

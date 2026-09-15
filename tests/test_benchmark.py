@@ -49,6 +49,8 @@ from benchmark import (  # noqa: E402
     USIProcess,
     validate_formal_gate,
     universe_hash,
+    _is_forced_single_zero_response,
+    _node_evidence_summary,
 )
 from benchmark_report import (  # noqa: E402
     export_public,
@@ -515,6 +517,16 @@ class USIParserTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "exact_cp")
         self.assertEqual(result["position_type"], "forced_single_legal_move")
+        # Forced-single keeps the historical PV contract: only the PV head
+        # must be the sole legal move; it is not the mate-in-one one-ply PV.
+        result = parse_usi_observation(
+            ["info score cp 20 nodes 0 pv 7g7f 3c3d", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(result["status"], "exact_cp")
         result = parse_usi_observation(
             ["info score cp 20 nodes 0 pv 7g7f", "bestmove 7g7f"],
             "black",
@@ -524,6 +536,101 @@ class USIParserTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "node_budget_failure")
         self.assertEqual(result["failure_reason"], "zero_nodes_without_verified_exception")
+
+        rejected = (
+            (
+                [
+                    "info score cp 20 nodes 0 pv 7g7f",
+                    "info depth 2 nodes 1",
+                    "bestmove 7g7f",
+                ],
+                "zero_nodes_without_verified_exception",
+            ),
+            (["info score cp 20 pv 7g7f", "bestmove 7g7f"], "missing_node_evidence"),
+            (["info score cp 20 nodes invalid pv 7g7f", "bestmove 7g7f"], "malformed_node_evidence"),
+            (["info score cp 20 nodes 0 nodes 0 pv 7g7f", "bestmove 7g7f"], "ambiguous_node_evidence"),
+        )
+        for lines, reason in rejected:
+            value = parse_usi_observation(
+                lines,
+                "black",
+                requested_nodes=1000,
+                engine_id="sekirei",
+                position_classification=classification,
+            )
+            self.assertEqual(value["status"], "node_budget_failure", lines)
+            self.assertEqual(value["failure_reason"], reason, lines)
+
+        teacher = parse_usi_observation(
+            ["info score cp 20 nodes 0 pv 7g7f", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="teacher",
+            position_classification=classification,
+        )
+        self.assertEqual(teacher["status"], "node_budget_failure")
+        self.assertEqual(teacher["failure_reason"], "zero_nodes_without_verified_exception")
+
+    def test_forced_single_zero_nodes_require_a_consistent_node_summary(self):
+        classification = {
+            "type": "forced_single_legal_move",
+            "in_check": True,
+            "legal_move_count": 1,
+            "sole_legal_move": "7g7f",
+        }
+        lines = ["info score cp 20 nodes 0 pv 7g7f", "bestmove 7g7f"]
+        result = parse_usi_observation(
+            lines,
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        summary = _node_evidence_summary(lines)
+        self.assertTrue(_is_forced_single_zero_response(result, "sekirei", classification, None, summary, True))
+
+        for field in (
+            "reported_nodes_at_score",
+            "last_reported_nodes",
+            "max_reported_nodes_evidence",
+        ):
+            tampered = dict(result)
+            tampered[field] = 1
+            self.assertFalse(
+                _is_forced_single_zero_response(tampered, "sekirei", classification, None, summary, True),
+                field,
+            )
+        for field in (
+            "node_evidence_count",
+            "node_evidence_valid_count",
+            "node_evidence_zero_count",
+        ):
+            tampered = dict(result)
+            tampered[field] = 2
+            self.assertFalse(
+                _is_forced_single_zero_response(tampered, "sekirei", classification, None, summary, True),
+                field,
+            )
+        for field in ("node_evidence_invalid_count", "node_evidence_positive_count"):
+            tampered = dict(result)
+            tampered[field] = 1
+            self.assertFalse(
+                _is_forced_single_zero_response(tampered, "sekirei", classification, None, summary, True),
+                field,
+            )
+
+        for field, value in (
+            ("valid_values", [0, 1]),
+            ("errors", ["duplicate_nodes_on_info_line"]),
+            ("missing_structured_info_count", 1),
+            ("occurrences", []),
+        ):
+            tampered_summary = dict(summary)
+            tampered_summary[field] = value
+            self.assertFalse(
+                _is_forced_single_zero_response(result, "sekirei", classification, None, tampered_summary, True),
+                field,
+            )
 
     def test_zero_nodes_is_not_accepted_for_an_unexplained_normal_score(self):
         result = parse_usi_observation(
@@ -676,7 +783,7 @@ class USIParserTests(unittest.TestCase):
             self.assertEqual(result["status"], "node_budget_failure", line)
             self.assertEqual(result["failure_reason"], reason, line)
 
-    def test_zero_bound_is_only_accepted_for_the_forced_sekirei_exception(self):
+    def test_zero_bound_is_rejected_even_for_forced_sekirei_exception(self):
         classification = {
             "type": "forced_single_legal_move",
             "in_check": True,
@@ -690,7 +797,17 @@ class USIParserTests(unittest.TestCase):
             engine_id="sekirei",
             position_classification=classification,
         )
-        self.assertEqual(result["status"], "bound_cp")
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "zero_nodes_without_verified_exception")
+        result = parse_usi_observation(
+            ["info score mate 1 nodes 0 pv 7g7f", "bestmove 7g7f"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["failure_reason"], "zero_nodes_without_verified_exception")
         result = parse_usi_observation(
             ["info score cp 20 upperbound nodes 0 pv 7g7f", "bestmove 7g7f"],
             "black",
@@ -698,6 +815,38 @@ class USIParserTests(unittest.TestCase):
             engine_id="teacher",
         )
         self.assertEqual(result["status"], "node_budget_failure")
+
+    def test_forced_single_zero_exception_requires_exact_cp_result_semantics(self):
+        classification = {
+            "type": "forced_single_legal_move",
+            "in_check": True,
+            "legal_move_count": 1,
+            "sole_legal_move": "7g7f",
+        }
+        lines = ["info score cp 20 nodes 0 pv 7g7f", "bestmove 7g7f"]
+        result = parse_usi_observation(
+            lines,
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        summary = _node_evidence_summary(lines)
+        self.assertTrue(_is_forced_single_zero_response(result, "sekirei", classification, None, summary, True))
+        for field, value in (
+            ("status", "bound_cp"),
+            ("score_kind", "mate"),
+            ("score_bound_stm", "upperbound"),
+            ("score_bound_sente", "upperbound"),
+            ("reported_cp_stm", None),
+            ("score_cp_sente", None),
+        ):
+            tampered = dict(result)
+            tampered[field] = value
+            self.assertFalse(
+                _is_forced_single_zero_response(tampered, "sekirei", classification, None, summary, True),
+                field,
+            )
 
     def test_terminal_teacher_mate_resign_is_typed_and_strict(self):
         classification = {

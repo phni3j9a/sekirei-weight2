@@ -18,9 +18,9 @@ Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https
 - 正式ベンチマーク用に、将棋クエストの公開棋譜から人間同士・平手・合法手・重複なしの1,000局をローカルへ固定し、その中から解析前に development 5局 / final 5局を選定済み。[取得・分割の検証記録](docs/validation/shogiquest-corpus-2026-09-15.md)。
 - `.pack` から学習器への入力経路、本格学習、モデル採用判定、定期自動実行は次の段階。
 - Sekirei の今回の初期疎通は **駒得評価へのフォールバック**。学習済みモデルはまだない。
-- Issue #7 の改訂前 pilot v2/v3 と `development-baseline-20260916` formal は、当時のrunnerの診断証跡としてのみ保持する。v3は現行の分類・parser identityでは再利用せず、現行formalは `formal.pilot_evidence=null` のため未実行、final 5局も未読・未変更である。
+- Issue #7 の改訂前 pilot v2/v3/v4 と `development-baseline-20260916` formal は、当時のrunnerの診断証跡としてのみ保持する。v3/v4は現行の分類・parser identityでは再利用せず、現行formalは `formal.pilot_evidence=null` のため未実行、final 5局も未読・未変更である。
 - 旧 `development-baseline-20260916` は1,140/1,140 attemptを収集したが、現行の正式根拠にはできない。Teacher development-04 p077 の all-evidence max 1,001,086 は旧1,001,024を超え、Sekirei development-05 p122 は旧分類にない mate 1 / nodes 0 だった。この旧1,001,024をsource-derived guaranteeとして扱う主張は撤回する。`status=complete` は formal valid を意味せず、診断上の exact coverage 265/265 も headline やモデル採用の根拠ではない。
-- 現行契約は `go nodes 1000000` を両エンジンへ送り、`one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` により all-evidence max `M <= C(N)` を判定する。これは片側1%の運用上の比較・異常検出ガードレールであり、YaneuraOuの停止上限、内部仕事量の同値性、最低ノード目標ではない。pilot/formal の `max_reported_nodes` はともに 1,010,000 を事前登録し、v3はprior diagnosticとして凍結しない。
+- 現行契約は `go nodes 1000000` を両エンジンへ送り、`one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` により all-evidence max `M <= C(N)` を判定する。これは片側1%の運用上の比較・異常検出ガードレールであり、YaneuraOuの停止上限、内部仕事量の同値性、最低ノード目標ではない。pilot/formal の `max_reported_nodes` はともに 1,010,000 を事前登録し、v3/v4はprior diagnosticとして凍結しない。
 
 ## 開発用 100万ノード baseline
 
@@ -37,7 +37,9 @@ pilotは各棋譜の `{1, ceil(L/2), L}` のcanonical 15局面に regression の
 
 実機実行は、まず改訂後の `pilot`（17局面・102 attempt）を完了し、その全attemptから再計算した `observed_max_reported_nodes` を記録してから formal の可否を判断する。`go nodes 1000000` は両エンジンへ送り、`one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` により all-evidence max `M <= C(N)` を受理する。`C(1,000,000)=1,010,000` は inclusive だが、片側1%の運用上の比較・異常検出ガードレールであり、YaneuraOuの数学的停止上限、内部仕事量の同値性、最低ノード目標ではない。`reported_nodes_at_score`、`last_reported_nodes`、全有効値の `max_reported_nodes_evidence` は別々に保持し、current-go の欠落・負値・malformed・重複と earlier overrun を後続値で隠さない。formal gate は両エンジンの正のnode evidence、完全な現行102-attempt pilot matrix、現行execution identityを要求し、`formal.pilot_evidence=null` の間はrun directoryも作成しない。
 
-mate-in-one available は development-05 p122 のみ（黒番・非チェック・合法手217・mating move `2g4g`）である。固定Sekireiだけ、正常lifecycle、exact raw `score mate 1`、合法normal bestmove、PV一手、PV headとbestmove一致、凍結リスト一致、全structured node値ゼロのときに限り0 nodesを受理する。Teacher・normal・bound/mate・resign・PV不一致/追加・欠落/混在・分類改ざんは受理しない。既存のforced-single 5件とterminal checkmate 1件は維持し、mateはcpやexact-cp headlineへ変換しない。旧 v3 と旧 `development-baseline-20260916` はprior diagnosticとしてのみ保持し、final 5局は未読・未変更である。
+nonterminal の Sekirei には hash-bound の0 nodes例外が二つある。forced-single 5件は exact cp（`status=exact_cp`、`score_kind=cp`、`score_bound_stm=exact`、整合するcp値）に限り、正常lifecycle、全structured node evidenceが存在して全て0、reported/last/maxが0、in-check・合法手1・sole move一致、normal bestmoveとPV head一致を要求する（PV全体はmate-in-oneの一手PVとは区別し、head以降を許容する）。mate-in-one available は development-05 p122 のみ（黒番・非チェック・合法手217・mating move `2g4g`）で、さらに exact raw `score mate 1`、合法normal bestmove、PV一手、PV headとbestmove一致、凍結リスト一致を要求する。どちらもpositive/missing/invalid/mixed/duplicate/集計不整合を受理しない。別枠のTeacher terminal checkmateは、同一要求内の厳密な mate -1/resign responseだけを許容する。説明不能な normal、その他のTeacher/engine、bound cp・mate・no-score等のforced救済、resignの不正な組み合わせ、PV不一致、分類改ざんは受理しない。forced/mateはcpやexact-cp headlineへ変換しない。旧 v3/v4 と旧 `development-baseline-20260916` はprior diagnosticとしてのみ保持し、final 5局は未読・未変更である。
+
+`development-pilot-20260916-v4` は102/102 attempt、technical failure 0、34/34 stable、observed max `M=1,001,086 <= C(1,000,000)=1,010,000` だったが、forced例外のnode summary集計検査を強化する前のparser identityで生成されたprior diagnosticである。formal freezeには使わず、parser v4でのv5を待つ。`formal.pilot_evidence` はnull、formalとfinal 5局は未実行である。旧 `development-baseline-20260916` formalは実行済みだがinvalidであり、このv4とは別枠で扱う。監査条件でforced例外を取り落として付された旧 findingは現行仕様の誤読として撤回済みである。
 
 ```sh
 python3 scripts/benchmark.py pilot --run-id development-pilot-20260916-revised
@@ -51,7 +53,7 @@ python3 scripts/benchmark_report.py export \
   --output /tmp/development-pilot-export
 ```
 
-raw USI log、attempt JSON、manifest、重み・モデル・絶対パスを含むレポートはruntime外へ出さない。attemptとreportには position type、canonical/regression selection、分類別coverage、engine別のpositive node evidenceと全structured nodeの `M` 分布（evidence/positive/zero/missing/invalid、p50/p95/p99/max、`>N`、`>C(N)`、最大overrun/rate）を保持する。`reported_nodes_at_score`、`last_reported_nodes`、`max_reported_nodes_evidence` は別フィールドである。`export` は空の出力ディレクトリ直下に4つのredacted public fileだけを書き、履歴・source game ID・ローカルパス・モデルパスをレビュー時に拒否する。quantileはソート済み有限M値の `(n-1)*p` 位置を線形補間する。supervisor、resume、cleanupの厳密な契約は従来どおり維持する。旧 v3 と `development-baseline-20260916` は改訂前semanticsのprior diagnosticであり、現行のformal evidenceではない。
+raw USI log、attempt JSON、manifest、重み・モデル・絶対パスを含むレポートはruntime外へ出さない。attemptとreportには position type、canonical/regression selection、分類別coverage、engine別のpositive node evidenceと全structured nodeの `M` 分布（evidence/positive/zero/missing/invalid、p50/p95/p99/max、`>N`、`>C(N)`、最大overrun/rate）を保持する。`reported_nodes_at_score`、`last_reported_nodes`、`max_reported_nodes_evidence` は別フィールドである。`export` は空の出力ディレクトリ直下に4つのredacted public fileだけを書き、履歴・source game ID・ローカルパス・モデルパスをレビュー時に拒否する。quantileはソート済み有限M値の `(n-1)*p` 位置を線形補間する。supervisor、resume、cleanupの厳密な契約は従来どおり維持する。旧 v3/v4 と `development-baseline-20260916` は改訂前semanticsのprior diagnosticであり、現行のformal evidenceではない。
 
 ## 使い始める
 

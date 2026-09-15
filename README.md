@@ -11,11 +11,12 @@
 Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) で初期環境を整備した。Issue [#3](https://github.com/phni3j9a/sekirei-weight2/issues/3) で主教師を水匠11βへ切り替え、生成済み教師データを監査している。
 
 - Sekirei と付属学習器、shogiesa、水匠11β用やねうら王V9.20のソースを commit 単位で固定。
-- ビルド・重み照合・USI疎通はPython標準ライブラリで実行。`.pack` の局面復号だけは専用venvに固定したcshogi / NumPyを使う。
+- ビルド・重み照合・USI疎通はPython標準ライブラリで実行。`.pack` の局面復号と外部CSAの合法手確認だけは専用venvに固定したcshogi / NumPyを使う。
 - β・100万ノードとして配布された `.pack` 15本を取り込み、同一内容の2本を除いた13本（534,175,084 bytes）をローカルで管理。ゲーム境界を保つストリーム復号と標本再解析が可能。
 - 実機で両エンジンの100万ノード指定探索と shogiesa の一局面ラベル生成を確認済み。[β環境と教師監査](docs/validation/suisho11beta-2026-09-15.md)。旧Plus環境の結果は[初期検証](docs/validation/environment-2026-09-14.md)に残す。
 - 10標本の固定V9.20再解析では、確定値6件のMAE 3.167 cp（最大11 cp）、境界値4件、保存指し手一致6件。互換性の小規模確認であり、元の生成環境との完全同一性の証明ではない。
-- 正式ベンチマークの棋譜選定、`.pack` から学習器への入力経路、本格学習、モデル採用判定、定期自動実行は次の段階。
+- 正式ベンチマーク用に、将棋クエストの公開棋譜から人間同士・平手・合法手・重複なしの1,000局をローカルへ固定し、その中から解析前に development 5局 / final 5局を選ぶ。
+- `.pack` から学習器への入力経路、本格学習、モデル採用判定、定期自動実行は次の段階。
 - Sekirei の今回の初期疎通は **駒得評価へのフォールバック**。学習済みモデルはまだない。
 
 ## 使い始める
@@ -35,6 +36,12 @@ python3 scripts/prepare.py import-corpus --archive '/absolute/path/to/kif2026073
 python3 scripts/smoke.py
 ~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
   scripts/audit_pack.py --samples 10
+~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
+  scripts/acquire_quest.py crawl
+~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
+  scripts/acquire_quest.py verify
+~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
+  scripts/acquire_quest.py snapshot
 ```
 
 `--runtime /absolute/path` で保存先を変更できる。既定は `~/.local/share/sekirei-weight2/suisho11beta-v1`。旧Plus環境を上書きせず、複数 worktree で固定したβ環境を共有する。実験でソース版・構造を変える場合は別 runtime を使う。
@@ -45,9 +52,13 @@ python3 scripts/smoke.py
 
 `audit_pack.py` は各固有ファイルから有限評価値を1局面ずつ選び、局面・履歴・手番を復元して固定教師で再解析する。元データに探索の境界種別はないため、再解析が upperbound / lowerbound の場合は点差を計算しない。また `go nodes` は上限であり、合法手を読み切るなどして上限前に完了した探索の実ノード数もそのまま記録する。
 
+`acquire_quest.py` は、現在公開されている第三者の棋譜検索画面から履歴とCSAを直列・既定2秒間隔で取得し、公式棋譜ページの `opp:human` 属性、一覧上のBot印、平手初期局面、cshogiによる全手再生を照合する。取得状態と応答cacheは `~/.local/share/sekirei-weight2/shogiquest-human-v1` に1局ごとに保存され、同じコマンドで再開できる。Webサービスの非公開通信を解析・利用しない。公開画面の仕様は変わり得るため、異常な応答では停止し、取得済みcacheを再利用する。
+
+`snapshot` は1,000局が揃った後、対局者の重複、手数、対局時レーティング差を制約し、固定hash順位だけで development 5局 / final 5局を選ぶ。CSA内の対局者名とレーティングは置換し、出典を追跡するため対局IDはmanifestに残す。最終評価用5局はモデルや閾値の選択には使わない。
+
 ## 次の到達点
 
-まず、生成済み `.pack` をゲーム単位で train / development に分割し、全量JSONL展開を避けた学習入力経路を作る。同時に 5〜10 棋譜程度の独立した比較用棋譜で現状の重ね合わせグラフを作り、時間・再現性・誤差を把握する。その後、CPUで小規模学習を一周通す。
+まず、固定した独立棋譜で現状の重ね合わせグラフを作り、時間・再現性・誤差を把握する。同時に、生成済み `.pack` をゲーム単位で train / development に分割し、全量JSONL展開を避けた学習入力経路を作る。その後、CPUで小規模学習を一周通す。
 
 主指標は棋譜ごとの MAE を棋譜間で平均する案。教師のみ詰み／候補のみ詰みなどで採点対象が候補依存に変わらない仕様を、正式な採用判定の前に確定する。
 

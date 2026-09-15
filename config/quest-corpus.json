@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "corpus_id": "shogiquest-human-v1",
+  "target_games": 1000,
+  "seed_users": [
+    ":shogi8bot",
+    ":shogi9bot"
+  ],
+  "game_types": [
+    "shogi10",
+    "shogi"
+  ],
+  "request_delay_seconds": 2.0,
+  "history_url": "https://www.c-loft.com/shogi/quest/history/",
+  "download_url": "https://www.c-loft.com/shogi/quest/history/download/",
+  "official_game_url": "https://kifu.questgames.net/shogi/games/{game_id}",
+  "terms_url": "https://d26termck8rp2x.cloudfront.net/static/questterms/term_ja.html",
+  "terms_checked_date": "2026-09-15",
+  "required_official_attribute": "opp:human",
+  "selection": {
+    "seed": "sekirei-weight2-shogiquest-benchmark-v1",
+    "min_plies": 60,
+    "max_plies": 160,
+    "min_rating": 1200,
+    "max_rating_gap": 500,
+    "buckets": [
+      {
+        "split": "development",
+        "game_type": "shogi10",
+        "count": 3
+      },
+      {
+        "split": "development",
+        "game_type": "shogi",
+        "count": 2
+      },
+      {
+        "split": "final",
+        "game_type": "shogi10",
+        "count": 2
+      },
+      {
+        "split": "final",
+        "game_type": "shogi",
+        "count": 3
+      }
+    ]
+  }
+}

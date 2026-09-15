@@ -18,6 +18,7 @@
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/data/teachers/suisho11beta-1m` | 内容ハッシュで重複除外した教師 `.pack` とmanifest |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/venv` | `.pack` 監査専用の固定Python環境 |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1/runs` | smoke・監査・今後の個別実験成果物 |
+| `~/.local/share/sekirei-weight2/shogiquest-human-v1` | 公開棋譜1,000局、取得cache、再開状態、ローカルmanifest |
 
 大規模資料を worktree にコピーしない。独立した研究実験では専用のソース・出力先を使い、共通 runtime を改造しない。`prepare.py` は排他ロック、`smoke.py` と `audit_pack.py` は共有ロックを取り、スクリプト同士のビルド／解析の競合を防ぐ。手動でのソース変更や直接ビルドは別途利用状況を確認する。
 
@@ -69,7 +70,7 @@ python3 scripts/prepare.py import-corpus --archive \
 
 それぞれのアーカイブ全体を固定SHA-256で照合し、記事で水匠11β・100万ノードと説明された `1000000a/` と `1000000b/` の `.pack` だけを標準出力経由で安全に抽出する。個々のファイルはSHA-256名で保存し、同じ内容を複数回保持しない。実機では収録15本のうち2本が重複し、13本、534,175,084 bytesになった。由来と重複関係はローカルの `manifest.json` に残る。
 
-`.pack` の復号には cshogi 1.0.4 / NumPy 1.26.4 を専用venvへ固定する。これはCPU用で、GPU環境は導入しない。
+`.pack` の復号と取得したCSAの合法手再生には cshogi 1.0.4 / NumPy 1.26.4 を専用venvへ固定する。これはCPU用で、GPU環境は導入しない。
 
 ```sh
 python3 scripts/prepare.py audit-deps

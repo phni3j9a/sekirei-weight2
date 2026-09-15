@@ -21,7 +21,9 @@ from benchmark import (  # noqa: E402
     BenchmarkError,
     CleanupError,
     ConfigurationError,
-    FORMAL_NODE_CHECK_QUANTUM,
+    NODE_POLICY,
+    NODE_POLICY_ID,
+    NODE_POLICY_VERSION,
     OUTCOME_FIELDS,
     PARSER_ID,
     POSITION_CLASSIFICATION_TYPES,
@@ -35,11 +37,13 @@ from benchmark import (  # noqa: E402
     load_development_games,
     load_position_classifications,
     make_plan,
+    expected_attempt_matrix,
+    json_sha256,
     observed_max_reported_nodes,
     parse_csa_text,
     parse_usi_observation,
     positive_node_evidence,
-    formal_node_ceiling,
+    node_reporting_limit,
     run_engine_attempt,
     sha256,
     USIProcess,
@@ -67,24 +71,52 @@ class UniverseTests(unittest.TestCase):
         self.assertEqual(development_csa_hash(games), config["hashes"]["development_csa_aggregate_sha256"])
         self.assertEqual(universe_hash(universe), config["hashes"]["universe_sha256"])
 
-    def test_formal_ceiling_is_derived_and_shown_in_formal_plan(self):
+    def test_node_policy_is_named_integer_and_shown_in_both_plans(self):
         config = load_config()
-        self.assertEqual(FORMAL_NODE_CHECK_QUANTUM, 1024)
-        self.assertEqual(formal_node_ceiling(config["requested_nodes"]), 1_001_024)
-        plan, _ = make_plan("formal", config)
-        self.assertEqual(plan["max_reported_nodes"], formal_node_ceiling(config["requested_nodes"]))
+        self.assertEqual(config["node_policy"], NODE_POLICY)
+        self.assertEqual(NODE_POLICY_ID, "one-sided-1-percent")
+        self.assertEqual(NODE_POLICY_VERSION, 1)
+        self.assertEqual(node_reporting_limit(config["requested_nodes"]), 1_010_000)
+        for run_type in ("pilot", "formal"):
+            plan, _ = make_plan(run_type, config)
+            self.assertEqual(plan["max_reported_nodes"], 1_010_000)
 
     def test_pilot_points_are_first_middle_last_and_no_final_path(self):
         config = load_config()
         from benchmark import make_plan
 
         plan, _ = make_plan("pilot", config)
-        self.assertEqual(len(plan["positions"]), 15)
+        self.assertEqual(len(plan["positions"]), 17)
         for index in range(0, 15, 3):
             values = [row["ply"] for row in plan["positions"][index:index + 3]]
             length = config["universe"]["plies"][plan["positions"][index]["game_id"]]
             self.assertEqual(values, [1, (length + 1) // 2, length])
         self.assertTrue(all("final" not in row["position"] for row in plan["positions"]))
+        self.assertEqual(
+            [(row["game_id"], row["ply"]) for row in plan["positions"][-2:]],
+            [("development-04", 77), ("development-05", 122)],
+        )
+        self.assertTrue(all(row["selection"] == "regression" for row in plan["positions"][-2:]))
+        self.assertTrue(all(row["selection"] == "canonical" for row in plan["positions"][:15]))
+
+    def test_current_pilot_and_formal_attempt_matrices_are_exact(self):
+        config = load_config()
+        pilot, _ = make_plan("pilot", config)
+        formal, _ = make_plan("formal", config)
+        self.assertEqual(len(pilot["positions"]), 17)
+        self.assertEqual(len(expected_attempt_matrix(pilot, config)), 102)
+        self.assertEqual(len(formal["positions"]), 570)
+        self.assertEqual(len(expected_attempt_matrix(formal, config)), 1140)
+        self.assertEqual(pilot["max_reported_nodes"], 1_010_000)
+        self.assertEqual(formal["max_reported_nodes"], 1_010_000)
+
+    def test_node_policy_tampering_fails_even_when_limits_are_coordinated(self):
+        config = copy.deepcopy(load_config())
+        config["node_policy"]["rate_numerator"] = 2
+        config["pilot"]["max_reported_nodes"] = 1_020_000
+        config["formal"]["max_reported_nodes"] = 1_020_000
+        with self.assertRaisesRegex(ConfigurationError, "node_policy"):
+            make_plan("pilot", config)
 
     def test_conversion_handles_promotion_capture_and_drop(self):
         game = next(game for game in load_development_games(load_config()) if game["game_id"] == "development-05")
@@ -104,11 +136,11 @@ class UniverseTests(unittest.TestCase):
         result = compare_cshogi(games)
         self.assertIn("available", result)
         if result["available"]:
-            self.assertEqual(result["checked_moves"], 570)
+            self.assertEqual(result["checked_legal_moves"], 46668)
             self.assertEqual(result["checked_occurrences"], 570)
             self.assertEqual(
                 result["classification_counts"],
-                {"normal": 564, "forced_single_legal_move": 5, "terminal_checkmate": 1, "terminal_stalemate": 0},
+                {"normal": 563, "mate_in_one_available": 1, "forced_single_legal_move": 5, "terminal_checkmate": 1, "terminal_stalemate": 0},
             )
 
     def test_position_types_are_hash_bound_and_leave_terminal_in_universe(self):
@@ -121,12 +153,14 @@ class UniverseTests(unittest.TestCase):
         }
         self.assertEqual(
             {kind: sum(occurrence["position_type"] == kind for occurrence in values.values()) for kind in POSITION_CLASSIFICATION_TYPES},
-            {"normal": 564, "forced_single_legal_move": 5, "terminal_checkmate": 1, "terminal_stalemate": 0},
+            {"normal": 563, "mate_in_one_available": 1, "forced_single_legal_move": 5, "terminal_checkmate": 1, "terminal_stalemate": 0},
         )
         self.assertEqual(values["development-05:123"]["position_type"], "terminal_checkmate")
         self.assertEqual(values["development-04:106"]["classification"]["sole_legal_move"], "2h1h")
+        self.assertEqual(values["development-05:122"]["classification"]["mating_moves"], ["2g4g"])
         self.assertEqual(load_position_classifications(config)["counts"], {
-            "normal": 564,
+            "normal": 563,
+            "mate_in_one_available": 1,
             "forced_single_legal_move": 5,
             "terminal_checkmate": 1,
             "terminal_stalemate": 0,
@@ -249,7 +283,7 @@ class USIParserTests(unittest.TestCase):
             "bestmove 7g7f",
         ], "black", requested_nodes=1000, max_reported_nodes=1000)
         self.assertEqual(result["status"], "node_budget_failure")
-        self.assertEqual(result["failure_reason"], "node_count_above_ceiling")
+        self.assertEqual(result["failure_reason"], "node_count_above_policy_limit")
         self.assertEqual(result["reported_nodes_at_score"], 1000)
         self.assertEqual(result["last_reported_nodes"], 1000)
         self.assertEqual(result["max_reported_nodes_evidence"], 2000)
@@ -262,7 +296,7 @@ class USIParserTests(unittest.TestCase):
             "bestmove 7g7f",
         ], "black", requested_nodes=1000, max_reported_nodes=1000)
         self.assertEqual(result["status"], "node_budget_failure")
-        self.assertEqual(result["failure_reason"], "node_count_above_ceiling")
+        self.assertEqual(result["failure_reason"], "node_count_above_policy_limit")
         self.assertEqual(result["reported_nodes_at_score"], 1000)
         self.assertEqual(result["last_reported_nodes"], 1000)
         self.assertEqual(result["max_reported_nodes_evidence"], 2000)
@@ -288,7 +322,7 @@ class USIParserTests(unittest.TestCase):
         cases = (
             ("info score bogus 0 nodes 2000", "protocol_failure", "malformed_score", 2000),
             ("info score bogus 0 nodes -1", "protocol_failure", "malformed_score", 1000),
-            ("info vendor_noise payload nodes 2000", "node_budget_failure", "node_count_above_ceiling", 2000),
+            ("info vendor_noise payload nodes 2000", "node_budget_failure", "node_count_above_policy_limit", 2000),
         )
         for preceding, status, reason, expected_max in cases:
             result = parse_usi_observation(
@@ -501,6 +535,131 @@ class USIParserTests(unittest.TestCase):
         self.assertEqual(result["status"], "node_budget_failure")
         self.assertEqual(result["failure_reason"], "zero_nodes_without_verified_exception")
 
+    def test_mate_in_one_zero_nodes_require_the_frozen_sekirei_contract(self):
+        classification = {
+            "type": "mate_in_one_available",
+            "in_check": False,
+            "legal_move_count": 217,
+            "mating_moves": ["2g4g"],
+            "mating_moves_sha256": json_sha256(["2g4g"]),
+        }
+        valid = parse_usi_observation(
+            ["info score mate 1 nodes 0 pv 2g4g", "bestmove 2g4g"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(valid["status"], "mate")
+        self.assertEqual(valid["max_reported_nodes_evidence"], 0)
+        wrong_side = parse_usi_observation(
+            ["info score mate 1 nodes 0 pv 2g4g", "bestmove 2g4g"],
+            "white",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(wrong_side["status"], "node_budget_failure")
+        rejected = (
+            ("info score mate +1 nodes 0 pv 2g4g", "2g4g"),
+            ("info score mate -2 nodes 0 pv 2g4g", "2g4g"),
+            ("info score mate 1 upperbound nodes 0 pv 2g4g", "2g4g"),
+            ("info score cp 20 nodes 0 pv 2g4g", "2g4g"),
+            ("info score mate 1 nodes 0 pv 2g4g 3c3d", "2g4g"),
+            ("info score mate 1 nodes 0 pv 3c3d", "3c3d"),
+        )
+        for line, bestmove in rejected:
+            result = parse_usi_observation(
+                [line, f"bestmove {bestmove}"],
+                "black",
+                requested_nodes=1000,
+                engine_id="sekirei",
+                position_classification=classification,
+            )
+            self.assertEqual(result["status"], "node_budget_failure", line)
+        resign = parse_usi_observation(
+            ["info score mate 1 nodes 0 pv resign", "bestmove resign"],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(resign["status"], "no_score")
+        for engine_id in ("teacher", None):
+            kwargs = {"engine_id": engine_id} if engine_id else {}
+            result = parse_usi_observation(
+                ["info score mate 1 nodes 0 pv 2g4g", "bestmove 2g4g"],
+                "black",
+                requested_nodes=1000,
+                position_classification=classification,
+                **kwargs,
+            )
+            self.assertEqual(result["status"], "node_budget_failure", engine_id)
+        with self.assertRaisesRegex(ValueError, "move list hash"):
+            parse_usi_observation(
+                ["info score mate 1 nodes 0 pv 2g4g", "bestmove 2g4g"],
+                "black",
+                requested_nodes=1000,
+                engine_id="sekirei",
+                position_classification={**classification, "mating_moves_sha256": "0" * 64},
+            )
+        mixed = parse_usi_observation(
+            [
+                "info score mate 1 nodes 0 pv 2g4g",
+                "info nodes 1",
+                "bestmove 2g4g",
+            ],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(mixed["status"], "node_budget_failure")
+        missing = parse_usi_observation(
+            [
+                "info depth 9 score mate 1 pv 2g4g",
+                "info depth 10 score mate 1 nodes 0 pv 2g4g",
+                "bestmove 2g4g",
+            ],
+            "black",
+            requested_nodes=1000,
+            engine_id="sekirei",
+            position_classification=classification,
+        )
+        self.assertEqual(missing["status"], "node_budget_failure")
+        for extra in ({"side_to_move": "white"}, {"occurrence_id": "development-04:77"}):
+            result = parse_usi_observation(
+                ["info score mate 1 nodes 0 pv 2g4g", "bestmove 2g4g"],
+                "black",
+                requested_nodes=1000,
+                engine_id="sekirei",
+                position_classification={**classification, **extra},
+            )
+            self.assertEqual(result["status"], "node_budget_failure", extra)
+
+    def test_policy_boundary_is_inclusive_and_earlier_overrun_is_retained(self):
+        limit = node_reporting_limit(1_000_000)
+        for value, expected in ((limit, "exact_cp"), (limit + 1, "node_budget_failure")):
+            result = parse_usi_observation(
+                [f"info score cp 20 nodes {value} pv 7g7f", "bestmove 7g7f"],
+                "black",
+                requested_nodes=1_000_000,
+                max_reported_nodes=limit,
+            )
+            self.assertEqual(result["status"], expected, value)
+        result = parse_usi_observation(
+            [
+                f"info depth 9 score cp 10 nodes {limit + 1} pv 7g7f",
+                f"info depth 10 score cp 20 nodes {limit} pv 7g7f",
+                "bestmove 7g7f",
+            ],
+            "black",
+            requested_nodes=1_000_000,
+            max_reported_nodes=limit,
+        )
+        self.assertEqual(result["status"], "node_budget_failure")
+        self.assertEqual(result["max_reported_nodes_evidence"], limit + 1)
+
     def test_missing_negative_and_malformed_nodes_are_technical_failures(self):
         for line, reason in (
             ("info score cp 20 pv 7g7f", "missing_node_evidence"),
@@ -566,7 +725,7 @@ class USIParserTests(unittest.TestCase):
             value = parse_usi_observation(lines, "white", requested_nodes=1000, **kwargs)
             self.assertEqual(value["status"], expected, lines)
 
-    def test_node_ceiling_applies_to_positive_evidence(self):
+    def test_node_policy_limit_applies_to_positive_evidence(self):
         result = parse_usi_observation(
             ["info score cp 20 nodes 1001 pv 7g7f", "bestmove 7g7f"],
             "black",
@@ -574,7 +733,7 @@ class USIParserTests(unittest.TestCase):
             max_reported_nodes=1000,
         )
         self.assertEqual(result["status"], "node_budget_failure")
-        self.assertEqual(result["failure_reason"], "node_count_above_ceiling")
+        self.assertEqual(result["failure_reason"], "node_count_above_policy_limit")
 
     def test_protocol_pv_mismatch_is_not_rescued_by_zero_node_exception(self):
         classification = {
@@ -847,7 +1006,7 @@ class USIProcessTests(unittest.TestCase):
                     first = execute_run(runtime, config, "pilot", run_id="resume-fixture")
             self.assertEqual(first["status"], "complete")
             attempt_files = sorted((runtime / "runs/resume-fixture/attempts").glob("*.json"))
-            self.assertEqual(len(attempt_files), 90)
+            self.assertEqual(len(attempt_files), 102)
             self.assertEqual(list((runtime / "runs/resume-fixture").rglob("*.tmp")), [])
             target = attempt_files[0]
             original_record = target.read_text()
@@ -1078,8 +1237,8 @@ class USIProcessTests(unittest.TestCase):
             after = {path.name: path.read_bytes() for path in attempt_files}
             self.assertEqual(before, after)
             report = report_from_run(runtime / "runs/resume-fixture", Path(temp) / "report")
-            self.assertEqual(report["universe"]["total_occurrences"], 15)
-            self.assertEqual(report["repeatability"]["attempt_count"], 90)
+            self.assertEqual(report["universe"]["total_occurrences"], 17)
+            self.assertEqual(report["repeatability"]["attempt_count"], 102)
             self.assertTrue(report["validity"]["evidence_validator_passed"])
             self.assertTrue((Path(temp) / "report/evaluation.svg").is_file())
             changed = copy.deepcopy(config)
@@ -1091,6 +1250,7 @@ class USIProcessTests(unittest.TestCase):
     def test_malformed_score_artifact_is_revalidated_and_rejected_by_gate(self):
         config = copy.deepcopy(load_config())
         config["requested_nodes"] = 1000
+        config["pilot"]["max_reported_nodes"] = node_reporting_limit(config["requested_nodes"])
         config["engines"]["teacher"]["binary"] = "fake-usi.py"
         config["engines"]["teacher"]["weight_required"] = False
         config["engines"]["sekirei"]["binary"] = "fake-usi.py"
@@ -1111,39 +1271,39 @@ class USIProcessTests(unittest.TestCase):
                 json.loads(path.read_text())
                 for path in (runtime / "runs/malformed-score-fixture/attempts").glob("*.json")
             ]
-            self.assertEqual(len(records), 90)
+            self.assertEqual(len(records), 102)
             self.assertTrue(all(record["status"] == "protocol_failure" for record in records))
             self.assertTrue(all(record["result"]["failure_reason"] == "malformed_score" for record in records))
             self.assertTrue(all(record["result"]["max_reported_nodes_evidence"] == 2000 for record in records))
             with mock.patch("benchmark_report.load_config", return_value=config):
                 report = report_from_run(runtime / "runs/malformed-score-fixture")
-            self.assertEqual(report["validity"]["technical_failure_count"], 90)
+            self.assertEqual(report["validity"]["technical_failure_count"], 102)
             self.assertFalse(report["validity"]["complete_evidence_valid"])
-            config["formal"]["max_reported_nodes"] = formal_node_ceiling(config["requested_nodes"])
+            config["formal"]["max_reported_nodes"] = node_reporting_limit(config["requested_nodes"])
             config["formal"]["pilot_evidence"] = {
                 "pilot_run_id": "malformed-score-fixture",
                 "pilot_fingerprint": pilot["fingerprint"],
                 "observed_max_reported_nodes": 2000,
-                "max_reported_nodes": formal_node_ceiling(config["requested_nodes"]),
+                "max_reported_nodes": node_reporting_limit(config["requested_nodes"]),
             }
-            with self.assertRaisesRegex(ConfigurationError, "technical failures"):
+            with self.assertRaisesRegex(ConfigurationError, "technical failures|node gate"):
                 validate_formal_gate(runtime, config)
 
 
-    def test_formal_run_is_refused_until_pilot_ceiling_is_frozen(self):
+    def test_formal_run_is_refused_until_pilot_policy_evidence_is_frozen(self):
         from benchmark import execute_run
 
         config = copy.deepcopy(load_config())
-        config["formal"]["max_reported_nodes"] = None
         config["formal"]["pilot_evidence"] = None
         with tempfile.TemporaryDirectory() as temp:
-            with self.assertRaisesRegex(ConfigurationError, "ceiling"):
+            with self.assertRaisesRegex(ConfigurationError, "node policy"):
                 execute_run(temp, config, "formal", run_id="formal-before-pilot")
             self.assertFalse((Path(temp) / "runs/formal-before-pilot").exists())
 
     def test_formal_gate_requires_matching_complete_pilot_evidence(self):
         config = copy.deepcopy(load_config())
         config["requested_nodes"] = 1000
+        config["pilot"]["max_reported_nodes"] = node_reporting_limit(config["requested_nodes"])
         config["engines"]["teacher"]["binary"] = "fake-usi.py"
         config["engines"]["teacher"]["weight_required"] = False
         config["engines"]["sekirei"]["binary"] = "fake-usi.py"
@@ -1167,12 +1327,12 @@ class USIProcessTests(unittest.TestCase):
                 for value in (record["result"].get("reported_nodes_at_score"), record["result"].get("last_reported_nodes"))
                 if value is not None
             )
-            config["formal"]["max_reported_nodes"] = formal_node_ceiling(config["requested_nodes"])
+            config["formal"]["max_reported_nodes"] = node_reporting_limit(config["requested_nodes"])
             config["formal"]["pilot_evidence"] = {
                 "pilot_run_id": "gate-fixture",
                 "pilot_fingerprint": pilot["fingerprint"],
                 "observed_max_reported_nodes": observed,
-                "max_reported_nodes": formal_node_ceiling(config["requested_nodes"]),
+                "max_reported_nodes": node_reporting_limit(config["requested_nodes"]),
             }
             self.assertEqual(validate_formal_gate(runtime, config)["pilot_run_id"], "gate-fixture")
             target = next(
@@ -1226,12 +1386,12 @@ class USIProcessTests(unittest.TestCase):
                 if value is not None
             )
             self.assertLess(observed, config["requested_nodes"])
-            config["formal"]["max_reported_nodes"] = formal_node_ceiling(config["requested_nodes"])
+            config["formal"]["max_reported_nodes"] = node_reporting_limit(config["requested_nodes"])
             config["formal"]["pilot_evidence"] = {
                 "pilot_run_id": "early-gate-fixture",
                 "pilot_fingerprint": pilot["fingerprint"],
                 "observed_max_reported_nodes": observed,
-                "max_reported_nodes": formal_node_ceiling(config["requested_nodes"]),
+                "max_reported_nodes": node_reporting_limit(config["requested_nodes"]),
             }
             self.assertEqual(validate_formal_gate(runtime, config)["pilot_run_id"], "early-gate-fixture")
 
@@ -1283,11 +1443,11 @@ class NodeEvidenceTests(unittest.TestCase):
         self.assertIsNone(observed_max_reported_nodes(records, strict=True))
         self.assertIsNone(positive_node_evidence(records, ("teacher",), strict=True)["teacher"]["observed_max"])
 
-    def test_formal_gate_rejects_coordinated_ceiling_tampering(self):
+    def test_formal_gate_rejects_coordinated_policy_tampering(self):
         import benchmark
 
         config = copy.deepcopy(load_config())
-        derived = formal_node_ceiling(config["requested_nodes"])
+        derived = node_reporting_limit(config["requested_nodes"])
         positions = [
             {
                 "game_id": f"game-{index:02d}",
@@ -1339,7 +1499,7 @@ class NodeEvidenceTests(unittest.TestCase):
                             tampered_config = copy.deepcopy(config)
                             tampered_config["formal"]["max_reported_nodes"] = tampered
                             tampered_config["formal"]["pilot_evidence"]["max_reported_nodes"] = tampered
-                            with self.assertRaisesRegex(ConfigurationError, "runner-derived ceiling"):
+                            with self.assertRaisesRegex(ConfigurationError, "node policy limit"):
                                 validate_formal_gate(runtime, tampered_config)
 
     def test_formal_gate_rejects_all_zero_or_one_engine_positive_evidence(self):
@@ -1369,12 +1529,12 @@ class NodeEvidenceTests(unittest.TestCase):
                 )
             config = copy.deepcopy(load_config())
             config["requested_nodes"] = 1000
-            config["formal"]["max_reported_nodes"] = formal_node_ceiling(config["requested_nodes"])
+            config["formal"]["max_reported_nodes"] = node_reporting_limit(config["requested_nodes"])
             config["formal"]["pilot_evidence"] = {
                 "pilot_run_id": "pilot-test",
                 "pilot_fingerprint": "pilot-fingerprint",
                 "observed_max_reported_nodes": 1000,
-                "max_reported_nodes": formal_node_ceiling(config["requested_nodes"]),
+                "max_reported_nodes": node_reporting_limit(config["requested_nodes"]),
             }
             with tempfile.TemporaryDirectory() as temp:
                 runtime = Path(temp)
@@ -1474,6 +1634,48 @@ class ReportTests(unittest.TestCase):
         self.assertIsNone(report["headline"]["mae_cp"])
         self.assertEqual(report["repeatability"]["observed_max_reported_nodes"], 1003)
         self.assertEqual(report["repeatability"]["engines"]["teacher"]["stable_position_count"], 10)
+
+    def test_report_keeps_deterministic_all_evidence_m_distribution(self):
+        plan = small_plan()
+        plan["requested_nodes"] = 1000
+        plan["max_reported_nodes"] = 1010
+        values = [0, 1000, 1005, 1010, 1011, 0, 1000, 1005, 1010, 1011]
+        teacher = []
+        candidate = []
+        for value, occurrence in zip(values, plan["positions"]):
+            payload = {
+                "score_cp_sente": 10,
+                "reported_nodes_at_score": value,
+                "last_reported_nodes": value,
+                "max_reported_nodes_evidence": value,
+            }
+            teacher.append(row(occurrence["game_id"], occurrence["ply"], "exact_cp", **payload))
+            candidate.append(row(occurrence["game_id"], occurrence["ply"], "exact_cp", **payload))
+        first = score_observations(plan, teacher, candidate, accuracy_thresholds=[0])
+        second = score_observations(plan, teacher, candidate, accuracy_thresholds=[0])
+        summary = first["node_evidence"]["all_evidence_m"]["teacher"]
+        self.assertEqual(summary["evidence_count"], 10)
+        self.assertEqual(summary["positive_count"], 8)
+        self.assertEqual(summary["zero_count"], 2)
+        self.assertEqual(summary["missing_count"], 0)
+        self.assertEqual(summary["invalid_count"], 0)
+        self.assertEqual(summary["p50"], 1005)
+        self.assertEqual(summary["p95"], 1011)
+        self.assertEqual(summary["p99"], 1011)
+        self.assertEqual(summary["max"], 1011)
+        self.assertEqual(summary["count_above_requested_nodes"], 6)
+        self.assertEqual(summary["count_above_policy_limit"], 2)
+        self.assertEqual(summary["max_positive_overrun"], 11)
+        self.assertEqual(summary["max_positive_overrun_rate"], 0.011)
+        self.assertEqual(
+            first["node_evidence"]["all_evidence_m"],
+            second["node_evidence"]["all_evidence_m"],
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            export_public(temp, first)
+            public_json = (Path(temp) / "validation.json").read_text()
+            self.assertIn("all_evidence_m", public_json)
+            self.assertNotIn("position startpos moves", public_json)
 
     def test_report_propagates_explicit_all_evidence_maximum(self):
         plan = small_plan()

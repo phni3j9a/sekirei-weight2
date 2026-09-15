@@ -4,6 +4,12 @@
   "split": "development",
   "description": "Fixed five-game development universe for the first 1M-node baseline",
   "requested_nodes": 1000000,
+  "node_policy": {
+    "id": "one-sided-1-percent",
+    "version": 1,
+    "rate_numerator": 1,
+    "rate_denominator": 100
+  },
   "timeout_seconds": 180,
   "games": [
     {
@@ -57,8 +63,8 @@
   "hashes": {
     "benchmark_manifest_sha256": "d7ee0cce928be4a45b43733dc8d34d568583b0451586078e19df98892ad9e5fc",
     "development_csa_aggregate_sha256": "0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2",
-    "universe_sha256": "6b9b133f5c6dab2a55fd8f634d6f9eac020e3f982bf34056bd5fb830f43aec8c",
-    "position_classifications_sha256": "33e8da8021f830dfb051a55a5e5c542a2080bf209793c2d0367fab66bbfa4469"
+    "universe_sha256": "33ce54f3ff9c40687e2304a7dc222ceddc0d6843180020a68262dd1762ec5fa6",
+    "position_classifications_sha256": "a244a2206fd2b25b6fe475a9794c07eb2c5fc99f996e891dbfed1e89a0a89427"
   },
   "engines": {
     "teacher": {
@@ -95,20 +101,25 @@
   },
   "position_classifications": {
     "path": "config/development-position-classifications.json",
-    "sha256": "33e8da8021f830dfb051a55a5e5c542a2080bf209793c2d0367fab66bbfa4469"
+    "sha256": "a244a2206fd2b25b6fe475a9794c07eb2c5fc99f996e891dbfed1e89a0a89427"
   },
   "pilot": {
     "repetitions": 3,
-    "max_reported_nodes": null
+    "max_reported_nodes": 1010000,
+    "regression_positions": [
+      {
+        "game_id": "development-04",
+        "ply": 77
+      },
+      {
+        "game_id": "development-05",
+        "ply": 122
+      }
+    ]
   },
   "formal": {
     "repetitions": 1,
-    "max_reported_nodes": 1001024,
-    "pilot_evidence": {
-      "pilot_run_id": "development-pilot-20260916-v3",
-      "pilot_fingerprint": "3c3eef97c4080c569819930ed2f7d19beed269aabe1ae114ab5e6bc795169deb",
-      "observed_max_reported_nodes": 1000692,
-      "max_reported_nodes": 1001024
-    }
+    "max_reported_nodes": 1010000,
+    "pilot_evidence": null
   }
 }

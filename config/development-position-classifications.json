@@ -1,14 +1,14 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "benchmark_id": "shogiquest-benchmark-v1",
   "split": "development",
   "description": "cshogi 1.0.4 classification exceptions for the fixed development occurrence universe",
   "verifier": {
     "name": "cshogi",
     "version": "1.0.4",
-    "algorithm": "legal_moves_and_side_to_move_check",
+    "algorithm": "legal_moves_side_to_move_check_and_mate_in_one",
     "checked_occurrences": 570,
-    "checked_moves": 570
+    "checked_legal_moves": 46668
   },
   "binding": {
     "benchmark_manifest_sha256": "d7ee0cce928be4a45b43733dc8d34d568583b0451586078e19df98892ad9e5fc",
@@ -43,7 +43,8 @@
     }
   },
   "classification_counts": {
-    "normal": 564,
+    "normal": 563,
+    "mate_in_one_available": 1,
     "forced_single_legal_move": 5,
     "terminal_checkmate": 1,
     "terminal_stalemate": 0
@@ -108,6 +109,21 @@
       "sole_legal_move": "3g4f",
       "history_sha256": "e61536062c0c81141ac20c8094b692e08bffc313e3a892103a8baeb6e86a42c7",
       "position_sha256": "2e1b3321aeaa95c980a2f145a3b92dc9f645c46e157a3fb9f00a7a96ab1f22f1"
+    },
+    {
+      "occurrence_id": "development-05:122",
+      "game_id": "development-05",
+      "ply": 122,
+      "type": "mate_in_one_available",
+      "side_to_move": "black",
+      "in_check": false,
+      "legal_move_count": 217,
+      "mating_moves": [
+        "2g4g"
+      ],
+      "mating_moves_sha256": "80ac2c28666e255ffce00c7ff897fcfc80a05dd7d4d61a0e3b0b3f5934df4906",
+      "history_sha256": "118a03e10342a2dc9e0b2dca8c20006becc8c30647d0e955453ab34f00fc5dfa",
+      "position_sha256": "f1927574936a1e929a15f7d3a05fe27a1d925d8b22595a79969298448b247084"
     },
     {
       "occurrence_id": "development-05:123",

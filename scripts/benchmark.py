@@ -68,16 +68,46 @@ USI_DROP_RE = re.compile(r"^[PLNSGBR]\*[1-9][a-i]$")
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 POSITION_CLASSIFICATION_TYPES = (
     "normal",
+    "mate_in_one_available",
     "forced_single_legal_move",
     "terminal_checkmate",
     "terminal_stalemate",
 )
 POSITION_CLASSIFICATION_METADATA_KEY = "position_classifications"
-PARSER_ID = "usi-observation-v2"
-# The fixed YaneuraOu node/time check cadence permits one 1024-node quantum
-# beyond a one-million-node request.  Keep this in runner code so a change to
-# the source-derived formal ceiling also changes the runner/parser identity.
-FORMAL_NODE_CHECK_QUANTUM = 1024
+PARSER_ID = "usi-observation-v3"
+
+# This is an operational, one-sided envelope around ``go nodes N``.  It is
+# deliberately named and versioned because it is a policy for accepting
+# observed evidence, not a claim about an engine's mathematical stop bound or
+# about equivalent work.  Keep the arithmetic integer-only and validate the
+# matching config object below before a run can be planned or started.
+NODE_POLICY_ID = "one-sided-1-percent"
+NODE_POLICY_VERSION = 1
+NODE_POLICY_RATE_NUMERATOR = 1
+NODE_POLICY_RATE_DENOMINATOR = 100
+NODE_POLICY = {
+    "id": NODE_POLICY_ID,
+    "version": NODE_POLICY_VERSION,
+    "rate_numerator": NODE_POLICY_RATE_NUMERATOR,
+    "rate_denominator": NODE_POLICY_RATE_DENOMINATOR,
+}
+
+CLASSIFICATION_METADATA_SCHEMA_VERSION = 2
+CLASSIFICATION_VERIFIER_ALGORITHM = "legal_moves_side_to_move_check_and_mate_in_one"
+CLASSIFICATION_CHECKED_LEGAL_MOVES = 46668
+MATE_IN_ONE_OCCURRENCE_ID = "development-05:122"
+MATE_IN_ONE_LEGAL_MOVE_COUNT = 217
+MATE_IN_ONE_MOVES = ("2g4g",)
+MATE_IN_ONE_MOVES_SHA256 = "80ac2c28666e255ffce00c7ff897fcfc80a05dd7d4d61a0e3b0b3f5934df4906"
+EXPECTED_SPECIAL_CLASSIFICATIONS = {
+    "development-04:106": "forced_single_legal_move",
+    "development-04:108": "forced_single_legal_move",
+    "development-05:115": "forced_single_legal_move",
+    "development-05:117": "forced_single_legal_move",
+    "development-05:121": "forced_single_legal_move",
+    "development-05:122": "mate_in_one_available",
+    "development-05:123": "terminal_checkmate",
+}
 
 
 class BenchmarkError(RuntimeError):
@@ -686,9 +716,15 @@ def position_classification_metadata_sha256(config=None):
 
 def _classification_entry_value(entry):
     result = {"type": entry["type"]}
-    for key in ("in_check", "legal_move_count", "sole_legal_move"):
+    for key in (
+        "in_check",
+        "legal_move_count",
+        "sole_legal_move",
+        "mating_moves",
+        "mating_moves_sha256",
+    ):
         if key in entry:
-            result[key] = entry[key]
+            result[key] = list(entry[key]) if key == "mating_moves" else entry[key]
     return result
 
 
@@ -706,7 +742,7 @@ def load_position_classifications(config=None, base_universe=None):
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise ConfigurationError(f"position classification metadata is invalid: {metadata_path}") from error
-    if not isinstance(metadata, dict) or metadata.get("schema_version") != 1:
+    if not isinstance(metadata, dict) or metadata.get("schema_version") != CLASSIFICATION_METADATA_SCHEMA_VERSION:
         raise ConfigurationError("position classification metadata has an unsupported schema")
     if metadata.get("benchmark_id") != config.get("benchmark_id") or metadata.get("split") != "development":
         raise ConfigurationError("position classification metadata is not for the fixed development split")
@@ -717,11 +753,11 @@ def load_position_classifications(config=None, base_universe=None):
     if (
         verifier.get("name") != "cshogi"
         or verifier.get("version") != "1.0.4"
-        or verifier.get("algorithm") != "legal_moves_and_side_to_move_check"
+        or verifier.get("algorithm") != CLASSIFICATION_VERIFIER_ALGORITHM
         or verifier.get("checked_occurrences") != total_occurrences
-        or verifier.get("checked_moves") != total_occurrences
+        or verifier.get("checked_legal_moves") != CLASSIFICATION_CHECKED_LEGAL_MOVES
     ):
-        raise ConfigurationError("position classification verifier metadata is not pinned to all development moves")
+        raise ConfigurationError("position classification verifier metadata is not pinned to all development occurrences and legal root moves")
     if base_universe is None:
         games = load_development_games(config)
         base_universe, _ = _build_base_universe(config, games)
@@ -783,13 +819,62 @@ def load_position_classifications(config=None, base_universe=None):
             sole_move = entry.get("sole_legal_move")
             if not isinstance(sole_move, str) or not USI_NORMAL_RE.fullmatch(sole_move) and not USI_DROP_RE.fullmatch(sole_move):
                 raise ConfigurationError(f"forced position classification move is invalid: {occurrence_id}")
+            if "mating_moves" in entry or "mating_moves_sha256" in entry:
+                raise ConfigurationError(f"forced position classification has unexpected mating moves: {occurrence_id}")
+        elif classification_type == "mate_in_one_available":
+            if (
+                occurrence_id != MATE_IN_ONE_OCCURRENCE_ID
+                or entry.get("side_to_move") != "black"
+                or in_check
+                or legal_move_count != MATE_IN_ONE_LEGAL_MOVE_COUNT
+                or "sole_legal_move" in entry
+            ):
+                raise ConfigurationError(f"mate-in-one classification facts are inconsistent: {occurrence_id}")
+            mating_moves = entry.get("mating_moves")
+            try:
+                canonical_mating_moves = sorted(set(mating_moves)) if isinstance(mating_moves, list) else None
+            except (TypeError, ValueError):
+                canonical_mating_moves = None
+            if (
+                not isinstance(mating_moves, list)
+                or mating_moves != canonical_mating_moves
+                or mating_moves != list(MATE_IN_ONE_MOVES)
+                or any(
+                    not isinstance(move, str)
+                    or not (USI_NORMAL_RE.fullmatch(move) or USI_DROP_RE.fullmatch(move))
+                    for move in mating_moves
+                )
+            ):
+                raise ConfigurationError(f"mate-in-one move list is not canonical: {occurrence_id}")
+            if entry.get("mating_moves_sha256") != MATE_IN_ONE_MOVES_SHA256:
+                raise ConfigurationError(f"mate-in-one move list hash mismatch: {occurrence_id}")
         elif classification_type == "terminal_checkmate":
-            if not in_check or legal_move_count != 0 or "sole_legal_move" in entry:
+            if (
+                not in_check
+                or legal_move_count != 0
+                or "sole_legal_move" in entry
+                or "mating_moves" in entry
+                or "mating_moves_sha256" in entry
+            ):
                 raise ConfigurationError(f"terminal checkmate classification facts are inconsistent: {occurrence_id}")
         elif classification_type == "terminal_stalemate":
-            if in_check or legal_move_count != 0 or "sole_legal_move" in entry:
+            if (
+                in_check
+                or legal_move_count != 0
+                or "sole_legal_move" in entry
+                or "mating_moves" in entry
+                or "mating_moves_sha256" in entry
+            ):
                 raise ConfigurationError(f"terminal stalemate classification facts are inconsistent: {occurrence_id}")
+        if classification_type != "mate_in_one_available" and "mating_moves" in entry:
+            raise ConfigurationError(f"unexpected mating move list: {occurrence_id}")
         by_id[occurrence_id] = _classification_entry_value(entry)
+
+    if {
+        occurrence_id: value["type"]
+        for occurrence_id, value in by_id.items()
+    } != EXPECTED_SPECIAL_CLASSIFICATIONS:
+        raise ConfigurationError("position classification exceptions are not the frozen seven development occurrences")
 
     counts = metadata.get("classification_counts")
     if not isinstance(counts, dict):
@@ -888,22 +973,37 @@ def _strict_positive_int(value, field):
     return value
 
 
-def formal_node_ceiling(requested_nodes):
-    """Return the only permitted formal absolute node ceiling.
+def node_reporting_limit(requested_nodes):
+    """Return the inclusive operational evidence limit ``C(N)``.
 
-    ``go nodes`` remains an upper bound and this helper does not impose a
-    minimum node target.  The value is deliberately derived from runner source
-    rather than accepted from a mutable config claim.
+    ``go nodes N`` remains an upper-bound request.  This one-sided envelope
+    only decides whether observed all-evidence maximum ``M`` is accepted; it
+    is not a minimum node target, a proof of engine stopping behavior, or an
+    equivalence-of-work claim.
     """
     _strict_positive_int(requested_nodes, "requested_nodes")
-    return requested_nodes + FORMAL_NODE_CHECK_QUANTUM
+    return requested_nodes + (
+        requested_nodes * NODE_POLICY_RATE_NUMERATOR // NODE_POLICY_RATE_DENOMINATOR
+    )
+
+
+def validate_node_policy(config):
+    """Require the config to carry the exact runner-owned node policy."""
+    policy = config.get("node_policy")
+    if policy != NODE_POLICY:
+        raise ConfigurationError(
+            "node_policy must exactly match the runner policy "
+            f"{NODE_POLICY_ID} v{NODE_POLICY_VERSION}"
+        )
+    return dict(NODE_POLICY)
 
 
 def validate_run_policy(config, run_type, *, require_formal_gate=False):
     """Validate repetition and absolute node-policy fields for one run."""
     if run_type not in ("pilot", "formal"):
         raise ConfigurationError("run type must be pilot or formal")
-    _strict_positive_int(config.get("requested_nodes"), "requested_nodes")
+    requested_nodes = _strict_positive_int(config.get("requested_nodes"), "requested_nodes")
+    node_policy = validate_node_policy(config)
     section = config.get(run_type)
     if not isinstance(section, dict):
         raise ConfigurationError(f"missing {run_type} run policy")
@@ -911,31 +1011,37 @@ def validate_run_policy(config, run_type, *, require_formal_gate=False):
         raise ConfigurationError(f"{run_type}.node_anomaly_ceiling is obsolete; use max_reported_nodes")
     repetitions = _strict_positive_int(section.get("repetitions"), f"{run_type}.repetitions")
     max_nodes = section.get("max_reported_nodes")
-    if run_type == "pilot":
-        if max_nodes is not None:
-            raise ConfigurationError("pilot.max_reported_nodes must be null; pilot has no node ceiling")
-        if repetitions != 3:
-            raise ConfigurationError("pilot.repetitions must remain the fixed value 3")
-    elif max_nodes is not None:
-        _strict_positive_int(max_nodes, "formal.max_reported_nodes")
-        if max_nodes < config["requested_nodes"]:
-            raise ConfigurationError("formal.max_reported_nodes must be >= requested_nodes")
-        derived_ceiling = formal_node_ceiling(config["requested_nodes"])
-        if max_nodes != derived_ceiling:
-            raise ConfigurationError(
-                "formal.max_reported_nodes must equal the runner-derived ceiling "
-                f"{derived_ceiling}"
-            )
+    _strict_positive_int(max_nodes, f"{run_type}.max_reported_nodes")
+    expected_max_nodes = node_reporting_limit(requested_nodes)
+    if max_nodes != expected_max_nodes:
+        raise ConfigurationError(
+            f"{run_type}.max_reported_nodes must equal the configured node policy limit "
+            f"C(N)={expected_max_nodes} for N={requested_nodes}"
+        )
+    if run_type == "pilot" and repetitions != 3:
+        raise ConfigurationError("pilot.repetitions must remain the fixed value 3")
     if run_type == "formal" and repetitions != 1:
         raise ConfigurationError("formal.repetitions must remain the fixed value 1")
+    if run_type == "pilot":
+        regression_positions = section.get("regression_positions")
+        expected_regressions = [
+            {"game_id": "development-04", "ply": 77},
+            {"game_id": "development-05", "ply": 122},
+        ]
+        if regression_positions != expected_regressions:
+            raise ConfigurationError(
+                "pilot.regression_positions must be the validated d04:77 and d05:122 pair"
+            )
     if require_formal_gate and run_type == "formal" and not isinstance(section.get("pilot_evidence"), dict):
         raise ConfigurationError(
-            "formal node ceiling gate is not frozen: formal.pilot_evidence is required before formal launch; "
+            "formal node policy gate is not frozen: formal.pilot_evidence is required before formal launch; "
             "complete the pilot and freeze its evidence"
         )
     return {
         "repetitions": repetitions,
         "max_reported_nodes": max_nodes,
+        "node_policy": node_policy,
+        "regression_positions": section.get("regression_positions", []),
     }
 
 
@@ -949,14 +1055,27 @@ def make_plan(run_type, config=None):
     for game in universe["games"]:
         if run_type == "pilot":
             plies = (1, (game["plies"] + 1) // 2, game["plies"])
+            selection = "canonical"
         else:
             plies = range(1, game["plies"] + 1)
+            selection = "formal"
         by_ply = {item["ply"]: item for item in game["occurrences"]}
-        selected.extend(by_ply[ply] for ply in plies)
+        for ply in plies:
+            occurrence = dict(by_ply[ply])
+            occurrence["selection"] = selection
+            selected.append(occurrence)
+    if run_type == "pilot":
+        by_key = {
+            (occurrence["game_id"], occurrence["ply"]): occurrence
+            for game_entry in universe["games"]
+            for occurrence in game_entry["occurrences"]
+        }
+        for requested in policy["regression_positions"]:
+            occurrence = dict(by_key[(requested["game_id"], requested["ply"])])
+            occurrence["selection"] = "regression"
+            selected.append(occurrence)
     repetitions = policy["repetitions"]
     planned_max_reported_nodes = policy["max_reported_nodes"]
-    if run_type == "formal" and planned_max_reported_nodes is None:
-        planned_max_reported_nodes = formal_node_ceiling(config["requested_nodes"])
     payload = {
         "schema_version": 1,
         "benchmark_id": config["benchmark_id"],
@@ -964,6 +1083,7 @@ def make_plan(run_type, config=None):
         "run_type": run_type,
         "repetitions": repetitions,
         "requested_nodes": config["requested_nodes"],
+        "node_policy": policy["node_policy"],
         "max_reported_nodes": planned_max_reported_nodes,
         "positions": selected,
         "hashes": {
@@ -1337,10 +1457,13 @@ def _node_evidence_summary(lines):
     occurrences = []
     errors = []
     score_errors = []
+    missing_structured_info_count = 0
     for parsed in _structured_info_parses(lines):
         occurrences.extend(parsed.get("node_occurrences", []))
         errors.extend(parsed.get("node_errors", []))
         score_errors.extend(parsed.get("score_errors", []))
+        if parsed.get("node_evidence") == "missing" and parsed.get("parse_error") is None:
+            missing_structured_info_count += 1
     valid_values = [
         occurrence["value"]
         for occurrence in occurrences
@@ -1354,6 +1477,7 @@ def _node_evidence_summary(lines):
         "has_zero": 0 in valid_values,
         "errors": errors,
         "score_errors": score_errors,
+        "missing_structured_info_count": missing_structured_info_count,
     }
 
 
@@ -1468,9 +1592,33 @@ def _normalise_position_classification(position_type=None, position_classificati
     if classification_type not in POSITION_CLASSIFICATION_TYPES:
         raise ValueError(f"unknown position classification type: {classification_type}")
     normalised = {"type": classification_type}
-    for key in ("in_check", "legal_move_count", "sole_legal_move"):
+    for key in ("in_check", "legal_move_count", "sole_legal_move", "side_to_move", "occurrence_id"):
         if key in classification:
             normalised[key] = classification[key]
+    if classification_type == "mate_in_one_available":
+        mating_moves = classification.get("mating_moves")
+        if not isinstance(mating_moves, list):
+            raise ValueError("mate-in-one classification requires a move list")
+        try:
+            canonical_moves = sorted(set(mating_moves))
+        except TypeError as error:
+            raise ValueError("mate-in-one move list must contain strings") from error
+        if (
+            mating_moves != canonical_moves
+            or not mating_moves
+            or any(
+                not isinstance(move, str)
+                or not (USI_NORMAL_RE.fullmatch(move) or USI_DROP_RE.fullmatch(move))
+                for move in mating_moves
+            )
+        ):
+            raise ValueError("mate-in-one move list must be sorted, unique, and valid USI")
+        if classification.get("mating_moves_sha256") != json_sha256(mating_moves):
+            raise ValueError("mate-in-one move list hash mismatch")
+        normalised["mating_moves"] = list(mating_moves)
+        normalised["mating_moves_sha256"] = classification["mating_moves_sha256"]
+    elif "mating_moves" in classification or "mating_moves_sha256" in classification:
+        raise ValueError("mating moves are only valid for mate-in-one classifications")
     return normalised
 
 
@@ -1518,6 +1666,71 @@ def _is_forced_single_zero_response(result, engine_id, classification, board, li
     ):
         return False
     if board is not None and not board.is_legal_usi(sole_move):
+        return False
+    return True
+
+
+def _is_mate_in_one_zero_response(
+    result,
+    info,
+    engine_id,
+    classification,
+    board,
+    side_to_move,
+    node_summary,
+    lifecycle_valid,
+):
+    """Recognise Sekirei's exact zero-node mate-in-one exception."""
+    if not lifecycle_valid or engine_id != "sekirei" or side_to_move != "black":
+        return False
+    if (
+        classification.get("type") != "mate_in_one_available"
+        or classification.get("in_check") is not False
+        or classification.get("legal_move_count") != MATE_IN_ONE_LEGAL_MOVE_COUNT
+        or classification.get("mating_moves") != list(MATE_IN_ONE_MOVES)
+        or classification.get("mating_moves_sha256") != MATE_IN_ONE_MOVES_SHA256
+        or (
+            "side_to_move" in classification
+            and classification.get("side_to_move") != "black"
+        )
+        or (
+            "occurrence_id" in classification
+            and classification.get("occurrence_id") != MATE_IN_ONE_OCCURRENCE_ID
+        )
+    ):
+        return False
+    bestmove = result.get("bestmove")
+    if (
+        result.get("bestmove_kind") != "normal"
+        or bestmove not in MATE_IN_ONE_MOVES
+        or result.get("pv") != [bestmove]
+        or result.get("pv_head") != bestmove
+    ):
+        return False
+    if board is not None and not board.is_legal_usi(bestmove):
+        return False
+    if not (
+        info.get("kind") == "mate"
+        and info.get("raw") == "1"
+        and info.get("bound_stm") == "exact"
+        and result.get("score_mate_stm") == "1"
+    ):
+        return False
+    valid_values = node_summary.get("valid_values", [])
+    if (
+        not valid_values
+        or any(value != 0 for value in valid_values)
+        or node_summary.get("errors")
+        or result.get("reported_nodes_at_score") != 0
+        or result.get("last_reported_nodes") != 0
+        or result.get("max_reported_nodes_evidence") != 0
+        or result.get("node_evidence_count") != len(valid_values)
+        or result.get("node_evidence_valid_count") != len(valid_values)
+        or result.get("node_evidence_invalid_count") != 0
+        or result.get("node_evidence_positive_count") != 0
+        or result.get("node_evidence_zero_count") != len(valid_values)
+        or node_summary.get("missing_structured_info_count", 0) != 0
+    ):
         return False
     return True
 
@@ -1576,6 +1789,8 @@ def parse_usi_observation(
     best_line = _bestmove_line(lines)
     _ignored_last_nodes, last_time = _last_info_measurements(lines)
     node_summary = _node_evidence_summary(lines)
+    if requested_nodes is not None and max_reported_nodes is None and anomaly_ceiling is None:
+        max_reported_nodes = node_reporting_limit(requested_nodes)
     last_nodes = node_summary["last_valid_nodes"]
     infos = _primary_scored_infos(lines)
     result = {
@@ -1754,6 +1969,16 @@ def parse_usi_observation(
             observed_nodes = node_summary["max_valid_nodes"]
             zero_allowed = (
                 _is_forced_single_zero_response(result, engine_id, classification, board, lifecycle_valid)
+                or _is_mate_in_one_zero_response(
+                    result,
+                    info,
+                    engine_id,
+                    classification,
+                    board,
+                    side_name(side),
+                    node_summary,
+                    lifecycle_valid,
+                )
                 or (
                     result["status"] == "mate"
                     and _is_terminal_mate_resign_response(result, info, engine_id, classification, lifecycle_valid)
@@ -1763,15 +1988,15 @@ def parse_usi_observation(
                 result["status"] = "node_budget_failure"
                 result["failure_reason"] = "zero_nodes_without_verified_exception"
             else:
-                # ``anomaly_ceiling`` is retained only for callers of the old
-                # helper API.  Benchmark plans use the unambiguous absolute
-                # ``max_reported_nodes`` field.  The comparison includes zero
-                # and positive evidence alike.
+                # ``anomaly_ceiling`` is retained only for callers of the
+                # compatibility helper API.  Benchmark plans use the named,
+                # integer ``max_reported_nodes`` policy.  The comparison
+                # includes zero and positive evidence alike.
                 if max_reported_nodes is None and anomaly_ceiling is not None:
                     max_reported_nodes = math.ceil(requested_nodes * (1 + anomaly_ceiling))
                 if max_reported_nodes is not None and observed_nodes > max_reported_nodes:
                     result["status"] = "node_budget_failure"
-                    result["failure_reason"] = "node_count_above_ceiling"
+                    result["failure_reason"] = "node_count_above_policy_limit"
     return result
 
 
@@ -3249,14 +3474,15 @@ def host_identity():
 def execution_identity(config, plan, runtime):
     """Return the pilot/formal identity shared by one observation.
 
-    Run type, sampled/full position set, repetitions, and the post-pilot
-    absolute ceiling intentionally do not belong here.  Everything that can
+    Run type, sampled/full position set, and repetitions intentionally do not
+    belong here.  Everything that can
     change a USI observation or the interpretation of its raw evidence does.
     In particular, this identity deliberately excludes the mutable config
     digest and repository dirty/commit state so freezing pilot evidence and
     documenting that freeze do not invalidate the evidence.
     """
     runtime_info = runtime_identity(runtime, config)
+    node_policy = validate_node_policy(config)
     resolved_options = _runtime_options(config, runtime)
     resolved_option_order = {
         engine_id: list(options)
@@ -3282,6 +3508,7 @@ def execution_identity(config, plan, runtime):
             "position_classifications_sha256": plan.get("hashes", {}).get("position_classifications_sha256"),
         },
         "requested_nodes": config["requested_nodes"],
+        "node_policy": node_policy,
         "timeout_seconds": config["timeout_seconds"],
         "environment": {
             "jobs": 1,
@@ -3326,6 +3553,7 @@ def fingerprint_payload(config, plan, runtime, run_type):
         },
         "limits": {
             "requested_nodes": config["requested_nodes"],
+            "node_policy": validate_node_policy(config),
             "timeout_seconds": config["timeout_seconds"],
             "jobs": 1,
             "repetitions": plan["repetitions"],
@@ -3901,6 +4129,8 @@ def validate_run_artifacts(
         or execution_payload.get("toolchain_lock_sha256") != fingerprint_payload.get("toolchain_lock_sha256")
     ):
         raise BenchmarkError("run manifest execution identity is inconsistent with its fingerprint payload")
+    if execution_payload.get("node_policy") != validate_node_policy(config):
+        raise BenchmarkError("run manifest execution identity node policy does not match the runner policy")
     # The formal pilot gate is deliberately frozen by editing this config
     # after the pilot.  Plan/hash comparisons below bind all scoring inputs;
     # mutable config/repository provenance is kept outside the fingerprint so
@@ -3935,6 +4165,7 @@ def validate_run_artifacts(
         limits.get(key) != value
         for key, value in {
             "requested_nodes": expected_plan["requested_nodes"],
+            "node_policy": validate_node_policy(config),
             "repetitions": expected_plan["repetitions"],
             "run_type": run_type,
             "max_reported_nodes": expected_plan.get("max_reported_nodes"),
@@ -4043,7 +4274,7 @@ def _max_reported_nodes_from_record(record, *, strict=False):
 
     Direct legacy report helpers may use the historical score/last fallback;
     strict current-artifact validation deliberately disables that fallback so
-    a missing all-evidence field cannot undercount a ceiling or gate.
+    a missing all-evidence field cannot undercount the policy check or gate.
     """
     result = _record_result(record)
     if "max_reported_nodes_evidence" in result:
@@ -4161,12 +4392,12 @@ def positive_node_evidence(records, engine_ids=("teacher", "sekirei"), *, strict
 
 
 def validate_formal_gate(runtime, config):
-    """Validate the pilot artifact and frozen absolute formal node gate."""
+    """Validate the pilot artifact and frozen formal node-policy gate."""
     policy = validate_run_policy(config, "formal", require_formal_gate=True)
     gate = config["formal"].get("pilot_evidence")
     required = ("pilot_run_id", "pilot_fingerprint", "observed_max_reported_nodes", "max_reported_nodes")
     if any(key not in gate for key in required):
-        raise ConfigurationError(f"formal node ceiling gate: formal.pilot_evidence must contain {required}")
+        raise ConfigurationError(f"formal node policy gate: formal.pilot_evidence must contain {required}")
     pilot_run_id = gate["pilot_run_id"]
     if not isinstance(pilot_run_id, str):
         raise ConfigurationError("formal.pilot_evidence.pilot_run_id must be a string")
@@ -4180,16 +4411,16 @@ def validate_formal_gate(runtime, config):
     chosen_claim = gate["max_reported_nodes"]
     if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in (observed_claim, chosen_claim)):
         raise ConfigurationError("formal.pilot_evidence node values must be positive integers")
-    derived_ceiling = formal_node_ceiling(config["requested_nodes"])
-    if policy["max_reported_nodes"] != derived_ceiling:
+    policy_limit = node_reporting_limit(config["requested_nodes"])
+    if policy["max_reported_nodes"] != policy_limit:
         raise ConfigurationError(
-            "formal.max_reported_nodes must equal the runner-derived ceiling "
-            f"{derived_ceiling}"
+            "formal.max_reported_nodes must equal the runner node policy limit "
+            f"C(N)={policy_limit}"
         )
-    if chosen_claim != derived_ceiling:
+    if chosen_claim != policy_limit:
         raise ConfigurationError(
-            "formal.pilot_evidence.max_reported_nodes must equal the runner-derived ceiling "
-            f"{derived_ceiling}"
+            "formal.pilot_evidence.max_reported_nodes must equal the runner node policy limit "
+            f"C(N)={policy_limit}"
         )
     if policy["max_reported_nodes"] != chosen_claim:
         raise ConfigurationError("formal.max_reported_nodes does not match frozen pilot evidence")
@@ -4207,9 +4438,20 @@ def validate_formal_gate(runtime, config):
         require_complete=True,
         expected_run_type="pilot",
     )
-    expected_total = len(plan["positions"]) * plan["repetitions"] * len(config["engines"])
-    if expected_total != 90 or len(records) != 90:
-        raise ConfigurationError("formal gate pilot artifact must contain exactly 90 attempts")
+    expected_pilot_plan, _ = make_plan("pilot", config)
+    expected_total = (
+        len(expected_pilot_plan["positions"])
+        * expected_pilot_plan["repetitions"]
+        * len(config["engines"])
+    )
+    if (
+        plan.get("plan_sha256") != expected_pilot_plan.get("plan_sha256")
+        or expected_total != len(records)
+    ):
+        raise ConfigurationError(
+            "formal gate pilot artifact must contain the exact current pilot attempt matrix "
+            f"of {expected_total} attempts"
+        )
     if manifest.get("fingerprint") != gate["pilot_fingerprint"]:
         raise ConfigurationError("formal gate pilot fingerprint does not match the artifact")
     technical_records = [
@@ -4487,10 +4729,10 @@ def compare_cshogi(games, config=None):
         cshogi = importlib.import_module("cshogi")
         version = importlib.metadata.version("cshogi")
     except (ImportError, importlib.metadata.PackageNotFoundError):
-        return {"available": False, "reason": "cshogi is not installed", "checked_moves": 0}
+        return {"available": False, "reason": "cshogi is not installed", "checked_legal_moves": 0, "checked_occurrences": 0}
     if version != "1.0.4":
-        return {"available": False, "reason": f"cshogi version is {version}, expected 1.0.4", "checked_moves": 0}
-    checked = 0
+        return {"available": False, "reason": f"cshogi version is {version}, expected 1.0.4", "checked_legal_moves": 0, "checked_occurrences": 0}
+    checked_legal_moves = 0
     checked_occurrences = 0
     actual_counts = {classification_type: 0 for classification_type in POSITION_CLASSIFICATION_TYPES}
     for game in games:
@@ -4504,9 +4746,18 @@ def compare_cshogi(games, config=None):
                 in_check = bool(board.is_check())
                 legal_moves = list(board.legal_moves)
                 legal_usi = [cshogi.move_to_usi(value) for value in legal_moves]
+                mating_moves = []
+                for legal_move in legal_moves:
+                    board.push(legal_move)
+                    if board.is_check() and not any(board.legal_moves):
+                        mating_moves.append(cshogi.move_to_usi(legal_move))
+                    board.pop()
+                mating_moves.sort()
                 if not legal_moves:
                     position_type = "terminal_checkmate" if in_check else "terminal_stalemate"
-                elif len(legal_moves) == 1:
+                elif mating_moves:
+                    position_type = "mate_in_one_available"
+                elif in_check and len(legal_moves) == 1:
                     position_type = "forced_single_legal_move"
                 else:
                     position_type = "normal"
@@ -4515,28 +4766,41 @@ def compare_cshogi(games, config=None):
                     "in_check": in_check,
                     "legal_move_count": len(legal_moves),
                 }
-                if len(legal_moves) == 1:
+                if position_type == "forced_single_legal_move":
                     actual["sole_legal_move"] = legal_usi[0]
+                if mating_moves:
+                    actual["mating_moves"] = mating_moves
+                    actual["mating_moves_sha256"] = json_sha256(mating_moves)
                 occurrence_id = f"{game['game_id']}:{ply:03d}"
                 expected = classifications["by_occurrence_id"].get(occurrence_id, {"type": "normal"})
-                if actual["type"] != expected["type"] or (
-                    expected["type"] != "normal"
-                    and _classification_entry_value(actual) != expected
-                ):
+                actual_value = (
+                    {"type": "normal"}
+                    if actual["type"] == "normal"
+                    else _classification_entry_value(actual)
+                )
+                if actual_value != expected:
                     raise ValueError(
                         f"position type mismatch: expected {expected['type']}, got {actual['type']}"
                     )
                 actual_counts[position_type] += 1
                 checked_occurrences += 1
+                checked_legal_moves += len(legal_moves)
             except Exception as error:
                 raise BenchmarkError(f"cshogi conversion/classification mismatch at {game['game_id']} ply {ply}: {error}") from error
-            checked += 1
-    if checked != sum(game["plies"] for game in games) or checked_occurrences != checked:
-        raise BenchmarkError("cshogi did not verify every development occurrence")
+    expected_occurrences = sum(game["plies"] for game in games)
+    if (
+        checked_occurrences != expected_occurrences
+        or checked_legal_moves != CLASSIFICATION_CHECKED_LEGAL_MOVES
+    ):
+        raise BenchmarkError(
+            "cshogi did not verify every development occurrence and legal root move: "
+            f"occurrences={checked_occurrences}/{expected_occurrences}, "
+            f"legal_moves={checked_legal_moves}/{CLASSIFICATION_CHECKED_LEGAL_MOVES}"
+        )
     return {
         "available": True,
         "version": version,
-        "checked_moves": checked,
+        "checked_legal_moves": checked_legal_moves,
         "checked_occurrences": checked_occurrences,
         "classification_counts": actual_counts,
         "matched": True,

@@ -27,6 +27,7 @@ from benchmark import (
     development_manifest_entries,
     digest_bytes,
     load_config,
+    node_reporting_limit,
     observed_max_reported_nodes,
     positive_node_evidence,
     plan_hash,
@@ -41,6 +42,8 @@ SUCCESS_TYPES = {"exact_cp", "bound_cp", "mate"}
 CROSS_CATEGORIES = ("exact_cp", "bound_cp", "mate", "no_score", "failure", "missing")
 OPERATIONAL_CATEGORIES = ("operational", "failure", "missing")
 KNOWN_STATUSES = tuple(sorted(OBSERVATION_STATUSES | TECHNICAL_FAILURE_STATUSES))
+NODE_QUANTILE_DEFINITION = "sorted finite M values; linear interpolation at (n - 1) * p"
+SELECTION_TYPES = ("canonical", "regression", "formal")
 
 
 def _result(row):
@@ -122,12 +125,56 @@ def _position_type(value):
     return result if result in POSITION_CLASSIFICATION_TYPES else "normal"
 
 
-def _node_evidence_diagnostics(teacher_rows, candidate_rows):
+def _report_node_policy(plan, config):
+    policy = dict(config.get("node_policy") or {})
+    policy.update({
+        "requested_nodes": plan.get("requested_nodes"),
+        "max_reported_nodes": plan.get("max_reported_nodes"),
+    })
+    return policy
+
+
+def _selection_diagnostics(plan):
+    counts = {selection: 0 for selection in SELECTION_TYPES}
+    unknown_count = 0
+    for occurrence in plan.get("positions", []):
+        selection = occurrence.get("selection", "formal") if isinstance(occurrence, dict) else None
+        if selection in counts:
+            counts[selection] += 1
+        else:
+            unknown_count += 1
+    return {
+        "counts": counts,
+        "unknown_count": unknown_count,
+        "total_occurrences": sum(counts.values()) + unknown_count,
+    }
+
+
+def _node_evidence_diagnostics(
+    teacher_rows,
+    candidate_rows,
+    *,
+    requested_nodes=None,
+    policy_limit=None,
+):
     records = [
         *(_with_engine(teacher_rows, "teacher")),
         *(_with_engine(candidate_rows, "sekirei")),
     ]
     result = positive_node_evidence(records)
+    if policy_limit is None and isinstance(requested_nodes, int) and not isinstance(requested_nodes, bool):
+        policy_limit = node_reporting_limit(requested_nodes)
+    result["all_evidence_m"] = {
+        engine_id: _all_evidence_m_distribution(
+            rows,
+            requested_nodes=requested_nodes,
+            policy_limit=policy_limit,
+        )
+        for engine_id, rows in (
+            ("teacher", teacher_rows),
+            ("sekirei", candidate_rows),
+        )
+    }
     result["units"] = {
         "reported_nodes_at_score": "nodes",
         "last_reported_nodes": "nodes",
@@ -150,6 +197,109 @@ def _max_node_evidence(row):
         and result.get(field) >= 0
     ]
     return max(values) if values else None
+
+
+def _all_evidence_m_state(row):
+    """Classify one attempt's all-current-go maximum without hiding errors."""
+    result = _result(row)
+    errors = result.get("node_evidence_errors")
+    if errors is not None and not isinstance(errors, list):
+        return "invalid", None
+    errors = errors or []
+    invalid_count = result.get("node_evidence_invalid_count")
+    if invalid_count is not None and (
+        not isinstance(invalid_count, int)
+        or isinstance(invalid_count, bool)
+        or invalid_count < 0
+    ):
+        return "invalid", None
+    if invalid_count:
+        return "invalid", None
+
+    if "max_reported_nodes_evidence" in result:
+        value = result.get("max_reported_nodes_evidence")
+        if not (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value >= 0
+        ):
+            return (
+                "invalid"
+                if value is not None or any(error != "missing_nodes_value" for error in errors)
+                else "missing",
+                None,
+            )
+        if errors:
+            return "invalid", None
+        return "evidence", value
+
+    if errors:
+        return ("invalid" if any(error != "missing_nodes_value" for error in errors) else "missing"), None
+    fallback = _max_node_evidence(row)
+    if fallback is not None:
+        return "evidence", fallback
+    result_values = [
+        result.get(field)
+        for field in ("reported_nodes_at_score", "last_reported_nodes")
+    ]
+    if any(value is not None for value in result_values):
+        return "invalid", None
+    return "missing", None
+
+
+def _all_evidence_m_distribution(rows, *, requested_nodes=None, policy_limit=None):
+    values = []
+    counts = {
+        "attempt_count": len(rows),
+        "evidence_count": 0,
+        "positive_count": 0,
+        "zero_count": 0,
+        "missing_count": 0,
+        "invalid_count": 0,
+    }
+    for row in rows:
+        state, value = _all_evidence_m_state(row)
+        if state == "evidence":
+            counts["evidence_count"] += 1
+            values.append(value)
+            if value > 0:
+                counts["positive_count"] += 1
+            else:
+                counts["zero_count"] += 1
+        else:
+            counts[f"{state}_count"] += 1
+
+    distribution = _distribution(values)
+    if requested_nodes is None:
+        above_requested = None
+        overrun_values = []
+    else:
+        above_requested = sum(value > requested_nodes for value in values)
+        overrun_values = [value - requested_nodes for value in values if value > requested_nodes]
+    if policy_limit is None:
+        above_policy = None
+    else:
+        above_policy = sum(value > policy_limit for value in values)
+    max_overrun = max(overrun_values, default=None)
+    return {
+        **counts,
+        "requested_nodes": requested_nodes,
+        "policy_limit": policy_limit,
+        "distribution": distribution,
+        "p50": distribution["p50"],
+        "p95": distribution["p95"],
+        "p99": distribution["p99"],
+        "max": distribution["max"],
+        "count_above_requested_nodes": above_requested,
+        "count_above_policy_limit": above_policy,
+        "max_positive_overrun": max_overrun,
+        "max_positive_overrun_rate": (
+            max_overrun / requested_nodes
+            if max_overrun is not None and isinstance(requested_nodes, int) and requested_nodes > 0
+            else None
+        ),
+        "quantile_definition": NODE_QUANTILE_DEFINITION,
+    }
 
 
 def _position_type_diagnostics(plan, teacher_rows, candidate_rows):
@@ -455,6 +605,7 @@ def _series(plan, teacher_index, candidate_index, *, repetition=1):
                     "engine": engine,
                     "repetition": repetition,
                     "ply": occurrence["ply"],
+                    "selection": occurrence.get("selection", "formal"),
                     "position_type": _position_type(occurrence),
                     "status": _status(row) if row is not None else "missing",
                     "cp_sente": point_cp,
@@ -502,17 +653,20 @@ def _score_single(plan, teacher_rows, candidate_rows, *, accuracy_thresholds=Non
     headline_valid = len(headline_values) == len(game_ids) and len(game_ids) == 5
     series_data = _series(plan, teacher_index, candidate_index, repetition=repetition)
     position_type_diagnostics = _position_type_diagnostics(plan, teacher_rows, candidate_rows)
-    node_evidence = _node_evidence_diagnostics(teacher_rows, candidate_rows)
+    node_evidence = _node_evidence_diagnostics(
+        teacher_rows,
+        candidate_rows,
+        requested_nodes=plan.get("requested_nodes"),
+        policy_limit=plan.get("max_reported_nodes"),
+    )
     graph_y_min, graph_y_max = shared_y_domain({"series": series_data})
     return {
         "schema_version": 1,
         "benchmark_id": config["benchmark_id"],
         "run_type": plan.get("run_type"),
         "repetitions": plan.get("repetitions"),
-        "node_policy": {
-            "requested_nodes": plan.get("requested_nodes"),
-            "max_reported_nodes": plan.get("max_reported_nodes"),
-        },
+        "node_policy": _report_node_policy(plan, config),
+        "selection_diagnostics": _selection_diagnostics(plan),
         "hashes": dict(plan.get("hashes", {})),
         "cshogi": plan.get("cshogi"),
         "universe": {
@@ -587,7 +741,15 @@ def _rows_for_repetition(rows, repetition, repetitions):
 def _distribution(values):
     values = sorted(value for value in values if _finite_number(value))
     if not values:
-        return {"count": 0, "min": None, "median": None, "p95": None, "max": None}
+        return {
+            "count": 0,
+            "min": None,
+            "p50": None,
+            "median": None,
+            "p95": None,
+            "p99": None,
+            "max": None,
+        }
 
     def percentile(fraction):
         if len(values) == 1:
@@ -602,8 +764,10 @@ def _distribution(values):
     return {
         "count": len(values),
         "min": values[0],
+        "p50": percentile(0.5),
         "median": percentile(0.5),
         "p95": percentile(0.95),
+        "p99": percentile(0.99),
         "max": values[-1],
     }
 
@@ -641,7 +805,12 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
         "teacher": teacher_rows,
         "sekirei": candidate_rows,
     }
-    positive_by_engine = _node_evidence_diagnostics(teacher_rows, candidate_rows)
+    positive_by_engine = _node_evidence_diagnostics(
+        teacher_rows,
+        candidate_rows,
+        requested_nodes=plan.get("requested_nodes"),
+        policy_limit=plan.get("max_reported_nodes"),
+    )
     engines = {}
     for engine_id, rows in by_engine.items():
         position_rows = {}
@@ -669,6 +838,7 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
             position_report = {
                 "game_id": occurrence["game_id"],
                 "ply": occurrence["ply"],
+                "selection": occurrence.get("selection", "formal"),
                 "position_type": _position_type(occurrence),
                 "expected_repetitions": repetitions,
                 "attempt_count": len(values),
@@ -733,6 +903,7 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
             "distributions": field_distributions,
             "max_reported_nodes_evidence": node_fields,
             "positive_node_evidence": positive_by_engine[engine_id],
+            "all_evidence_m": positive_by_engine["all_evidence_m"][engine_id],
             "positions": position_reports,
         }
     all_nodes = [
@@ -749,6 +920,7 @@ def _repeatability_diagnostics(plan, teacher_rows, candidate_rows):
         "attempt_count": sum(len(rows) for rows in by_engine.values()),
         "observed_max_reported_nodes": max(all_nodes, default=None),
         "positive_node_evidence": positive_by_engine,
+        "all_evidence_m": positive_by_engine["all_evidence_m"],
         "units": {
             "reported_nodes_at_score": "nodes",
             "last_reported_nodes": "nodes",
@@ -827,7 +999,12 @@ def _formal_validity(plan, teacher_rows, candidate_rows, *, evidence_validator_p
         "technical_failure_count": technical_count,
         "missing_count": missing_count,
         "teacher_reference_categories": teacher_reference_categories,
-        "positive_node_evidence": _node_evidence_diagnostics(teacher_rows, candidate_rows),
+        "positive_node_evidence": _node_evidence_diagnostics(
+            teacher_rows,
+            candidate_rows,
+            requested_nodes=plan.get("requested_nodes"),
+            policy_limit=plan.get("max_reported_nodes"),
+        ),
         "complete_evidence_valid": complete_valid,
         "formal_run_valid": complete_valid and plan.get("run_type") == "formal" and repetitions == 1,
     }
@@ -950,10 +1127,8 @@ def score_observations(plan, teacher_rows, candidate_rows, *, accuracy_threshold
         "benchmark_id": first["benchmark_id"],
         "run_type": plan.get("run_type"),
         "repetitions": repetitions,
-        "node_policy": {
-            "requested_nodes": plan.get("requested_nodes"),
-            "max_reported_nodes": plan.get("max_reported_nodes"),
-        },
+        "node_policy": _report_node_policy(plan, config),
+        "selection_diagnostics": _selection_diagnostics(plan),
         "hashes": dict(first.get("hashes", {})),
         "cshogi": plan.get("cshogi"),
         "universe": dict(first["universe"]),
@@ -987,7 +1162,12 @@ def score_observations(plan, teacher_rows, candidate_rows, *, accuracy_threshold
         "bound_diagnostic": _aggregate_bound_diagnostics(repetition_reports),
         "mate_diagnostic": _aggregate_mate_diagnostics(repetition_reports),
         "position_type_diagnostics": _position_type_diagnostics(plan, teacher_rows, candidate_rows),
-        "node_evidence": _node_evidence_diagnostics(teacher_rows, candidate_rows),
+        "node_evidence": _node_evidence_diagnostics(
+            teacher_rows,
+            candidate_rows,
+            requested_nodes=plan.get("requested_nodes"),
+            policy_limit=plan.get("max_reported_nodes"),
+        ),
         "all_u_cross_table": _sum_cross_tables(repetition_reports, "all_u_cross_table", CROSS_CATEGORIES),
         "all_u_operational_cross_table": _sum_cross_tables(
             repetition_reports, "all_u_operational_cross_table", OPERATIONAL_CATEGORIES
@@ -1180,10 +1360,26 @@ def _summary_markdown(report, *, public=False):
         f"{position_type}={position_counts.get(position_type, 0)}"
         for position_type in POSITION_CLASSIFICATION_TYPES
     )
+    selection_counts = (report.get("selection_diagnostics") or {}).get("counts", {})
+    selection_text = ", ".join(
+        f"{selection}={selection_counts.get(selection, 0)}"
+        for selection in SELECTION_TYPES
+    )
     node_text = "; ".join(
         f"{engine_id}: {value.get('positive_observation_count', 0)} positive observations / "
         f"{value.get('positive_attempt_count', 0)} attempts (has_positive={value.get('has_positive', False)})"
         for engine_id, value in (("teacher", node_evidence.get("teacher", {})), ("sekirei", node_evidence.get("sekirei", {})))
+    )
+    all_evidence_m = node_evidence.get("all_evidence_m", {})
+    m_text = "; ".join(
+        f"{engine_id}: evidence={value.get('evidence_count', 0)} "
+        f"positive={value.get('positive_count', 0)} zero={value.get('zero_count', 0)} "
+        f"missing={value.get('missing_count', 0)} invalid={value.get('invalid_count', 0)} "
+        f"p50={value.get('p50')} p95={value.get('p95')} p99={value.get('p99')} max={value.get('max')} "
+        f">N={value.get('count_above_requested_nodes')} >C={value.get('count_above_policy_limit')} "
+        f"max_overrun={value.get('max_positive_overrun')} "
+        f"rate={value.get('max_positive_overrun_rate')}"
+        for engine_id, value in (("teacher", all_evidence_m.get("teacher", {})), ("sekirei", all_evidence_m.get("sekirei", {})))
     )
     lines = [
         "# Development 1M-node baseline validation",
@@ -1200,7 +1396,10 @@ def _summary_markdown(report, *, public=False):
         f"- exact attempt matrix: {validity.get('exact_attempt_matrix', {}).get('observed_count')} / {validity.get('exact_attempt_matrix', {}).get('expected_count')} (missing {validity.get('missing_count')}, technical failures {validity.get('technical_failure_count')})",
         f"- retained repetitions / attempts: {repeatability.get('expected_repetitions')} / {repeatability.get('attempt_count')}; observed max node evidence: {repeatability.get('observed_max_reported_nodes')}",
         f"- position types: {position_text}",
+        f"- position selections: {selection_text}",
         f"- positive node evidence: {node_text}",
+        f"- all-evidence M distribution: {m_text}",
+        f"- M quantiles: {NODE_QUANTILE_DEFINITION}",
         f"- diagnostic overlap micro MAE: {error.get('micro_mae_cp')} cp; mean signed error: {error.get('mean_signed_error_cp')} cp; max absolute error: {error.get('max_abs_error_cp')} cp",
         "",
         "## Fixed masks and diagnostics",
@@ -1252,7 +1451,7 @@ def write_local_reports(output_dir, report):
     with (output_dir / "observations.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow((
-            "game_id", "ply", "repetition", "position_type",
+            "game_id", "ply", "repetition", "selection", "position_type",
             "teacher_status", "teacher_cp_sente",
             "teacher_reported_nodes_at_score", "teacher_last_reported_nodes",
             "teacher_max_reported_nodes_evidence",
@@ -1280,6 +1479,7 @@ def write_local_reports(output_dir, report):
                     game_id,
                     ply,
                     repetition,
+                    teacher.get("selection") or candidate.get("selection") or "formal",
                     teacher.get("position_type") or candidate.get("position_type") or "normal",
                     teacher.get("status", "missing"),
                     teacher_cp,
@@ -1303,6 +1503,7 @@ def _public_report(report):
         "report": "development-baseline-aggregate-validation",
         "run_type": report.get("run_type"),
         "node_policy": report.get("node_policy"),
+        "selection_diagnostics": report.get("selection_diagnostics"),
         "game_count": report.get("universe", {}).get("game_count"),
         "occurrence_count": report.get("universe", {}).get("total_occurrences"),
         "headline": _public_headline(report.get("headline")),
@@ -1347,7 +1548,7 @@ def _public_cshogi(value):
         result["available"] = value["available"]
     if isinstance(value.get("version"), str):
         result["version"] = value["version"]
-    for key in ("checked_moves", "checked_occurrences"):
+    for key in ("checked_legal_moves", "checked_occurrences"):
         if isinstance(value.get(key), int) and not isinstance(value.get(key), bool) and value[key] >= 0:
             result[key] = value[key]
     counts = value.get("classification_counts")
@@ -1426,6 +1627,7 @@ def _public_repeatability(value):
             "expected_attempts",
             "attempt_count",
             "observed_max_reported_nodes",
+            "all_evidence_m",
             "units",
         )
         if value.get(key) is not None
@@ -1446,6 +1648,7 @@ def _public_repeatability(value):
                 "distributions",
                 "max_reported_nodes_evidence",
                 "positive_node_evidence",
+                "all_evidence_m",
             )
             if engine.get(key) is not None
         }

@@ -1214,7 +1214,7 @@ def score_observations(
 
 
 def _category_counts(points):
-    counts = {category: 0 for category in (*SUCCESS_TYPES, "no_score", "failure", "missing")}
+    counts = {category: 0 for category in CROSS_CATEGORIES}
     for point in points:
         status = point["status"]
         category = status if status in counts else "failure"
@@ -1259,8 +1259,8 @@ def render_svg(report, *, public=False):
             max_plies[game_id] = max(max_plies[game_id], int(point["ply"]))
     y_min, y_max = shared_y_domain(report)
     limit = y_max
-    panel_width, panel_height = 260, 300
-    margin_left, margin_right, margin_top, margin_bottom = 42, 12, 34, 30
+    panel_width, panel_height = 260, 330
+    margin_left, margin_right, margin_top, margin_bottom = 42, 12, 34, 60
     plot_width = panel_width - margin_left - margin_right
     plot_height = panel_height - margin_top - margin_bottom
     width = panel_width * max(1, len(game_ids))
@@ -1280,7 +1280,7 @@ def render_svg(report, *, public=False):
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" data-panel-count="{len(game_ids)}" data-y-min="{y_min:g}" data-y-max="{y_max:g}">',
         "<title>Development 1M-node evaluation comparison</title>",
         "<desc>Five after-move-ply panels, shared symmetric linear raw sente centipawn domain.</desc>",
-        "<style>.axis{stroke:#555;stroke-width:1}.grid{stroke:#ddd;stroke-width:1}.teacher{fill:none;stroke:#075985;stroke-width:1.4}.candidate{fill:none;stroke:#b91c1c;stroke-width:1.4}.bound{stroke:#7c3aed;stroke-width:1.1}.gap{fill:#6b7280}.mate{fill:#111827}.text{font-family:monospace;font-size:9px;fill:#111827}</style>",
+        "<style>.axis{stroke:#555;stroke-width:1}.grid{stroke:#ddd;stroke-width:1}.teacher{fill:none;stroke:#075985;stroke-width:1.4}.candidate{fill:none;stroke:#b91c1c;stroke-width:1.4}.bound{stroke:#7c3aed;stroke-width:1.1}.gap{fill:#6b7280}.mate{fill:#111827}.text{font-family:monospace;font-size:9px;fill:#111827}.teacher-label{fill:#075985}.candidate-label{fill:#b91c1c}</style>",
     ]
     for index, game_id in enumerate(game_ids):
         offset = index * panel_width
@@ -1347,14 +1347,28 @@ def render_svg(report, *, public=False):
                         y = margin_top + plot_height + 12
                         out.append(f'<circle class="gap" data-position-type="{position_type}" cx="{x:.3f}" cy="{y:.3f}" r="1.8"/>')
             counts = _category_counts(all_engine_points)
-            legend_y = panel_height - 16 if engine == "teacher" else panel_height - 6
-            summary = ", ".join(f"{key}={value}" for key, value in counts.items())
-            out.append(f'<text class="text" x="{margin_left}" y="{legend_y}">{engine}: {summary}</text>')
+            legend_y = margin_top + plot_height + (30 if engine == "teacher" else 42)
+            prefix = "T" if engine == "teacher" else "S"
+            label_class = "teacher-label" if engine == "teacher" else "candidate-label"
+            abbreviations = {
+                "exact_cp": "E",
+                "bound_cp": "B",
+                "mate": "M",
+                "no_score": "N",
+                "failure": "F",
+                "missing": "X",
+            }
+            summary = " ".join(f"{abbreviations[key]}={counts[key]}" for key in CROSS_CATEGORIES)
+            out.append(f'<text class="text {label_class}" x="{margin_left}" y="{legend_y}">{prefix}: {summary}</text>')
         out.append("</g>")
     headline = _public_headline(report.get("headline")) if public else report.get("headline", {})
     valid_text = "valid" if headline.get("valid") else "incomplete"
     out.insert(3, '<defs><marker id="arrow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 z" fill="#7c3aed"/></marker></defs>')
-    out.append(f'<text class="text" x="4" y="{height - 1}">candidate headline MAE: {valid_text}</text>')
+    out.append(
+        f'<text class="text" x="4" y="{height - 2}">'
+        f'T/S=teacher/sekirei; E/B/M/N/F/X=exact/bound/mate/no-score/failure/missing; headline MAE: {valid_text}'
+        "</text>"
+    )
     out.append("</svg>\n")
     return "".join(out)
 

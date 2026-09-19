@@ -1952,11 +1952,15 @@ class ReportTests(unittest.TestCase):
         self.assertTrue(first.startswith("<svg "))
         root = ET.fromstring(first)
         self.assertEqual(root.attrib["data-panel-count"], "5")
+        self.assertEqual(root.attrib["height"], "330")
         self.assertEqual(root.attrib["data-y-min"], "-20")
         self.assertEqual(root.attrib["data-y-max"], "20")
         self.assertIn("y ±20 cp", first)
         self.assertIn("candidate", first)
         self.assertIn("gap", first)
+        self.assertIn("T: E=2 B=0 M=0 N=0 F=0 X=0", first)
+        self.assertIn("S: E=1 B=0 M=0 N=0 F=0 X=1", first)
+        self.assertNotIn("teacher: exact_cp", first)
         self.assertEqual(first.count('class="exact"'), 15)
 
     def test_public_export_is_redacted_and_hashed(self):

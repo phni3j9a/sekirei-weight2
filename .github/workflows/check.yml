@@ -14,14 +14,15 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Python syntax and unit tests
         run: |
-          python3 -m py_compile scripts/prepare.py scripts/smoke.py scripts/audit_pack.py scripts/acquire_quest.py
+          python3 -m py_compile scripts/prepare.py scripts/smoke.py scripts/audit_pack.py scripts/acquire_quest.py scripts/benchmark.py scripts/benchmark_report.py tests/fixtures/fake_usi.py
           python3 -m unittest discover -s tests -v
       - name: JSON configuration
         run: |
           python3 -m json.tool config/toolchain.lock.json >/dev/null
           python3 -m json.tool config/smoke.json >/dev/null
           python3 -m json.tool config/quest-corpus.json >/dev/null
+          python3 -m json.tool config/development-benchmark.json >/dev/null
           python3 -m json.tool benchmarks/shogiquest-v1/manifest.json >/dev/null
-          test "$(find benchmarks/shogiquest-v1 -name '*.csa' -type f | wc -l)" -eq 10
+          test "$(find benchmarks/shogiquest-v1/development -name '*.csa' -type f | wc -l)" -eq 5
           git diff --check
       # The real engine smoke is run locally: the teacher is not redistributed to CI.

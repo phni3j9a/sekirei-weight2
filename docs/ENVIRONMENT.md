@@ -11,13 +11,14 @@
 | `/home/server/projects/sekirei-weight2` | main 同期用 checkout、既存資料の保持 |
 | `/home/server/worktrees/sekirei-weight2/<作業名>` | Issueごとの開発worktree。統合後は安全確認して削除 |
 | `/home/server/projects/sekirei-weight2/docs/pixiv_fanbox_yaneurao` | ユーザー提供のローカル資料。Git 対象外 |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/sources` | β固定版の upstream ソース |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/build` | β固定環境のビルド生成物 |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/bin` | β固定環境の実行ファイルへのリンク |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/models/suisho11beta-concerto-202512` | 主教師重み |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/data/teachers/suisho11beta-1m` | 内容ハッシュで重複除外した教師 `.pack` とmanifest |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/venv` | `.pack` 監査・CSA合法手確認用の固定Python環境 |
-| `~/.local/share/sekirei-weight2/suisho11beta-v1/runs` | smoke・監査・今後の個別実験成果物 |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/sources` | v0.3.39比較系列のupstreamソース |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/build` | v0.3.39比較系列のビルド生成物 |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/bin` | v0.3.39比較系列の実行ファイルへのリンク |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/models/suisho11beta-concerto-202512` | 主教師重み |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/data/teachers/suisho11beta-1m` | 内容ハッシュで重複除外した教師 `.pack` とmanifest |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/venv` | `.pack` 監査・CSA合法手確認用の固定Python環境 |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/runs` | v0.3.39のsmoke・pilot・今後の実験成果物 |
+| `~/.local/share/sekirei-weight2/suisho11beta-v1` | v0.3.36 baselineを保持する旧runtime。上書きしない |
 | `~/.local/share/sekirei-weight2/shogiquest-human-v1` | 公開棋譜1,000局、取得cache、再開状態、ローカルmanifest |
 
 大規模資料を worktree にコピーしない。独立した研究実験では専用のソース・出力先を使い、共通 runtime を改造しない。`prepare.py` は排他ロック、`smoke.py` と `audit_pack.py` は共有ロックを取り、スクリプト同士のビルド／解析の競合を防ぐ。手動でのソース変更や直接ビルドは別途利用状況を確認する。
@@ -28,7 +29,7 @@
 
 | ソフト | 固定版 | 役割 |
 | --- | --- | --- |
-| Sekirei | v0.3.36 / `aeb6ea3` | 改善対象エンジン。初期は default 特徴量・SEKIRW01 形式 |
+| Sekirei | v0.3.39 / `f09c130` | 改善対象エンジン。初期はdefault特徴量・SEKIRW01形式、重みなしのmaterial fallback |
 | sekirei-train | 同上 | upstream の学習器。実ファイル名 `train` を `bin/sekirei-train` にリンク |
 | shogiesa | 0.9.2 / `dd03174` | 棋譜からの局面抽出・教師ラベル・データ整形 |
 | やねうら王 | V9.20 / `a81730f` | 水匠11βに対応する公開版の教師エンジン |
@@ -37,7 +38,11 @@
 
 水匠11βは重みであり、やねうら王の実行ファイルとは別。配布記事はV9.20以降と `NNUE_SFNNwoP1536` を指定しているため、公開履歴のV9.20版更新commitをLinux向けにビルドした。配布バイナリとのビット単位の同一性は主張しない。旧Plusのruntimeは上書きせず、新しい比較系列としてβ専用profileへ分離した。
 
-Sekirei は最新というラベルではなく、必要な USI 機能の実装と実機結果から固定した。調査時の `main` (`08107a2`, package 0.3.5) は `go nodes` の解釈と探索のノード上限がなく、smoke が120秒でタイムアウトした。公開タグ v0.3.36 はその機能を持つ。main、GitHub の latest release、最大のタグ番号は一致していないため、自動的に main/latest へ追従しない。
+最初の環境では、必要なUSI機能の実装と実機結果からv0.3.36を固定した。当時調査した `main` (`08107a2`, package 0.3.5) は `go nodes` の解釈と探索のノード上限がなく、smokeが120秒でタイムアウトした一方、公開タグv0.3.36はその機能を持っていた。
+
+その後、上流v0.3.37でsingular-extension verification searchが通常探索用TT entryによりshort-circuitされる問題が修正された。旧sekirei-weightでも影響を受けた既知問題なので、今後の比較基準はこの修正を含むv0.3.39へ更新する。固定commit `f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9` は確認時のv0.3.39 tagとupstream mainの両方に一致する。v0.3.38で公開された任意のA-flat NNUE checkpointは今回読み込まず、探索版更新と評価器更新を分離する。v0.3.36のbuild・run・公開baselineは旧runtimeに保持する。ビルドhashと100万ノード疎通結果は[v0.3.39移行検証](validation/sekirei-v0.3.39-2026-09-19.md)に固定した。
+
+エンジンcommit変更によりexecution identityが変わるため、v0.3.36の `development-pilot-20260916-v5` はv0.3.39のformal launch evidenceとして使えない。現行 `formal.pilot_evidence` は `null` で、v0.3.39のpilotを実測・レビューするまでformalはfail-closedで停止する。今後も「latest」へ自動追従せず、採用版の完全なcommitと実機結果を固定する。
 
 ### ビルド条件
 
@@ -74,7 +79,7 @@ python3 scripts/prepare.py import-corpus --archive \
 
 ```sh
 python3 scripts/prepare.py audit-deps
-~/.local/share/sekirei-weight2/suisho11beta-v1/venv/bin/python \
+~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/venv/bin/python \
   scripts/audit_pack.py --samples 10
 ```
 
@@ -100,7 +105,7 @@ positive node evidenceはTeacherが42/45 attempt、positive observation 870、ze
 
 development-04 p108は `forced_single_legal_move`（in check、合法手1、sole move `2i1g`）で、Teacherはmate、Sekireiは300 cpだった。development-05 p123は `terminal_checkmate`（in check、合法手0）で、Teacherは mate -1、Sekireiは `no_score` だった。pilotはbounds/matesを保持する再現性診断であり、五局完全なexact-cp headlineは作らない。
 
-v2のpilot fingerprint `6eb64a82e1673510438e3dcbc9e7ba1533c5b7042d9c04ec3c5e209e1c3904e4` と strict all-evidence observed maximum 1,000,692は、記録済みrunnerに対するstrict-validなprior diagnosticとして保持する。旧 `requested + 1024` は当時の診断設定であり、YaneuraOuの数学的停止上限・正確な仕事量同値性として扱わない。現行は `one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` による片側1%の運用上のsanity envelopeへ更新し、`formal.max_reported_nodes` と `formal.pilot_evidence.max_reported_nodes` は `C(1,000,000)=1,010,000` に完全一致させる。`go nodes` は上限なので最低ノード目標は設けない。runner/parserの変更でexecution identityも変わったため、v2/v3/v4をformal launch evidenceへ使わない。
+v2のpilot fingerprint `6eb64a82e1673510438e3dcbc9e7ba1533c5b7042d9c04ec3c5e209e1c3904e4` と strict all-evidence observed maximum 1,000,692は、記録済みrunnerに対するstrict-validなprior diagnosticとして保持する。旧 `requested + 1024` は当時の診断設定であり、YaneuraOuの数学的停止上限・正確な仕事量同値性として扱わない。現行は `one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` による片側1%の運用上のsanity envelopeへ更新し、`formal.max_reported_nodes` を `C(1,000,000)=1,010,000` に固定する。次に凍結する `formal.pilot_evidence.max_reported_nodes` も同じ値でなければならない。`go nodes` は上限なので最低ノード目標は設けない。runner/parserの変更でexecution identityも変わったため、v2/v3/v4をformal launch evidenceへ使わない。
 
 ### reviewed pilot v5 と改訂前診断の扱い
 
@@ -108,9 +113,9 @@ v2のpilot fingerprint `6eb64a82e1673510438e3dcbc9e7ba1533c5b7042d9c04ec3c5e209e
 
 `development-pilot-20260916-v4` は102/102 attempt、technical failure 0、34/34 engine-position tripleがstable、observed max `M=1,001,086 <= C(1,000,000)=1,010,000` だった。ただし forced-single zero-node 例外のnode summary集計検査を強化する前のparser identityで生成されたprior diagnosticなので、formal freezeには使わない。v5とは区別して保持する。旧 `development-baseline-20260916` formalは実行済みだがinvalidであり、v4とは別枠で扱う。
 
-旧 `development-baseline-20260916` formal は1,140/1,140 attemptを収集したが invalidである。Teacher development-04 p077 の all-evidence max 1,001,086 は旧1,001,024を超え、Sekirei development-05 p122 は旧分類にない mate 1 / nodes 0 だった。`status=complete` は formal valid を意味せず、診断上の exact coverage 265/265 も有効なheadlineやモデル採用の根拠ではない。現行 config の `formal.pilot_evidence` はv5のrun ID・fingerprint・observed max 1,001,086・ceiling 1,010,000を凍結し、そのidentityで現行formal v2を完了した。final 5局は現行formalとreport/export経路で未アクセスである。旧1,001,024をsource-derived guaranteeとして扱う主張は撤回する。
+旧 `development-baseline-20260916` formal は1,140/1,140 attemptを収集したが invalidである。Teacher development-04 p077 の all-evidence max 1,001,086 は旧1,001,024を超え、Sekirei development-05 p122 は旧分類にない mate 1 / nodes 0 だった。`status=complete` は formal valid を意味せず、診断上の exact coverage 265/265 も有効なheadlineやモデル採用の根拠ではない。v0.3.36当時のconfigはv5のrun ID・fingerprint・observed max 1,001,086・ceiling 1,010,000を凍結し、そのidentityでformal v2を完了した。final 5局は同formalとreport/export経路で未アクセスである。現行v0.3.39 configではこのevidenceを解除しており、旧1,001,024をsource-derived guaranteeとして扱う主張も撤回済みである。
 
-typed resultは、既存のforced-single 5件とterminal checkmate 1件を維持し、development-05 p122を `mate_in_one_available`（黒番・非チェック・合法手217・mating move `2g4g`）として扱う。非終端Sekireiのzero-node例外はforced-singleとmate-in-oneの二つのhash-bound例外である。forced-singleは exact cp（`status=exact_cp`、`score_kind=cp`、`score_bound_stm=exact`、整合するcp値）に限り、正常lifecycle、全structured node evidence 0、reported/last/max 0、sole moveとnormal bestmove/PV head一致を要求し、PV全体は一手に限定しない。mate-in-oneはさらにexact raw mate 1と一手PV・凍結mating move一致を要求する。別枠のTeacher terminal checkmateは厳密なmate -1/resign responseだけを許容する。bound/mateをforced例外としてcpへ変換せず、v5もpilotなので五局完全なexact-cp headlineは定義しない。`development-pilot-20260916-v5` は17局面・102/102 attempt、technical failure 0、34/34 stable、complete evidence validである。Teacherは `exact_cp=9 / bound_cp=30 / mate=12`、M evidence `51/48/3/0/0`、max 1,001,086、`>N=39`、`>C=0`、Sekireiは `exact_cp=45 / mate=3 / no_score=3`、M evidence `48/42/6/3/0`、max 1,000,001、`>N=3`、`>C=0`。missing 3件はterminal Sekirei no_score、zero 6件はforced-single 3件とmate-in-one 3件、Teacher zero 3件はterminalである。これは現行のreviewed/formal launch evidenceとして `formal.pilot_evidence` に凍結済みで、現行formal v2も完了した。旧 `development-pilot-20260916-v2`、v3、v4と旧invalid formalはprior diagnosticとしてのみ保持する。
+typed resultは、既存のforced-single 5件とterminal checkmate 1件を維持し、development-05 p122を `mate_in_one_available`（黒番・非チェック・合法手217・mating move `2g4g`）として扱う。非終端Sekireiのzero-node例外はforced-singleとmate-in-oneの二つのhash-bound例外である。forced-singleは exact cp（`status=exact_cp`、`score_kind=cp`、`score_bound_stm=exact`、整合するcp値）に限り、正常lifecycle、全structured node evidence 0、reported/last/max 0、sole moveとnormal bestmove/PV head一致を要求し、PV全体は一手に限定しない。mate-in-oneはさらにexact raw mate 1と一手PV・凍結mating move一致を要求する。別枠のTeacher terminal checkmateは厳密なmate -1/resign responseだけを許容する。bound/mateをforced例外としてcpへ変換せず、v5もpilotなので五局完全なexact-cp headlineは定義しない。`development-pilot-20260916-v5` は17局面・102/102 attempt、technical failure 0、34/34 stable、complete evidence validである。Teacherは `exact_cp=9 / bound_cp=30 / mate=12`、M evidence `51/48/3/0/0`、max 1,001,086、`>N=39`、`>C=0`、Sekireiは `exact_cp=45 / mate=3 / no_score=3`、M evidence `48/42/6/3/0`、max 1,000,001、`>N=3`、`>C=0`。missing 3件はterminal Sekirei no_score、zero 6件はforced-single 3件とmate-in-one 3件、Teacher zero 3件はterminalである。これはv0.3.36 formalのreviewed launch evidenceで、対応するformal v2も完了した。旧 `development-pilot-20260916-v2`、v3、v4と旧invalid formalはprior diagnosticとしてのみ保持する。
 
 ### reviewed formal v2 の実機結果
 
@@ -143,7 +148,7 @@ Issue #7の計画・実行は `scripts/benchmark.py`、採点・図・公開境�
 USI supervisorのcleanup契約は、engineの終了コードと監督結果を分離する。監督は `waitid(WNOWAIT)` でengine exitを観測し、`/proc/<supervisor>/task/<supervisor>/children` の直接子をreap前に識別してpidfdを取得する。再親化で元のsession/PGIDを離れた子にも `signal.pidfd_send_signal` でTERM→KILLを送り、全子のreap/ECHILDと入力・出力relay閉鎖を、一つのcleanup deadline内で確認する。能力・列挙・signal・reapの証明失敗、監督terminal status欠落、runnerによるanchorのforce-killはcleanup failureとしてraw outcomeに保存し、成功扱いにしない。
 
 ```text
-~/.local/share/sekirei-weight2/suisho11beta-v1/
+~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/
   .prepare.lock       # prepare.pyと共有するロック
   .benchmark.lock     # benchmark全体の排他ロック
   runs/<run-id>/
@@ -166,6 +171,8 @@ python3 scripts/benchmark.py plan --run-type pilot
 python3 scripts/benchmark.py plan --run-type formal
 ```
 
-planの固定値はpilot 17 positions / 102 attempts / 34 engine-position triples、formal 570 positions / 1,140 attempts、development CSA aggregate SHA-256 `0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2`、分類manifest SHA-256 `a244a2206fd2b25b6fe475a9794c07eb2c5fc99f996e891dbfed1e89a0a89427`、分類を含むcanonical universe SHA-256 `33ce54f3ff9c40687e2304a7dc222ceddc0d6843180020a68262dd1762ec5fa6`。両計画は `go nodes 1000000` と `one-sided-1-percent` v1、`C(1,000,000)=1,010,000` を事前登録する。`reported_nodes_at_score`、`last_reported_nodes`、全有効値の最大 `M` を保存し、`M <= C(N)` をinclusiveに判定する。observed maxがrequested nodes未満でも早期完了として許容するが、各engineに正のnode evidenceが必要で、技術失敗や片側だけの証拠ではgateを通さない。formal gateは同じruntimeの現行102-attempt pilotについて `pilot_run_id`、`pilot_fingerprint`、全attemptから再計算した observed maximum、policy limit、完全なattempt matrixを要求する。v5 evidenceを凍結した現行identityのformal v2は完了済みである。execution identityにはrunner/parser、分類・development hash、requested nodes、node policy id/version/rate、timeout、環境、全option、バイナリ・build/toolchain、教師重み、候補モデル、hostを束縛する。
+planはエンジンを起動せず入力集合を確認するため、未凍結でも作成できる。実際の `formal` 実行はv0.3.39 pilotのreview後に `formal.pilot_evidence` を凍結するまで拒否する。
 
-`benchmark_report.py report` はlocal詳細を書けるが、`export` は空の出力ディレクトリ直下へ `validation.md`、`reviewed.svg`、`validation.json`、`manifest.json` の4 redacted public fileだけを書く。local/や局面別ファイルは作らず、絶対パス、ユーザー名、source game ID、raw position履歴、model path、free-form provenanceを入れない。現行formal v2の生成物はMainがSVGを目視レビューし、[`validation/development-baseline-2026-09-19`](validation/development-baseline-2026-09-19/validation.md) に追跡した。v5は17局面・102 attemptのreviewed/formal launch evidence、formal v2はそのidentityでの初期baselineであり、旧v2/v3/v4 pilotと旧invalid formalから区別する。local/public reportはengine別に全有効値Mのevidence/positive/zero/missing/invalid、p50/p95/p99/max、`>N`、`>C(N)`、最大positive overrun/rateを保持し、quantileはソート済み有限値の `(n-1)*p` 位置を線形補間する。pilotのTeacher exact coverageはサンプル診断に限られ、正式headlineはformal v2の固定Teacher-E 266点が全てSekirei exactになった場合にだけ定義した。final 5局は未アクセスである。
+planの固定値はpilot 17 positions / 102 attempts / 34 engine-position triples、formal 570 positions / 1,140 attempts、development CSA aggregate SHA-256 `0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2`、分類manifest SHA-256 `a244a2206fd2b25b6fe475a9794c07eb2c5fc99f996e891dbfed1e89a0a89427`、分類を含むcanonical universe SHA-256 `33ce54f3ff9c40687e2304a7dc222ceddc0d6843180020a68262dd1762ec5fa6`。両計画は `go nodes 1000000` と `one-sided-1-percent` v1、`C(1,000,000)=1,010,000` を事前登録する。`reported_nodes_at_score`、`last_reported_nodes`、全有効値の最大 `M` を保存し、`M <= C(N)` をinclusiveに判定する。observed maxがrequested nodes未満でも早期完了として許容するが、各engineに正のnode evidenceが必要で、技術失敗や片側だけの証拠ではgateを通さない。formal gateは同じruntimeの102-attempt pilotについて `pilot_run_id`、`pilot_fingerprint`、全attemptから再計算した observed maximum、policy limit、完全なattempt matrixを要求する。v0.3.39ではまだ未凍結なのでformalは停止する。execution identityにはrunner/parser、分類・development hash、requested nodes、node policy id/version/rate、timeout、環境、全option、バイナリ・build/toolchain、教師重み、候補モデル、hostを束縛する。
+
+`benchmark_report.py report` はlocal詳細を書けるが、`export` は空の出力ディレクトリ直下へ `validation.md`、`reviewed.svg`、`validation.json`、`manifest.json` の4 redacted public fileだけを書く。local/や局面別ファイルは作らず、絶対パス、ユーザー名、source game ID、raw position履歴、model path、free-form provenanceを入れない。v0.3.36 formal v2の生成物はMainがSVGを目視レビューし、[`validation/development-baseline-2026-09-19`](validation/development-baseline-2026-09-19/validation.md) に追跡した。v5は同系列の17局面・102 attemptのreviewed/formal launch evidence、formal v2はそのidentityでの初期baselineであり、旧v2/v3/v4 pilotと旧invalid formalから区別する。local/public reportはengine別に全有効値Mのevidence/positive/zero/missing/invalid、p50/p95/p99/max、`>N`、`>C(N)`、最大positive overrun/rateを保持し、quantileはソート済み有限値の `(n-1)*p` 位置を線形補間する。pilotのTeacher exact coverageはサンプル診断に限られ、正式headlineはformal v2の固定Teacher-E 266点が全てSekirei exactになった場合にだけ定義した。final 5局は未アクセスである。

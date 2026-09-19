@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
-  "runtime_profile": "suisho11beta-v1",
+  "runtime_profile": "suisho11beta-sekirei-v0.3.39-v1",
   "sources": {
     "sekirei": {
       "url": "https://github.com/kent-tokyo/sekirei.git",
-      "commit": "aeb6ea30d58f93cad84ffe98bc13441feb807fa8",
-      "version": "0.3.36",
-      "ref": "refs/tags/v0.3.36",
+      "commit": "f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9",
+      "version": "0.3.39",
+      "ref": "refs/tags/v0.3.39",
       "packages": ["sekirei", "sekirei-train"]
     },
     "shogiesa": {

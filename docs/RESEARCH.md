@@ -6,7 +6,7 @@
 
 水匠11βを第1目標とした理由は、手元に同モデル・100万ノードと説明された生成済み教師データがあり、Mac miniで大量の教師探索を再生成せず学習へ進めるため。Suisho11Plusは参考教師として節目で確認するが、初期モデルの採否をPlusへの一致で決めない。
 
-人間が目的・評価方法・計算予算・変更可能範囲を定め、AI が実測から次の改善仮説を選ぶ。特徴量・NNUE 構造の変更は検討対象。探索実装の変更は当面対象外。
+人間が目的・評価方法・計算予算・変更可能範囲を定め、AI が実測から次の改善仮説を選ぶ。特徴量・NNUE 構造の変更は検討対象。既知のsingular-extension TT cutoff問題を解消したupstream v0.3.39への移行後は、探索実装の追加変更を当面対象外とする。
 
 ## Fresh に進める
 
@@ -26,7 +26,7 @@
 | MultiPV | 1 |
 | 主教師 | 固定やねうら王 V9.20 + 固定水匠11β Concerto 202512、SFNNwoP1536、FV_SCALE=28 |
 | 参考教師 | Suisho11Plus。旧固定環境を保持するが、初期の合否判定には使わない |
-| Sekirei | 固定 commit、初期 build は upstream の default NNUE 形式 |
+| Sekirei | upstream v0.3.39の固定commit。上流公開NNUE重みを入れず、最初はmaterial fallbackで探索差分を分離 |
 | 局面入力 | 正式評価では `position startpos moves ...` または初期 SFEN + 全履歴 |
 | 探索状態 | 最初の正式評価は局面ごとに新規プロセスを作り、他局面の TT/history を持ち越さない案。生成済み `.pack` の探索状態とは区別 |
 | 縦軸 | 先手視点の cp。棋譜ごとの倍率変更・オフセット補正・平滑化を採点に使わない |
@@ -84,7 +84,13 @@ CPU で学習から評価まで小規模に一周し、教師生成・学習・�
 
 rfkit-rs の Planner → 一つの Issue → Worker → 検証済み PR の骨格を参考にする。具体的な自動実行スケジュール、モデル配役、自動マージ、長時間計算の予算はまだ設定しない。
 
-## Issue #7 開発baselineの固定契約
+## Issue #9 Sekirei v0.3.39への移行
+
+現在のSekirei / sekirei-trainはupstream v0.3.39、commit `f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9`へ固定する。v0.3.37で入ったsingular-extension verification searchのTT cutoff修正を含む版を、今後の探索基準にする。upstream v0.3.38で公開されたA-flat NNUE checkpointは評価器そのものを変えるため、この移行には含めない。まず学習済み重みなしのmaterial fallbackで、v0.3.36との差を探索版だけに限定する。
+
+v0.3.36のruntime `suisho11beta-v1` と完了済みbaselineは上書きしない。v0.3.39は `suisho11beta-sekirei-v0.3.39-v1` に分離する。エンジンcommitとtoolchain lockが変わるため、旧 `development-pilot-20260916-v5` は新しいformal launch evidenceにならない。`config/development-benchmark.json` の `formal.pilot_evidence` は `null` に戻し、v0.3.39の102-attempt pilotを取得・レビューしてから新しい値を凍結する。入力集合を確認するformal planは作成できるが、それまではformal実行をfail-closedで停止させる。
+
+## Issue #7 v0.3.36開発baselineの固定契約
 
 ### reviewed pilot v2 の診断結果
 
@@ -102,9 +108,9 @@ typed occurrenceでは、development-04 p108を `forced_single_legal_move`（in 
 
 `development-pilot-20260916-v4` は102/102 attempt、technical failure 0、34/34 engine-position tripleがstable、observed max `M=1,001,086 <= C(1,000,000)=1,010,000` だった。ただし forced-single zero-node 例外のnode summary集計検査を強化する前のparser identityで生成されたprior diagnosticなので、formal freezeには使わない。v5とは区別して保持する。旧 `development-baseline-20260916` formalは実行済みだがinvalidであり、v4とは別枠で扱う。
 
-旧 `development-baseline-20260916` formal は1,140/1,140 attemptを収集したが invalidである。Teacher development-04 p077 の all-evidence max 1,001,086 は旧1,001,024を超え、Sekirei development-05 p122 は旧分類にない mate 1 / nodes 0 だった。`status=complete` は formal valid を意味せず、診断上の exact coverage 265/265 も有効なheadlineやモデル採用の根拠ではない。現行 config の `formal.pilot_evidence` はv5のrun ID・fingerprint・observed max 1,001,086・ceiling 1,010,000を凍結し、そのidentityで現行formal v2を完了した。final 5局は現行formalとreport/export経路で未アクセスである。
+旧 `development-baseline-20260916` formal は1,140/1,140 attemptを収集したが invalidである。Teacher development-04 p077 の all-evidence max 1,001,086 は旧1,001,024を超え、Sekirei development-05 p122 は旧分類にない mate 1 / nodes 0 だった。`status=complete` は formal valid を意味せず、診断上の exact coverage 265/265 も有効なheadlineやモデル採用の根拠ではない。v0.3.36当時のconfigはv5のrun ID・fingerprint・observed max 1,001,086・ceiling 1,010,000を凍結し、そのidentityでformal v2を完了した。final 5局は同formalとreport/export経路で未アクセスである。v0.3.39の現行configではこのevidenceを解除している。
 
-typed resultは、既存のforced-single 5件とterminal checkmate 1件を維持し、development-05 p122だけを `mate_in_one_available`（黒番・非チェック・合法手217・sorted unique mating move `2g4g`）として追加する。非終端Sekireiの0 nodes例外はhash-boundで二つある。forced-singleは exact cp（`status=exact_cp`、`score_kind=cp`、`score_bound_stm=exact`、整合するcp値）に限り、正常lifecycle、全structured node evidenceが存在して全て0、reported/last/maxが0、in-check・合法手1・sole move一致、normal bestmoveとPV head一致を要求する（PV全体は一手に限定しない）。mate-in-oneはさらにexact raw `score mate 1`、合法normal bestmove、PV一手、PV headとbestmove一致、凍結リスト一致を要求する。両方ともpositive/missing/invalid/mixed/duplicate/集計不整合は受理しない。別枠のTeacher terminal checkmateは厳密な mate -1/resign responseだけを許容し、bound cp・mate・no-score等をforced例外として救済せず、forced/mateはcpやexact-cp headlineへ変換しない。`development-pilot-20260916-v5` は17局面・102/102 attempt、technical failure 0、34/34 stable、complete evidence validである。Teacherは `exact_cp=9 / bound_cp=30 / mate=12`、M evidence `51/48/3/0/0`、max 1,001,086、`>N=39`、`>C=0`、Sekireiは `exact_cp=45 / mate=3 / no_score=3`、M evidence `48/42/6/3/0`、max 1,000,001、`>N=3`、`>C=0`。missing 3件はterminal Sekirei no_score、zero 6件はforced-single 3件とmate-in-one 3件、Teacher zero 3件はterminalである。pilotなのでheadlineは定義せず、v5を現行のreviewed/formal launch evidenceとして `formal.pilot_evidence` に凍結する。旧v2/v3/v4と旧invalid formalはprior diagnosticとして現行formal v2から区別する。
+typed resultは、既存のforced-single 5件とterminal checkmate 1件を維持し、development-05 p122だけを `mate_in_one_available`（黒番・非チェック・合法手217・sorted unique mating move `2g4g`）として追加する。非終端Sekireiの0 nodes例外はhash-boundで二つある。forced-singleは exact cp（`status=exact_cp`、`score_kind=cp`、`score_bound_stm=exact`、整合するcp値）に限り、正常lifecycle、全structured node evidenceが存在して全て0、reported/last/maxが0、in-check・合法手1・sole move一致、normal bestmoveとPV head一致を要求する（PV全体は一手に限定しない）。mate-in-oneはさらにexact raw `score mate 1`、合法normal bestmove、PV一手、PV headとbestmove一致、凍結リスト一致を要求する。両方ともpositive/missing/invalid/mixed/duplicate/集計不整合は受理しない。別枠のTeacher terminal checkmateは厳密な mate -1/resign responseだけを許容し、bound cp・mate・no-score等をforced例外として救済せず、forced/mateはcpやexact-cp headlineへ変換しない。`development-pilot-20260916-v5` は17局面・102/102 attempt、technical failure 0、34/34 stable、complete evidence validである。Teacherは `exact_cp=9 / bound_cp=30 / mate=12`、M evidence `51/48/3/0/0`、max 1,001,086、`>N=39`、`>C=0`、Sekireiは `exact_cp=45 / mate=3 / no_score=3`、M evidence `48/42/6/3/0`、max 1,000,001、`>N=3`、`>C=0`。missing 3件はterminal Sekirei no_score、zero 6件はforced-single 3件とmate-in-one 3件、Teacher zero 3件はterminalである。pilotなのでheadlineは定義せず、v5をv0.3.36 formalのreviewed launch evidenceとして凍結した。旧v2/v3/v4と旧invalid formalはprior diagnosticとしてv0.3.36 formal v2から区別する。
 
 ### reviewed formal v2 の初期baseline
 
@@ -120,7 +126,7 @@ node evidence の厳密文法は、`go nodes <[0-9]+>`（ASCII 十進数字列�
 
 USI supervisorのcleanup契約では、engineの終了コードと監督結果を分離する。監督は `waitid(WNOWAIT)` でengine exitを観測し、`/proc/<supervisor>/task/<supervisor>/children` の直接子をreap前に識別してpidfdを取得する。再親化で元のsession/PGIDを離れた子にもpidfd TERM/KILLを送り、全子をreapしてECHILDになり、入出力relayが閉じるまでanchorを破棄しない。能力・列挙・signal・reapの証明失敗、terminal status欠落、runnerによるanchor force-killはcleanup failureとしてraw outcomeに残し、成功扱いにしない。
 
-`config/development-benchmark.json` は5局のCSA SHA-256、正規化CSA hash、benchmark manifest hash、分類manifest hash、全履歴を含むcanonical universe hash、手数合計570を固定する。分類manifestは forced single legal move 5件、`mate_in_one_available` 1件（development-05 p122）、terminal checkmate 1件を含み、cshogi 1.0.4で全570 occurrence・46,668合法root moveを照合する。`scripts/benchmark.py plan --run-type pilot` はcanonical 15局面に明示的な regression の development-04:77 と development-05:122 を加えた17局面を3 fresh-process repetitionで102 attempt / 34 engine-position tripleとする。pilot/formalの `max_reported_nodes` は named policy `one-sided-1-percent` v1 の `C(1,000,000)=1,010,000` を事前登録する。formalは同じ570局面を両エンジン1回ずつで1,140 attemptとする。formal実行には、同じruntimeの現行102-attempt pilotについて `pilot_run_id`、`pilot_fingerprint`、全attemptから再計算した `observed_max_reported_nodes`、policy limitを `formal.pilot_evidence` に凍結する。v5 evidenceを凍結して現行formal v2を完了済みである。未凍結（null）・型不正・実測不一致のevidenceは引き続き停止条件とする。
+`config/development-benchmark.json` は5局のCSA SHA-256、正規化CSA hash、benchmark manifest hash、分類manifest hash、全履歴を含むcanonical universe hash、手数合計570を固定する。分類manifestは forced single legal move 5件、`mate_in_one_available` 1件（development-05 p122）、terminal checkmate 1件を含み、cshogi 1.0.4で全570 occurrence・46,668合法root moveを照合する。`scripts/benchmark.py plan --run-type pilot` はcanonical 15局面に明示的な regression の development-04:77 と development-05:122 を加えた17局面を3 fresh-process repetitionで102 attempt / 34 engine-position tripleとする。pilot/formalの `max_reported_nodes` は named policy `one-sided-1-percent` v1 の `C(1,000,000)=1,010,000` を事前登録する。formalは同じ570局面を両エンジン1回ずつで1,140 attemptとする。formal実行には、同じruntimeの102-attempt pilotについて `pilot_run_id`、`pilot_fingerprint`、全attemptから再計算した `observed_max_reported_nodes`、policy limitを `formal.pilot_evidence` に凍結する。v0.3.36ではv5 evidenceを使ってformal v2を完了したが、v0.3.39の現行値は未凍結（null）である。未凍結・型不正・実測不一致のevidenceは引き続き停止条件とする。
 
 両エンジンの正式optionは、Sekireiが `Threads=1, Hash=128, SearchMode=Speculative, SpecTopN=0, MultiPV=1, Ponder=false, UseBook=false`、教師が `Threads=1, USI_Hash=128, MultiPV=1, USI_Ponder=false, BookFile=no_book, FV_SCALE=28, OutputFailLHPV=false, PvInterval=0`。送信順もrunner証跡に固定し、`usi` / option広告 / `setoption` / `isready` / `usinewgame` / exact position / exact `go nodes 1000000` / matching bestmove / quitのraw lifecycleを検証する。教師の `EvalDir` は照合済み重みから導出し、モデル・重み・optionの不一致はfallbackせず失敗にする。pilotとformalは、runner/parser、分類・development hash、requested nodes、named node policy id/version/rate、timeout、thread環境、全engine設定とresolved option、binary/build/toolchain、teacher weight、candidate model、hostを含むcanonical execution identityを共有する。run type・repetition・pilot sample/full positionsはidentityから除外し、freeze時のconfig digestやrepo commit変更は再利用を無効化しない。runnerはLinuxのsession leader supervisor/subreaperを各attemptの所有anchorにし、engineをshellなしで直接argv execする。親engineが即時終了してもsupervisorは子孫をreapし、cleanup完了までPGIDを保持するため、runnerは終了後の子発見をscheduler pollに依存しない。
 

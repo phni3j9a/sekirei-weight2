@@ -1074,7 +1074,10 @@ def score_observations(plan, teacher_rows, candidate_rows, *, accuracy_threshold
     validity = _formal_validity(plan, teacher_rows, candidate_rows)
     repeatability = _repeatability_diagnostics(plan, teacher_rows, candidate_rows)
     if repetitions == 1:
-        report = repetition_reports[0]
+        # Keep the one-repetition diagnostic without making the aggregate
+        # report contain itself.  A shared object here creates a recursive
+        # structure that json.dumps() cannot serialize for formal runs.
+        report = copy.deepcopy(repetition_reports[0])
         report["repetition_reports"] = repetition_reports
         report["repeatability"] = repeatability
         report["attempt_count"] = repeatability["attempt_count"]

@@ -1723,6 +1723,26 @@ def row(game_id, ply, status, **values):
 
 
 class ReportTests(unittest.TestCase):
+    def test_single_repetition_report_is_json_serializable(self):
+        plan = small_plan()
+        plan["run_type"] = "formal"
+        teacher = [
+            row(f"game-{index:02d}", ply, "exact_cp", score_cp_sente=100)
+            for index in range(1, 6)
+            for ply in (1, 2)
+        ]
+        candidate = [
+            row(f"game-{index:02d}", ply, "exact_cp", score_cp_sente=105)
+            for index in range(1, 6)
+            for ply in (1, 2)
+        ]
+
+        report = score_observations(plan, teacher, candidate, accuracy_thresholds=[0])
+
+        self.assertEqual(len(report["repetition_reports"]), 1)
+        self.assertIsNot(report, report["repetition_reports"][0])
+        self.assertIn('"repetition_reports"', json.dumps(report))
+
     def test_report_exposes_position_types_and_per_engine_positive_nodes(self):
         plan = small_plan()
         plan["positions"][0].update(

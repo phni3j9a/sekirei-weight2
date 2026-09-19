@@ -1051,7 +1051,15 @@ def _aggregate_bound_diagnostics(reports):
     return {key: sum(report.get("bound_diagnostic", {}).get(key, 0) for report in reports) for key in keys}
 
 
-def score_observations(plan, teacher_rows, candidate_rows, *, accuracy_thresholds=None, config=None):
+def score_observations(
+    plan,
+    teacher_rows,
+    candidate_rows,
+    *,
+    accuracy_thresholds=None,
+    config=None,
+    evidence_validator_passed=False,
+):
     """Score formal runs once, or retain every pilot repetition diagnostically."""
     config = config or load_config()
     repetitions = plan.get("repetitions")
@@ -1071,7 +1079,12 @@ def score_observations(plan, teacher_rows, candidate_rows, *, accuracy_threshold
                 repetition=repetition,
             )
         )
-    validity = _formal_validity(plan, teacher_rows, candidate_rows)
+    validity = _formal_validity(
+        plan,
+        teacher_rows,
+        candidate_rows,
+        evidence_validator_passed=evidence_validator_passed,
+    )
     repeatability = _repeatability_diagnostics(plan, teacher_rows, candidate_rows)
     if repetitions == 1:
         # Keep the one-repetition diagnostic without making the aggregate
@@ -1734,6 +1747,7 @@ def report_from_run(run_dir, output_dir=None, *, accuracy_thresholds=None):
         teacher_rows,
         candidate_rows,
         accuracy_thresholds=accuracy_thresholds,
+        evidence_validator_passed=True,
     )
     validity = report.get("validity")
     if isinstance(validity, dict):

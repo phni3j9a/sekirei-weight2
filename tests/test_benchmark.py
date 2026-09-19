@@ -1723,6 +1723,42 @@ def row(game_id, ply, status, **values):
 
 
 class ReportTests(unittest.TestCase):
+    def test_validated_formal_run_keeps_defined_headline(self):
+        plan = small_plan()
+        plan["run_type"] = "formal"
+        teacher = [
+            {
+                **row(f"game-{index:02d}", ply, "exact_cp", score_cp_sente=100),
+                "engine_id": "teacher",
+            }
+            for index in range(1, 6)
+            for ply in (1, 2)
+        ]
+        candidate = [
+            {
+                **row(f"game-{index:02d}", ply, "exact_cp", score_cp_sente=105),
+                "engine_id": "sekirei",
+            }
+            for index in range(1, 6)
+            for ply in (1, 2)
+        ]
+        manifest = {
+            "run_id": "formal-fixture",
+            "fingerprint": "fixture-fingerprint",
+            "status": "complete",
+        }
+
+        with mock.patch(
+            "benchmark_report.load_run",
+            return_value=(manifest, plan, teacher + candidate),
+        ):
+            report = report_from_run(Path("unused"), accuracy_thresholds=[0])
+
+        self.assertTrue(report["validity"]["formal_run_valid"])
+        self.assertTrue(report["headline"]["valid"])
+        self.assertEqual(report["headline"]["mae_cp"], 5)
+        self.assertIsNone(report["headline"]["reason"])
+
     def test_single_repetition_report_is_json_serializable(self):
         plan = small_plan()
         plan["run_type"] = "formal"

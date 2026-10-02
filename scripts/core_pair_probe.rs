@@ -140,8 +140,10 @@ fn run() -> Result<(), String> {
         {
             return Err(format!("core bridge >=1.001cp at index {index}"));
         }
+        // Debug float formatting preserves -0.0 as a JSON float; Display would
+        // emit -0, which integer-first JSON parsers lose when restoring f32 bits.
         println!(
-            "{{\"index\":{index},\"native_core_cp\":{native_cp},\"nearest_core_cp\":{nearest_cp},\"native_quantized_float_cp\":{native_float},\"nearest_quantized_float_cp\":{nearest_float},\"material_cp\":{}}}",
+            "{{\"index\":{index},\"native_core_cp\":{native_cp},\"nearest_core_cp\":{nearest_cp},\"native_quantized_float_cp\":{native_float:?},\"nearest_quantized_float_cp\":{nearest_float:?},\"material_cp\":{}}}",
             material_score(&board)
         );
         count += 1;

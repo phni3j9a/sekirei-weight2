@@ -180,4 +180,14 @@ NNUE全体の学習とは別に、学習できる値を基本7駒の価値と6�
 
 [constant epoch12の図](validation/weight-improvement-2026-10-03/constant-e12/supplement-three-series.svg)、[駒得epoch1の図](validation/weight-improvement-2026-10-03/material-e1/supplement-three-series.svg)、[最近傍丸めの図](validation/weight-improvement-2026-10-03/material-e1-nearest/supplement-three-series.svg)と、各comparisonにリンクした区間別表・誤差分位・生成manifestを参照。補助図はmatplotlib 3.11.2の専用描画環境で生成し、学習環境を変更していない。
 
-結果と再現手順は検証後に追記する。初回実験の基準は[初回weight](FIRST_WEIGHT.md)、全体の比較条件は[研究方針](RESEARCH.md)を参照。
+## 量子化について次に検証すること
+
+最近傍丸めのholdout core MAE 662.342 cpはraw floatの662.064 cpに近い。ただし、この差0.278 cpは「教師に対するMAEの差」であり、同じ局面のraw floatと量子化復元floatの予測差MAEは10.643 cpある。両者を同じ量と扱わず、0.278 cpを改善可能量の上限ともみなさない。今回の丸め変更は静的・正式の両MAEとTop3を改善したが、fallbackのTop3には達していない。
+
+未実施の仮説として、FT重みとbiasをforward時にも最近傍丸めして学習する方法がある。その検証ではfloat学習＋最近傍exportを対照にし、学習中のforward変更とexport変更を分ける。浮動小数点の原本とAdam状態は保持し、exportの全byte再現、固定coreとの照合、途中のint16飽和・加算順、CPU時間を小さな公開fixtureで先に確認する。今回、この方法の実装・学習・有用性の実証は行っていない。
+
+固定trainerは非ゼロFT勾配が疎でも、[FT勾配の全体buffer](https://github.com/kent-tokyo/sekirei/blob/f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9/crates/sekirei-train/src/trainer.rs#L2519)を作り、[Adamで全parameterを走査](https://github.com/kent-tokyo/sekirei/blob/f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9/crates/sekirei-train/src/trainer.rs#L4077)する。勾配が0の行も過去のmomentから変わるため、active行だけ量子化cacheを更新する案はそのままでは使えない。追加の量子化計算による時間増加は未測定である。
+
+量子化差を減らす課題と、教師の探索後の手に合う学習目的・データを作る課題は分けて追う。今回の観測だけではTop3未達の原因を特定できず、学習中の量子化を確実な改善策とは位置づけない。次の仮説も正式100万ノードの二指標で判断する。
+
+進行中の比較結果と再現手順は検証後に追記する。初回実験の基準は[初回weight](FIRST_WEIGHT.md)、全体の比較条件は[研究方針](RESEARCH.md)を参照。

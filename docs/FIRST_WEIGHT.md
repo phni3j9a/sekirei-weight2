@@ -67,4 +67,6 @@ python3 scripts/train_cpu.py --dataset "$DATASET" --trainer "$TRAIN_RUNTIME" \
 
 学習runtime 3系列（中断・timeoutの証拠も含む）はNASの `archives/2026-10-02/issue-13-first-weight-training` に保管済み。2,594ファイル・692,030,686 bytesとディレクトリ集合をコピー前後で照合し、SHA-256一致を確認した。SSDの実行用参照は保持している。詳細なreceiptは非公開NAS内にある。
 
-採否と2指標の値は正式比較完了後に追記する。
+v0.3.39 fallbackの正式run `development-baseline-20261002-v039-v1` は1,140/1,140 attempt、technical failure 0、missing/extra/duplicate 0で完了した。固定Teacher-Eは266/266を採点でき、5局等重みのMAEは **1,084.4786006022964 cp**。fingerprintは `b722baad6a29d4c70b32e7e0d05fdee378f6de4cf72075b6519d2c697642b60a`。[公開集計と5局のグラフ](validation/first-weight-2026-10-02/baseline/validation.md)を保存し、描画も確認した。
+
+候補のMAE・両モデルのTop3・採否は、残りの正式比較完了後に追記する。

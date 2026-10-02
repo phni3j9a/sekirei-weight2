@@ -1280,6 +1280,7 @@ def render_svg(report, *, public=False):
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" data-panel-count="{len(game_ids)}" data-y-min="{y_min:g}" data-y-max="{y_max:g}">',
         "<title>Development 1M-node evaluation comparison</title>",
         "<desc>Five after-move-ply panels, shared symmetric linear raw sente centipawn domain.</desc>",
+        '<rect width="100%" height="100%" fill="white"/>',
         "<style>.axis{stroke:#555;stroke-width:1}.grid{stroke:#ddd;stroke-width:1}.teacher{fill:none;stroke:#075985;stroke-width:1.4}.candidate{fill:none;stroke:#b91c1c;stroke-width:1.4}.bound{stroke:#7c3aed;stroke-width:1.1}.gap{fill:#6b7280}.mate{fill:#111827}.text{font-family:monospace;font-size:9px;fill:#111827}.teacher-label{fill:#075985}.candidate-label{fill:#b91c1c}</style>",
     ]
     for index, game_id in enumerate(game_ids):

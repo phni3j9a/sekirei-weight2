@@ -25,6 +25,8 @@ Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https
 - 旧 `development-baseline-20260916` は1,140/1,140 attemptを収集したが、現行の正式根拠にはできない。Teacher development-04 p077 の all-evidence max 1,001,086 は旧1,001,024を超え、Sekirei development-05 p122 は旧分類にない mate 1 / nodes 0 だった。この旧1,001,024をsource-derived guaranteeとして扱う主張は撤回する。`status=complete` は formal valid を意味せず、診断上の exact coverage 265/265 も headline やモデル採用の根拠ではない。
 - 現行契約は `go nodes 1000000` を両エンジンへ送り、`one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` により all-evidence max `M <= C(N)` を判定する。これは片側1%の運用上の比較・異常検出ガードレールであり、YaneuraOuの停止上限、内部仕事量の同値性、最低ノード目標ではない。pilot/formal の `max_reported_nodes` はともに 1,010,000 を事前登録する。旧v2/v3/v4はprior diagnostic、旧v5はv0.3.36 formalだけのlaunch evidenceである。
 
+最新のv0.3.39 fallbackの正式baselineは **MAE 1,084.479 cp**（1,140/1,140 attempt、technical failure 0、Teacher-E coverage 266/266）。[公開検証・グラフ](docs/validation/first-weight-2026-10-02/baseline/validation.md)を確認できる。初回weightの正式比較とTop3測定はIssue #13で実行中。
+
 ## 開発用 100万ノード baseline
 
 以下の完了済み結果はSekirei v0.3.36の履歴である。v0.3.39は別のexecution identityなので、同じ入力・契約でpilotを再取得してから新しいformal baselineを作る。

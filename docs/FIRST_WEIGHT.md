@@ -63,4 +63,8 @@ python3 scripts/train_cpu.py --dataset "$DATASET" --trainer "$TRAIN_RUNTIME" \
 - 重みは1,305,356 bytes、SHA-256 `2aec057bec3a0f6fa54999aacfbdd16df6982de791e1f43f9090abb7ac4b0eb7`。3エポック終了のweightを候補とし、途中checkpointからの成績選択はしていない。
 - v0.3.39 fallback pilot `development-pilot-20261002-v039-v1` は102/102 attempt、technical failure 0、34/34 stable。最大node evidenceは1,001,086で、1,010,000の規定内。fingerprintは `019a2f0a6b32dea4cacdbd5aa0f2dad852a807d8f550fc6e09ab173cc8153377`。
 
+候補自身のpilot `development-candidate-pilot-20261002-55k-v1` も102/102、technical failure 0、34/34 stableを確認した。fingerprintは `ca3f166a0d0ef174b82c4bd514fc97e249811ba0917233f949de040e24a9e7ef`。正式測定は両候補それぞれのpilotとweight identityに束縛する。
+
+学習runtime 3系列（中断・timeoutの証拠も含む）はNASの `archives/2026-10-02/issue-13-first-weight-training` に保管済み。2,594ファイル・692,030,686 bytesとディレクトリ集合をコピー前後で照合し、SHA-256一致を確認した。SSDの実行用参照は保持している。詳細なreceiptは非公開NAS内にある。
+
 採否と2指標の値は正式比較完了後に追記する。

@@ -4,7 +4,7 @@
 
 既知のsingular-extension TT cutoff修正を含むupstream Sekirei v0.3.39へ探索実装を更新して固定し、評価モデルの重み・特徴量・NNUE構造・学習データ・学習方法を改善する。旧sekirei-weightの方針や実験履歴を前提にしない。
 
-教師解析・学習は現在の Mac mini の CPU・32 GiB RAM・既存ストレージの範囲で進める。今後も追加機材は導入せず、外付け GPU・別 PC・クラウド GPU・有料計算基盤への移行を計画に含めない。公開リポジトリと GitHub Actions の軽量 CI を利用する。
+教師解析・学習は現在の Mac mini の CPU・32 GiB RAM・既存ストレージの範囲で進める。既存の `/mnt/storage/NAS/sekirei-weight2` を資料と成果物の非公開保管先に使い、実行環境と使用中のデータは内蔵SSDに置く。今後も追加機材は導入せず、外付け GPU・別 PC・クラウド GPU・有料計算基盤への移行を計画に含めない。公開リポジトリと GitHub Actions の軽量 CI を利用する。
 
 ## 現在の段階
 
@@ -50,15 +50,20 @@ nonterminal の Sekirei には hash-bound の0 nodes例外が二つある。forc
 
 ```sh
 python3 scripts/benchmark.py status
+```
+
+旧v0.3.36のreport/exportは、当時の固定版 `ed76730`（PR #8統合時点）の専用worktreeから次のコマンドを実行する。現行v0.3.39のcheckoutではtoolchain lock不一致として拒否される。保存先の移設でこの検証条件を緩めない。
+
+```sh
 python3 scripts/benchmark_report.py report \
   --run-dir ~/.local/share/sekirei-weight2/suisho11beta-v1/runs/development-baseline-20260916-v2 \
-  --output /tmp/development-baseline-v2-report
+  --output ~/.local/share/sekirei-weight2/suisho11beta-v1/reports/development-baseline-v2-report
 python3 scripts/benchmark_report.py export \
   --run-dir ~/.local/share/sekirei-weight2/suisho11beta-v1/runs/development-baseline-20260916-v2 \
   --output /tmp/development-baseline-v2-export
 ```
 
-raw USI log、attempt JSON、manifest、重み・モデル・絶対パスを含むレポートはruntime外へ出さない。attemptとreportには position type、canonical/regression selection、分類別coverage、engine別のpositive node evidenceと全structured nodeの `M` 分布（evidence/positive/zero/missing/invalid、p50/p95/p99/max、`>N`、`>C(N)`、最大overrun/rate）を保持する。`reported_nodes_at_score`、`last_reported_nodes`、`max_reported_nodes_evidence` は別フィールドである。`export` は空の出力ディレクトリ直下に4つのredacted public fileだけを書き、履歴・source game ID・ローカルパス・モデルパスをレビュー時に拒否する。quantileはソート済み有限M値の `(n-1)*p` 位置を線形補間する。supervisor、resume、cleanupの厳密な契約は従来どおり維持する。v5はv0.3.36 formalのreviewed evidenceであり、旧v2/v3/v4と `development-baseline-20260916` は旧semanticsのprior diagnosticとして区別する。
+raw USI log、attempt JSON、manifest、重み・モデル・絶対パスを含むレポートは、ローカルruntimeとNASの非公開保管コピーだけで扱う。attemptとreportには position type、canonical/regression selection、分類別coverage、engine別のpositive node evidenceと全structured nodeの `M` 分布（evidence/positive/zero/missing/invalid、p50/p95/p99/max、`>N`、`>C(N)`、最大overrun/rate）を保持する。`reported_nodes_at_score`、`last_reported_nodes`、`max_reported_nodes_evidence` は別フィールドである。`export` は空の出力ディレクトリ直下に4つのredacted public fileだけを書き、履歴・source game ID・ローカルパス・モデルパスをレビュー時に拒否する。quantileはソート済み有限M値の `(n-1)*p` 位置を線形補間する。supervisor、resume、cleanupの厳密な契約は従来どおり維持する。v5はv0.3.36 formalのreviewed evidenceであり、旧v2/v3/v4と `development-baseline-20260916` は旧semanticsのprior diagnosticとして区別する。
 
 ## 使い始める
 
@@ -102,6 +107,12 @@ python3 scripts/smoke.py
 `acquire_quest.py` は、現在公開されている第三者の棋譜検索画面から履歴とCSAを直列・既定2秒間隔で取得し、公式棋譜ページの `opp:human` 属性、一覧上のBot印、平手初期局面、cshogiによる全手再生を照合する。取得状態と応答cacheは `~/.local/share/sekirei-weight2/shogiquest-human-v1` に1局ごとに保存され、同じコマンドで再開できる。Webサービスの非公開通信を解析・利用しない。公開画面の仕様は変わり得るため、異常な応答では停止し、取得済みcacheを再利用する。
 
 `snapshot` は1,000局が揃った後、対局者の重複、手数、対局時レーティング差を制約し、固定hash順位だけで development 5局 / final 5局を選ぶ。CSA内の対局者名とレーティングは置換し、出典を追跡するため対局IDはmanifestに残す。最終評価用5局はモデルや閾値の選択には使わない。
+
+## ストレージ
+
+資料原本は `/mnt/storage/NAS/sekirei-weight2/materials/pixiv_fanbox_yaneurao` に置く。main checkoutの従来パス `docs/pixiv_fanbox_yaneurao` はGit対象外の互換リンクとして保持する。教師 `.pack` の保管コピーは `datasets/suisho11beta-1m`、既存runtimeの重み・実験記録・build manifestの保管コピーは `archives/2026-10-02/runtimes` にある。
+
+Git/worktree・build・venv・使用中のデータ/重み・実行中の出力は内蔵SSDを使う。完了した成果物はファイル集合・サイズ・SHA-256を照合して手動で保管する。既存runは絶対パスを含むため、NASコピーを直接実行用runtimeとせず、SSD側の参照パスも維持する。[配置・コピーと復元の手順](docs/ENVIRONMENT.md#内蔵ssdとnasの運用)、[移設の検証記録](docs/validation/storage-2026-10-02.md)を参照。
 
 ## 次の到達点
 

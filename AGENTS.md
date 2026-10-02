@@ -16,7 +16,7 @@
 
 - GitHub の Issue に背景・範囲・完了条件を残し、関連 PR を先に確認する。
 - 新規開発は最新のデフォルトブランチから専用ブランチと worktree を作る。今回の既定配置は `/home/server/worktrees/sekirei-weight2/issue-<番号>-<目的>`。
-- `/home/server/projects/sekirei-weight2` は main の同期とローカル資料の保持に使う。編集・テスト・commit は専用 worktree で行う。
+- `/home/server/projects/sekirei-weight2` は main の同期とローカル資料への参照に使う。編集・テスト・commit は専用 worktree で行う。
 - 一つの成果単位で Issue → worktree → commit/push → PR。継続修正は同じ Issue・worktree・PR を使う。
 - 未コミット・未追跡のユーザー作業を保持する。staging は対象ファイルを明示する。
 - 実装依頼に PR マージの許可は含まれない。明示の許可後に検証・マージ・今回の worktree とブランチの整理まで行う。
@@ -26,12 +26,13 @@
 
 - 固定版と重みのハッシュは config/toolchain.lock.json。変更は比較条件の変更として記録する。
 - 共通ランタイムは worktree 外に置く。ソースを変える実験は専用 checkout/build を使い、他の実験のバイナリを上書きしない。
+- 既存ストレージ `/mnt/storage/NAS/sekirei-weight2` を非公開の保管先として使う。資料原本・教師データの保管コピー・完了した実験記録はここへ置き、Git/worktree・build・venv・実行用データ/重み・実行中の出力は内蔵SSDに置く。移設はファイル集合・サイズ・SHA-256一致を確認してから行い、既存runの参照パスと原本を保持する。手順は `docs/ENVIRONMENT.md` を参照する。
 - 配布記事・教師重み・大規模棋譜・生成物を Git に含めない。必要な出典とハッシュを記録する。
 - sudo、カーネル、ブート、パーティション、ファームウェアの変更はこの作業に含まれない。必要ならユーザーに確認する。
 - 大規模展開・長時間学習の前に容量と計算予算を確認する。初期設定ではビルド jobs=2、解析 jobs=1、Threads=1。
 - 計算は現在の Mac mini の CPU・32 GiB RAM・既存ストレージでできる範囲に収める。今後も追加機材は導入せず、外付け GPU・別 PC・クラウド GPU・有料計算基盤への移行を計画に含めない。ユーザーが方針を変更するまで固定条件とする。GitHub Actions は公開可能な fixture を使った軽量 CI に使う。
 - 計算資源が不足する場合は、教師データの再利用、学習データの選定、モデル容量、実験数、CPU 実装の効率化で調整する。正式比較の100万ノード条件や採用基準を無断で緩めず、達成できた範囲と限界を報告する。
-- このリポジトリは公開運用する。FANBOX 資料、配布アーカイブ、教師重みはローカルに保持し、Git の履歴・Actions artifact に含めない。
+- このリポジトリは公開運用する。FANBOX 資料、配布アーカイブ、教師重みは内蔵SSDまたは上記の非公開保管先に保持し、Git の履歴・Actions artifact に含めない。
 - 今回は手動実行。定期実行・自動マージの有効化は別途合意する。
 
 ## 検証

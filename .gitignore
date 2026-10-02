@@ -1,5 +1,5 @@
-# Local source material, including paid articles and supplied archives.
-/docs/pixiv_fanbox_yaneurao/
+# Local source material (directory or NAS symlink), including paid articles and archives.
+/docs/pixiv_fanbox_yaneurao
 /docs/Clippings/
 /.local/
 /data/

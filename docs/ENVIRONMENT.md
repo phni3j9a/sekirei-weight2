@@ -8,20 +8,44 @@
 
 | パス | 用途 |
 | --- | --- |
-| `/home/server/projects/sekirei-weight2` | main 同期用 checkout、既存資料の保持 |
+| `/home/server/projects/sekirei-weight2` | 内蔵SSDのmain同期用checkout、既存資料への参照 |
 | `/home/server/worktrees/sekirei-weight2/<作業名>` | Issueごとの開発worktree。統合後は安全確認して削除 |
-| `/home/server/projects/sekirei-weight2/docs/pixiv_fanbox_yaneurao` | ユーザー提供のローカル資料。Git 対象外 |
+| `/home/server/projects/sekirei-weight2/docs/pixiv_fanbox_yaneurao` | NASの資料原本への互換リンク。リンク自体もGit対象外 |
+| `/mnt/storage/NAS/sekirei-weight2/materials/pixiv_fanbox_yaneurao` | ユーザー提供資料・配布アーカイブの原本 |
+| `/mnt/storage/NAS/sekirei-weight2/datasets/suisho11beta-1m` | 教師 `.pack` とmanifestの検証済み保管コピー |
+| `/mnt/storage/NAS/sekirei-weight2/archives/2026-10-02/runtimes` | 3系列の重み・既存run・build manifest等の保管コピー。実行用runtimeではない |
+| `/mnt/storage/NAS/sekirei-weight2/receipts` | 非公開のファイル一覧・サイズ・SHA-256とコピー照合記録 |
 | `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/sources` | v0.3.39比較系列のupstreamソース |
 | `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/build` | v0.3.39比較系列のビルド生成物 |
 | `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/bin` | v0.3.39比較系列の実行ファイルへのリンク |
 | `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/models/suisho11beta-concerto-202512` | 主教師重み |
-| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/data/teachers/suisho11beta-1m` | 内容ハッシュで重複除外した教師 `.pack` とmanifest |
-| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/venv` | `.pack` 監査・CSA合法手確認用の固定Python環境 |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/data/teachers/suisho11beta-1m` | v0.3.39で使う教師 `.pack` の配置先。2026-10-02時点では未作成 |
+| `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/venv` | v0.3.39の監査用Python環境の配置先。2026-10-02時点では未作成 |
 | `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/runs` | v0.3.39のsmoke・pilot・今後の実験成果物 |
 | `~/.local/share/sekirei-weight2/suisho11beta-v1` | v0.3.36 baselineを保持する旧runtime。上書きしない |
 | `~/.local/share/sekirei-weight2/shogiquest-human-v1` | 公開棋譜1,000局、取得cache、再開状態、ローカルmanifest |
 
 大規模資料を worktree にコピーしない。独立した研究実験では専用のソース・出力先を使い、共通 runtime を改造しない。`prepare.py` は排他ロック、`smoke.py` と `audit_pack.py` は共有ロックを取り、スクリプト同士のビルド／解析の競合を防ぐ。手動でのソース変更や直接ビルドは別途利用状況を確認する。
+
+### 内蔵SSDとNASの運用
+
+2026-10-02から既存の `/mnt/storage/NAS/sekirei-weight2` を保管に使う。ホスト上の構成は `/dev/sdb1`（ext4）→ `/mnt/disk1` → mergerfs → `/mnt/storage` で、NFS/SMB経由のマウントではない。計算を担うMac mini、CPU/RAM予算、100万ノードの比較条件は従来どおり。ストレージの新規購入、マウント設定、sudo操作、自動同期は行わない。
+
+保管先のプロジェクトルートは `server` 所有・mode `0700` とし、NASのほかの利用者へ配布資料を公開しない。Git/Actionsには資料、教師重み、生ログ、詳細なコピー照合記録を含めない。公開するのは運用手順と集計した検証結果だけとする。main checkoutの互換リンクは `.gitignore` で除外し、PR統合前のmainでも除外されるようローカルの `.git/info/exclude` に同じパスを保持する。
+
+Git/worktree・build・venv・使用中のデータとモデル・実行中のログは内蔵SSDに置く。既存の `.pack` 13本と監査用venvは `suisho11beta-v1` に残っている。v0.3.39側へのimportと `audit-deps` は、同版の学習/監査を始める際に実施する。保管コピーを作っても、旧runtimeや完了済みrunの内容・絶対パス・fingerprintは書き換えない。
+
+コピーと復元は次の手順で手動実行する。
+
+1. `findmnt --target /mnt/storage` と `df -h` でマウントと両保存先の空きを確認する。マウントがない、書き込めない、容量不足の場合は停止し、内蔵SSD側に同名の保管先を作らない。
+2. 書き込み中のrunは対象にしない。runtimeをコピーするときは既存の `.prepare.lock` を排他的・non-blockingに取得し、稼働中のprepare/smoke/benchmarkと競合しないことを確認する。関連プロセスと手動書き込みの有無も確認する。
+3. コピー前に相対パス、ファイルサイズ、SHA-256、ディレクトリ集合を `receipts/` に保存する。既存の保存先には上書きせず、新しい日付/run IDのディレクトリへコピーする。今回のコピーは `rsync -a --no-owner --no-group --fsync` を使用した。
+4. コピー後にコピー元とコピー先の全ファイルを読み直し、ファイル集合・サイズ・SHA-256とディレクトリ集合がすべて一致することを確認する。コピー元が途中で変わっていた場合も停止する。照合完了まではSSD側の実体を削除しない。
+5. 資料原本の移設では旧パスをNASへのリンクに置き換え、リンク先の一致・読込・Git除外を確認してからSSD上の旧実体を整理する。実行用のデータ/重みはSSD上に保持する。
+6. 既存runの保管コピーは、記録された絶対パスにあるバイナリ・重み・runtimeも参照する。今回の旧runはSSDにも残す。将来SSDから退避する際は、runが参照するruntime一式を復元できることを確認してから整理する。NASのコピーへ `--runtime` を向けるだけでは復元にならない。
+7. 復元時は元のSSDパスに別のデータがないことを確認し、保管コピーからコピーして同じ一覧・サイズ・SHA-256を照合する。資料リンクを実体へ戻す場合も、一時ディレクトリで照合してから切り替える。runtimeのバイナリ・重みを照合し、実機smokeと該当runの検証を行う。保存済みのmanifestやfingerprintを書き換えて検証を通さない。 旧v0.3.36 baselineのreport/exportは、当時の固定版 `ed76730` の専用worktreeで実行する。現行v0.3.39ではtoolchain lock不一致として拒否される。
+
+この配置は保管容量を補うもので、mergerfs自体による複製を意味しない。資料原本を移設した後、SSDの互換リンクは別コピーとして数えない。今回のファイル数・容量・照合結果とSSDの空き容量変化は[移設の検証記録](validation/storage-2026-10-02.md)に残す。
 
 ## 固定ソフト
 
@@ -57,7 +81,7 @@
 
 ```sh
 python3 scripts/prepare.py import-teacher --archive \
-  '/home/server/projects/sekirei-weight2/docs/pixiv_fanbox_yaneurao/suisho11beta-suisho_concerto202512.7z'
+  '/mnt/storage/NAS/sekirei-weight2/materials/pixiv_fanbox_yaneurao/suisho11beta-suisho_concerto202512.7z'
 ```
 
 アーカイブSHA-256 `989d292d...b69aab8a8` を照合して `eval/nn.bin` だけを抽出し、112,887,658 bytes、SHA-256 `d1b16f0a...e8e67785` を再照合する。
@@ -68,9 +92,9 @@ python3 scripts/prepare.py import-teacher --archive \
 
 ```sh
 python3 scripts/prepare.py import-corpus --archive \
-  '/home/server/projects/sekirei-weight2/docs/pixiv_fanbox_yaneurao/kif20260630-pack-1M.7z'
+  '/mnt/storage/NAS/sekirei-weight2/materials/pixiv_fanbox_yaneurao/kif20260630-pack-1M.7z'
 python3 scripts/prepare.py import-corpus --archive \
-  '/home/server/projects/sekirei-weight2/docs/pixiv_fanbox_yaneurao/kif20260731-pack-1M.7z'
+  '/mnt/storage/NAS/sekirei-weight2/materials/pixiv_fanbox_yaneurao/kif20260731-pack-1M.7z'
 ```
 
 それぞれのアーカイブ全体を固定SHA-256で照合し、記事で水匠11β・100万ノードと説明された `1000000a/` と `1000000b/` の `.pack` だけを標準出力経由で安全に抽出する。個々のファイルはSHA-256名で保存し、同じ内容を複数回保持しない。実機では収録15本のうち2本が重複し、13本、534,175,084 bytesになった。由来と重複関係はローカルの `manifest.json` に残る。
@@ -121,7 +145,7 @@ typed resultは、既存のforced-single 5件とterminal checkmate 1件を維持
 
 `development-baseline-20260916-v2`（fingerprint `d1708915e2de8bfd22d1d3c29eb10cc10f45926da4f0f2357dd87a0e407ab084`）は570 occurrence×2 engineの1,140/1,140 attemptを完了した。strict validatorではmissing/extra/duplicate 0、technical failure 0。全attemptで `completed_before_deadline=true`、`cleanup_status=ok`、`supervisor_status=ok`、engine return code 0を確認した。Teacherは `exact_cp=266 / bound_cp=273 / mate=31`、Sekireiは `exact_cp=561 / mate=8 / no_score=1` である。
 
-Teacher-EのSekirei exact coverageは266/266、5局を等重みで平均した正式headline MAEは `1,087.0461722818245 cp`。all-evidence MのmaxはTeacher `1,001,086`、Sekirei `1,000,004` で、両engineとも `>C=0`、invalid=0だった。Sekireiのzero 6件はforced-single 5件とmate-in-one 1件、missing 1件はterminal checkmateのno-score、Teacherのzero 1件は同terminalで、型付き例外契約どおりである。redactedな公開成果物は [`validation/development-baseline-2026-09-19`](validation/development-baseline-2026-09-19/validation.md) に固定し、raw log・attempt・絶対パス・重みは外部runtimeにだけ残す。final 5局は本正式測定とreport/export経路で未アクセスである。
+Teacher-EのSekirei exact coverageは266/266、5局を等重みで平均した正式headline MAEは `1,087.0461722818245 cp`。all-evidence MのmaxはTeacher `1,001,086`、Sekirei `1,000,004` で、両engineとも `>C=0`、invalid=0だった。Sekireiのzero 6件はforced-single 5件とmate-in-one 1件、missing 1件はterminal checkmateのno-score、Teacherのzero 1件は同terminalで、型付き例外契約どおりである。redactedな公開成果物は [`validation/development-baseline-2026-09-19`](validation/development-baseline-2026-09-19/validation.md) に固定し、raw log・attempt・絶対パス・重みは外部runtimeとNASの非公開保管コピーに残す。final 5局は本正式測定とreport/export経路で未アクセスである。
 
 ### 現時点の制約
 

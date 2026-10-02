@@ -74,7 +74,7 @@
 
 ## 計算資源の固定条件
 
-現在の Mac mini（Intel i5-8500B、6 core、32 GiB RAM、既存ストレージ）の範囲で継続する。今後も追加機材は導入しない。外付け GPU・別 PC・クラウド GPU・有料計算基盤への移行は計画に含めず、ユーザーが方針を変更するまで固定条件とする。公開 GitHub リポジトリと Actions による軽量 CI を使う。
+現在の Mac mini（Intel i5-8500B、6 core、32 GiB RAM、既存ストレージ）の範囲で継続する。保存容量には既存の `/mnt/storage/NAS/sekirei-weight2` も含める。資料原本と完了した成果物は非公開のNAS保管先、計算中のデータ・モデル・出力は内蔵SSDに置き、必要分をハッシュ照合して受け渡す。容量予算はSSDの作業領域とNASの保管領域を分けて記録する。今後も追加機材は導入しない。外付け GPU・別 PC・クラウド GPU・有料計算基盤への移行は計画に含めず、ユーザーが方針を変更するまで固定条件とする。公開 GitHub リポジトリと Actions による軽量 CI を使う。
 
 CPU で学習から評価まで小規模に一周し、教師生成・学習・比較それぞれの所要時間、メモリ使用量、保存容量を測る。その実測に合わせて、教師データの再利用、学習データの選定、モデル容量、実験数、CPU 実装の効率化を検討する。効率化によって当面固定している探索の意味や比較設定を変えない。
 
@@ -118,7 +118,7 @@ typed resultは、既存のforced-single 5件とterminal checkmate 1件を維持
 
 固定Teacher-E 266点はSekireiでも266/266がexact cpで、各局のMAEは `374.286 / 1,522.514 / 1,081.561 / 1,222.175 / 1,234.696 cp`。正式headlineである5局等重み平均は `1,087.0461722818245 cp`、全266点を直接平均するmicro MAEは `1,136.8684210526317 cp`、最大絶対誤差は `32,941 cp` だった。bound/mate/no-scoreはこれらのcp指標へ混ぜていない。これは学習済みモデルのない駒得fallbackの初期baselineであり、十分な一致を示す値ではない。
 
-all-evidence MはTeacherが evidence/positive/zero/missing/invalid=`570/569/1/0/0`、p50/p95/p99/max=`1,000,337.5/1,000,719/1,000,821.6/1,001,086`、Sekireiが `569/563/6/1/0`、`1,000,000/1,000,002/1,000,003/1,000,004`。`>C(1,000,000)` は両方0である。Sekireiのzero 6件はforced-single 5件とmate-in-one 1件、missing 1件はterminal checkmateのno-score、Teacherのzero 1件は同terminalで、いずれも事前登録した型契約に一致した。redactedな集計・SVG・JSON・hash manifestは [`docs/validation/development-baseline-2026-09-19`](validation/development-baseline-2026-09-19/validation.md) に固定する。raw logと局面別recordは外部runtimeだけに残し、final 5局は本測定・report/export経路で未アクセスである。
+all-evidence MはTeacherが evidence/positive/zero/missing/invalid=`570/569/1/0/0`、p50/p95/p99/max=`1,000,337.5/1,000,719/1,000,821.6/1,001,086`、Sekireiが `569/563/6/1/0`、`1,000,000/1,000,002/1,000,003/1,000,004`。`>C(1,000,000)` は両方0である。Sekireiのzero 6件はforced-single 5件とmate-in-one 1件、missing 1件はterminal checkmateのno-score、Teacherのzero 1件は同terminalで、いずれも事前登録した型契約に一致した。redactedな集計・SVG・JSON・hash manifestは [`docs/validation/development-baseline-2026-09-19`](validation/development-baseline-2026-09-19/validation.md) に固定する。raw logと局面別recordは外部runtimeとNASの非公開保管コピーに残し、final 5局は本測定・report/export経路で未アクセスである。
 
 node evidence の厳密文法は、`go nodes <[0-9]+>`（ASCII 十進数字列、符号なし）から対応する `bestmove` までの各 structured `info` 行を対象にする。`info string` は free text として無視し、`pv`・`string`・`refutation`・`currline` の可変長 payload 内は読まない。payload 前の各行には `nodes <[0-9]+>` を高々一組だけ許容し、欠落・重複・負値・符号付き／非整数値は無効または曖昧として失敗させる。
 

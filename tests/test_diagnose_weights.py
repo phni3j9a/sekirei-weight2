@@ -6,10 +6,21 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from diagnose_weights import metrics, summarize, verified_split
+from diagnose_weights import metrics, summarize, verified_split, verify_checkpoint_metadata
 
 
 class DiagnosisContractTests(unittest.TestCase):
+    def test_sidecar_cannot_describe_another_checkpoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "weights.bin"
+            path.write_bytes(b"SEKIRW01")
+            metadata = {"teacher_identity": "external:fixture", "nnue_output": "absolute",
+                        "checkpoint_hash": "13d0ad8a83f11c15"}
+            verify_checkpoint_metadata(path, metadata, "external:fixture")
+            path.write_bytes(b"SEKIRW01different checkpoint")
+            with self.assertRaisesRegex(ValueError, "not bound"):
+                verify_checkpoint_metadata(path, metadata, "external:fixture")
+
     def make_dataset(self, root, duplicate=False, missing=False):
         for split in ("train", "holdout"):
             positions = [{"sfen": f"fixture-{split}-1"}, {"sfen": f"fixture-{split}-2"}]

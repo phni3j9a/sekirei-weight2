@@ -17,6 +17,21 @@ from prepare import LOCK, REPO, sha256
 PREDICTIONS = ("raw_float_cp", "quantized_float_cp", "inference_cp", "material_cp")
 
 
+def verify_checkpoint_metadata(checkpoint, metadata, teacher_identity):
+    """Bind the upstream sidecar's declared mode/recipe to its weight bytes."""
+    if metadata.get("nnue_output") != "absolute" or metadata.get("teacher_identity") != teacher_identity:
+        raise ValueError("checkpoint output mode or external teacher identity mismatch")
+    data = checkpoint.read_bytes()
+    if data[:8] != b"SEKIRW01":
+        raise ValueError("unexpected inference checkpoint format")
+    # Pinned upstream main.rs checkpoint_hash: FNV-1a over the whole file.
+    value = 14695981039346656037
+    for byte in data:
+        value = ((value ^ byte) * 1099511628211) & ((1 << 64) - 1)
+    if metadata.get("checkpoint_hash") != f"{value:016x}":
+        raise ValueError("checkpoint metadata is not bound to the supplied weight bytes")
+
+
 def strict_rows(path):
     rows = []
     for line in path.read_text().splitlines():
@@ -135,10 +150,7 @@ def diagnose(args):
         raise ValueError("checkpoint must be an inference .bin with matching .adam.json and .meta.json")
     adam, metadata = checkpoint.with_suffix(".adam.json"), checkpoint.with_suffix(".meta.json")
     meta = json.loads(metadata.read_text())
-    if meta.get("nnue_output") != "absolute" or meta.get("teacher_identity") != manifest["teacher_identity"]:
-        raise ValueError("checkpoint output mode or external teacher identity mismatch")
-    if checkpoint.read_bytes()[:8] != b"SEKIRW01":
-        raise ValueError("unexpected inference checkpoint format")
+    verify_checkpoint_metadata(checkpoint, meta, manifest["teacher_identity"])
     input_paths = [dataset / "manifest.json", build_path, checkpoint, adam, metadata]
     input_paths += [dataset / name for name in manifest["files"]]
     hashes = {str(path): sha256(path) for path in input_paths}

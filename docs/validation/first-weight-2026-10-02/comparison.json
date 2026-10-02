@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-02",
+  "split": "development",
+  "games": 5,
+  "requested_nodes": 1000000,
+  "aggregation": "equal_game_mean",
+  "top3_direction": "teacher_multipv1_bestmove_in_candidate_multipv3",
+  "adoption_policy": "both_valid_and_candidate_mae_strictly_lower_and_top3_no_lower",
+  "models": {
+    "baseline": {
+      "model_kind": "material_fallback",
+      "mae_run_id": "development-baseline-20261002-v039-v1",
+      "mae_fingerprint": "b722baad6a29d4c70b32e7e0d05fdee378f6de4cf72075b6519d2c697642b60a",
+      "mae_valid": true,
+      "mae_cp": 1084.4786006022964,
+      "teacher_e_count": 266,
+      "top3_run_id": "development-top3-baseline-20261002-v1",
+      "top3_fingerprint": "59d02420b8fe68c76a6b95a41a9bc46e50619dd2f48873157aab08fd2a5e53c4",
+      "top3_valid": true,
+      "top3_rate": 0.5538875742592971,
+      "top3_eligible_positions": 551,
+      "top3_public_file_sha256": "e4b2aa72bf64383dca0b73d0c12b88234bafad5f7c473b0c3613c0ff544fe23d",
+      "per_game": {
+        "development-01": {
+          "mae_cp": 367.4047619047619,
+          "teacher_e_count": 42,
+          "top3_hits": 49,
+          "top3_denominator": 84
+        },
+        "development-02": {
+          "mae_cp": 1514.4166666666667,
+          "teacher_e_count": 72,
+          "top3_hits": 83,
+          "top3_denominator": 122
+        },
+        "development-03": {
+          "mae_cp": 1079.2878787878788,
+          "teacher_e_count": 66,
+          "top3_hits": 55,
+          "top3_denominator": 127
+        },
+        "development-04": {
+          "mae_cp": 1222.675,
+          "teacher_e_count": 40,
+          "top3_hits": 55,
+          "top3_denominator": 104
+        },
+        "development-05": {
+          "mae_cp": 1238.608695652174,
+          "teacher_e_count": 46,
+          "top3_hits": 62,
+          "top3_denominator": 114
+        }
+      }
+    },
+    "candidate": {
+      "model_kind": "nnue",
+      "mae_run_id": "development-candidate-20261002-55k-v1",
+      "mae_fingerprint": "5566e03a6b8aa2673b4b3314978215bde954f07fa32fec8958587085318b05dc",
+      "mae_valid": true,
+      "mae_cp": 1314.4807657318527,
+      "teacher_e_count": 266,
+      "top3_run_id": "development-top3-candidate-20261002-55k-v1",
+      "top3_fingerprint": "de652ac976bab1341b435ba5e5588f3c2dfebb898bf2d3c7b46e98cc5172d571",
+      "top3_valid": true,
+      "top3_rate": 0.361241426216493,
+      "top3_eligible_positions": 551,
+      "top3_public_file_sha256": "bfd32188c24ac463d29639bb19531512836db23e30758858bd77a89841c0b92d",
+      "per_game": {
+        "development-01": {
+          "mae_cp": 888.5714285714286,
+          "teacher_e_count": 42,
+          "top3_hits": 39,
+          "top3_denominator": 84
+        },
+        "development-02": {
+          "mae_cp": 1765.1805555555557,
+          "teacher_e_count": 72,
+          "top3_hits": 49,
+          "top3_denominator": 122
+        },
+        "development-03": {
+          "mae_cp": 1436.0757575757575,
+          "teacher_e_count": 66,
+          "top3_hits": 31,
+          "top3_denominator": 127
+        },
+        "development-04": {
+          "mae_cp": 901.75,
+          "teacher_e_count": 40,
+          "top3_hits": 35,
+          "top3_denominator": 104
+        },
+        "development-05": {
+          "mae_cp": 1580.8260869565217,
+          "teacher_e_count": 46,
+          "top3_hits": 41,
+          "top3_denominator": 114
+        }
+      },
+      "weight_sha256": "2aec057bec3a0f6fa54999aacfbdd16df6982de791e1f43f9090abb7ac4b0eb7",
+      "weight_bytes": 1305356
+    }
+  },
+  "delta": {
+    "mae_cp": 230.00216512955626,
+    "top3_percentage_points": -19.264614804280413
+  },
+  "adopt_candidate": false,
+  "decision": "not_adopted",
+  "reason": "MAE did not improve; retain material fallback baseline."
+}

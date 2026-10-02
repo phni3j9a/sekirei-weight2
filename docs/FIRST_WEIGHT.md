@@ -1,0 +1,93 @@
+# 初回CPU学習と2指標評価
+
+Issue #13では、固定Sekirei v0.3.39の探索を変更せず、配布された水匠11β・100万ノードの教師packから最初のweightを作る。初回候補の生成と有効な比較・採否記録が到達点で、数値改善や棋力を事前に保証しない。
+
+## 評価指標
+
+採否に用いる指標は次の二つ。Top1一致率や逆方向のTop3率は追加しない。
+
+1. MAE: 従来のMultiPV=1、両者 `go nodes 1000000`。固定教師exact-cp点に候補のexact-cpが全て揃う場合のみ定義し、棋譜ごとのMAEを5局で等重み平均する。
+2. Top3入り率: 同じ局面の水匠MultiPV=1のbestmoveが、Sekireiの別測定 `MultiPV=3, go nodes 1000000` で返る3候補に含まれる割合。各棋譜の割合を5局で等重み平均する。
+
+Top3は正式MAE runの教師結果を再検証して参照する。対象はdevelopmentのnormal分類かつ合法手4手以上の局面。終端・合法手3手以下・既存のhash-bound mate-in-one shortcut局面は事前に除外し、候補の出力によって分母を変えない。3つの異なる合法root move、同一の最終完了depth、MultiPV 1/2/3、第一候補とbestmoveの一致が必要。候補不足・混在depth・bound・技術失敗・欠測は率を未定義にし、不一致として丸めたり分母から消したりしない。同点でも3候補を拡張しない。
+
+MAEのpilot/formal gateを維持する。Top3にも別pilot（既存canonical/regression pilotと対象集合の共通部分、3反復）を置き、完全性と候補列の再現性を確認してから全対象へ進む。生USI、node evidence、lifecycle、cleanup、重み読込の検証は既存supervisorを再利用する。normal局面の合法手集合は固定cshogiで検証する。
+
+実行失敗数・coverage・bound/mateは測定の健全性を確認する情報であり、追加のモデル性能指標にはしない。final splitの棋譜はこの評価経路で使用しない。
+
+初回の採用方針は、両指標が有効に測定でき、同じv0.3.39 baselineよりMAEが低く、Top3入り率が下がらない場合に限って候補を採用する。片方だけ改善した場合は保留し、両指標を記録する。絶対的なMAE目標値やTop3目標率はまだ設定しない。5局の開発結果を一般的な棋力の証明とはしない。
+
+## 教師データと学習
+
+`scripts/pack_dataset.py` は既存の `suisho11beta-v1` runtimeに保存済みの13本をmanifest/内容hash照合して参照する。新v0.3.39 runtimeへ重複コピーする必要はない。専用の旧βvenv（cshogi 1.0.4 / NumPy 1.26.4）で復号する。
+
+初回の抽出は各hash順packの先頭200局を上限に、16手目以降・4局面おき・最大32局面/局とする。学習規模を抑えるprefix標本で、全packの一様無作為抽出ではない。ゲームの開始局面・全指し手列からidentityを作り、重複ゲームを除く。`SHA256(seed:game-id) mod 10` の0を保留、それ以外をtrainにする。train/保留に共通する盤面は両側から除き、同じ側の盤面重複は最初の一つだけ残す。盤面照合は手番・持駒を含み手数カウンタを除く。
+
+評価データの漏洩防止として、取得済み独立棋譜1,000局の母集団全体から盤面集合を機械的に作り、その全局面を学習・保留標本から除外する。各CSAの内容hashと1,000局のcanonical aggregateを取得時manifestへ照合する。`benchmarks/.../final`を開かず、finalの所属や成績を用いた選別をしない。配布packに記録されていないゲーム系列・変化枝の由来までは証明できない。
+
+packの評価値は手番視点でそのまま渡す。`abs(cp)>=30000` はmate-scaleとして学習対象外、残るラベルのclipは±30000、WDL混合なし、absolute出力とする。packにexact/bound情報がないことは残る制約である。holdoutは別ファイルに隔離し、学習器の局面単位random splitを使わない。初回は事前固定の3 epochで、保留lossからepochやハイパーパラメータを選ばない。
+
+固定upstreamの学習器は外部教師の名前空間を指定できないため、`patches/sekirei-train-external-labels.patch`を専用checkoutに適用する。これは学習器の外部入力とCPU数値処理設定だけを変更し、探索エンジンには適用しない。外部teacher identityを明記したstrict/cache-onlyモードを要求し、ラベルが一件でも欠ける場合は停止する。`label_depth=0`は外部キャッシュ用の識別値で、元の探索深さを示さない。学習器・patch・入力・recipe・weightのhash、全ラベルcache hit、処理局面数を保存する。
+
+## CPUでの数値処理
+
+最初の55,404局面の実行は18分経過してもepochを完了せず、失敗記録を残して停止した。256局面の短い試走からの線形外挿が不適切だった。固定学習器は勾配0の要素も含めてAdamのmomentを減衰するため、長い学習でsubnormalが蓄積し得る。専用学習器では `SEKIREI_TRAIN_FTZ_DAZ=1` を明示し、x86のMXCSR FTZ/DAZを有効にする。これはsubnormalを0として扱う学習recipeの変更であり、IEEEのgradual underflowと完全同一とは主張しない。設定をbuild/epoch/runに記録する。探索バイナリやUSI比較設定へは適用しない。一般的な作用は [IntelのFTZ/DAZ資料](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2025-0/set-the-ftz-and-daz-flags.html) を参照。
+
+## 実行例と資源上限
+
+内蔵SSDに実行用のbuild/data/runを置く。開始時空き約30 GiB、初回学習は最大1時間、今回の追加作業領域8 GiB以下。短い256局面の疎通確認に加え、4,096局面の試走で速度/RSS/保存容量を確認し、上限内の規模に調整する。エンジン比較はjobs=1/Threads=1、ビルドはjobs=2。NAS保管は環境文書の照合手順に従い、生データ・重み・raw logは公開しない。
+
+```sh
+python3 scripts/prepare_training.py --output "$TRAIN_RUNTIME"
+"$AUDIT_PYTHON" scripts/pack_dataset.py \
+  --corpus-runtime "$CORPUS_RUNTIME" --quest-runtime "$QUEST_RUNTIME" \
+  --output "$DATASET" --games-per-pack 200
+python3 scripts/train_cpu.py --dataset "$DATASET" --trainer "$TRAIN_RUNTIME" \
+  --output "$TRAIN_RUN" --epochs 3 --seconds 3600
+"$AUDIT_PYTHON" scripts/benchmark.py pilot --config "$BENCHMARK_CONFIG" --run-id "$PILOT_ID"
+# pilotを検証し、同じconfigのformal.pilot_evidenceを固定してからformalを実行する。
+"$AUDIT_PYTHON" scripts/benchmark.py formal --config "$BENCHMARK_CONFIG" --run-id "$FORMAL_ID"
+"$AUDIT_PYTHON" scripts/top3.py pilot --mae-config "$BENCHMARK_CONFIG" \
+  --mae-run "$MAE_RUN" --run-id "$TOP3_PILOT_ID"
+"$AUDIT_PYTHON" scripts/top3.py formal --mae-config "$BENCHMARK_CONFIG" \
+  --mae-run "$MAE_RUN" --run-id "$TOP3_FORMAL_ID" --pilot-run-id "$TOP3_PILOT_ID"
+```
+
+候補用configは固定development configのcopyに `candidate_model.kind=nnue` とweightの絶対pathを指定する。実行時にEvalFileへ同じpathを渡し、ハッシュと明示的な読込成功応答を照合する。baselineのpilotを別weightのformalへ流用しない。weightなしのfallbackは別のbaselineとして保持する。
+
+## 初回生成・正式比較の結果
+
+- 学習55,404局面、保留5,895局面。元packは13本・各200局の上限で、独立1,000局の88,187種類の盤面を機械的に除外した。強化前に生成した入力とも全ファイルhashが一致した。
+- FTZ/DAZ版の3エポック学習は445.376秒、CPU時間444.644秒、最大RSS334,728 KiB。全エポックで55,404 cache hit / 0 miss、教師種別external、NNUE出力absoluteを確認した。
+- 学習率は固定upstreamのstep-halfで0.001 → 0.0005 → 0.00025。epoch metadataの `lr` は基準値0.001であり、各epochの実効値は学習ログに記録される。
+- 重みは1,305,356 bytes、SHA-256 `2aec057bec3a0f6fa54999aacfbdd16df6982de791e1f43f9090abb7ac4b0eb7`。3エポック終了のweightを候補とし、途中checkpointからの成績選択はしていない。
+- v0.3.39 fallback pilot `development-pilot-20261002-v039-v1` は102/102 attempt、technical failure 0、34/34 stable。最大node evidenceは1,001,086で、1,010,000の規定内。fingerprintは `019a2f0a6b32dea4cacdbd5aa0f2dad852a807d8f550fc6e09ab173cc8153377`。
+
+候補自身のpilot `development-candidate-pilot-20261002-55k-v1` も102/102、technical failure 0、34/34 stableを確認した。fingerprintは `ca3f166a0d0ef174b82c4bd514fc97e249811ba0917233f949de040e24a9e7ef`。正式測定は両候補それぞれのpilotとweight identityに束縛する。
+
+学習runtime 3系列（中断・timeoutの証拠も含む）はNASの `archives/2026-10-02/issue-13-first-weight-training` に保管済み。2,594ファイル・692,030,686 bytesとディレクトリ集合をコピー前後で照合し、SHA-256一致を確認した。SSDの実行用参照は保持している。詳細なreceiptは非公開NAS内にある。
+
+v0.3.39 fallbackの正式run `development-baseline-20261002-v039-v1` は1,140/1,140 attempt、technical failure 0、missing/extra/duplicate 0で完了した。固定Teacher-Eは266/266を採点でき、5局等重みのMAEは **1,084.4786006022964 cp**。fingerprintは `b722baad6a29d4c70b32e7e0d05fdee378f6de4cf72075b6519d2c697642b60a`。[公開集計と5局のグラフ](validation/first-weight-2026-10-02/baseline/validation.md)を保存し、描画も確認した。
+
+候補の正式run `development-candidate-20261002-55k-v1` も1,140/1,140 attempt、technical failure 0、Teacher-E coverage 266/266で完了した。MAEは **1,314.4807657318527 cp**で、baselineより230.002 cp悪化した。[候補の公開集計とグラフ](validation/first-weight-2026-10-02/candidate/validation.md)を保存し、描画を確認した。両runの教師側は全570局面・E集合266点・評価値/境界/詰み・bestmove・PV・最大nodeが一致しており、比較相手の差による悪化ではない。MAE改善の採用条件は未達である。
+
+Top3正式runも両者551/551、valid、候補不足・欠測・技術失敗0で完了した。対象局面と棋譜別分母の一致を確認した。各モデルのTop3 pilotは36/36、12局面の3反復が安定していた。
+
+| 採用指標 | v0.3.39 fallback | 初回weight | 変化 |
+| --- | ---: | ---: | ---: |
+| MAE | 1084.479 cp | 1314.481 cp | +230.002 cp |
+| Top3入り率 | 55.3888% | 36.1241% | -19.2646ポイント |
+
+**候補は不採用**。事前に固定したMAE改善の条件を満たさないため、既存fallbackを比較基準として残す。初回weight生成と有効な2指標比較は完了した。[正式比較の集計](validation/first-weight-2026-10-02/comparison.md)には棋譜別の値・run fingerprint・Top3集計・重みhashを残す。コードと知見の統合を目的とするPR #14は、モデルの採用と区別する。
+
+評価の8 run（MAE/Top3のbaseline/候補それぞれのpilot/formal）、4つのMAE report、総括JSON、設定・runnerのsnapshotはNASの `archives/2026-10-02/issue-13-first-weight-evaluation` に保管した。prepare/benchmark排他lockを保持し、7,378ファイル・56,449,967 bytesとディレクトリ集合をコピー前後で照合、全SHA-256一致を確認した。学習archiveと同様に、SSDの実行用参照は保持する。
+
+正式比較4 runの `go` 送信から `bestmove` 受信までの実測時間の合計は約88分49秒だった。内訳はbaseline MAE 1,883.617秒、候補MAE 2,348.670秒、baseline Top3 330.555秒、候補Top3 766.007秒。各attemptの `wall_go_to_bestmove_ns` を合計した値で、プロセス起動・重み読込・pilot・report検証・保存処理は含まない。学習445.376秒に比べ、今回の一周では正式比較が主な計算時間を占めた。
+
+## 初回の悪化から分かったこと
+
+MAEは5局中4局で悪化、1局で改善した。同じTeacher-E 266点で候補の評価値範囲は−756〜732 cp、fallbackは−3,530〜2,820 cpで、候補が優劣の大きさを小さく評価する傾向がある。例えばdevelopment-01 p083は教師−2,194 cp、fallback−2,570 cp、候補−168 cpだった。極端な教師exact 2点だけでは、正式MAE差+230.002 cpの大半を説明しない。
+
+訓練中の予測振幅もepochごとに増えているが、教師ラベルの振幅に達していない。これは更新途中を含む訓練集計であり、固定checkpointの保留性能ではない。原因を学習不足・量子化・分布差のいずれかに断定しない。
+
+次に検証する仮説は「ランダム初期化のabsolute CP回帰は3 epochでは教師cpの振幅をまだ学び切れていない」の一つ。追加学習の前に、保存済み3 checkpointを隔離済み保留5,895局面で固定して比較する軽い診断が候補になる。この診断は今回未実施で、次の実験では固定checkpointを評価する経路の確認・準備から始める。モデルの採用指標は引き続き正式MAEとTop3の二つだけとする。

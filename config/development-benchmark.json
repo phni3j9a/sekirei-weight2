@@ -120,6 +120,11 @@
   "formal": {
     "repetitions": 1,
     "max_reported_nodes": 1010000,
-    "pilot_evidence": null
+    "pilot_evidence": {
+      "max_reported_nodes": 1010000,
+      "observed_max_reported_nodes": 1001086,
+      "pilot_fingerprint": "019a2f0a6b32dea4cacdbd5aa0f2dad852a807d8f550fc6e09ab173cc8153377",
+      "pilot_run_id": "development-pilot-20261002-v039-v1"
+    }
   }
 }

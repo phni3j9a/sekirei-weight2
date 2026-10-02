@@ -27,4 +27,20 @@
 
 `scripts/train_cpu.py`は従来の`step-half`を既定のまま保持し、`--lr-schedule constant|cosine`、`--min-lr`、`--lr-schedule-epochs`を明示指定できる。設定をrunと各epoch metadataで照合する。基準学習率のmetadataはRustのf32値なので同じ丸めで比較し、実効学習率は学習ログに残す。
 
+## 初回checkpointの固定診断
+
+`scripts/diagnose_weights.py`は`--split train|holdout`を明示し、入力manifest・教師identity・checkpoint・専用学習器のhashを照合する。専用の`diagnose-external`経路は学習や教師探索を行わず、raw Adamの再量子化結果と推論用binが一致することを確かめて、量子化前float・量子化復元float・core推論を同じSTM cpで比べる。出力はGit外の専用runtimeに限定する。
+
+| epoch | train静的MAE | holdout静的MAE | holdout予測標準偏差 | holdout量子化差の平均絶対値 |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 705.198 cp | 739.536 cp | 182.482 cp | 2.911 cp |
+| 2 | 642.673 cp | 720.075 cp | 287.611 cp | 4.235 cp |
+| 3 | 604.317 cp | 713.274 cp | 327.245 cp | 5.179 cp |
+
+MAEと予測標準偏差はcore推論の値。量子化差はraw floatと量子化復元floatの差である。holdout教師の標準偏差は1,345.374 cp。全6診断で教師ラベルを新規生成せず、coreとの整数化差を検証した。3エポック目のholdoutにおける量子化差の最大値は57.333 cp、量子化復元floatとcore推論の最大差は0.999955 cpだった。
+
+holdoutの静的誤差は減少しているが、trainとの差は広がっており、学習不足と汎化の両方を追う必要がある。この結果から、同一55,404局面・seed42のrandom initを使い、constant LR=0.001で12エポックの候補を事前に選んだ。scheduleと学習量を同時に変える試行であり、エポック数だけの因果比較とは扱わない。採用は別途正式100万ノードで判断する。
+
+診断機能追加前後の256局面・1エポックconstant学習smokeは、同じweight SHA-256 `df318ff8a4d2ec106126f36b4a1f3a308e1385a49d5a08b61bc5319f1900b993` を生成した。診断器追加による既存学習経路の変化がないことを小標本で確認した。
+
 結果と再現手順は検証後に追記する。初回実験の基準は[初回weight](FIRST_WEIGHT.md)、全体の比較条件は[研究方針](RESEARCH.md)を参照。

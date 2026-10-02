@@ -75,7 +75,7 @@
      eprintln!(
          "Usage: train (--games <dir> | --positions <jsonl>) [--output weights.bin] [--epochs 3] [--sample 4]"
      );
-@@ -2466,7 +2487,29 @@
+@@ -2466,7 +2487,127 @@
  
  // ---- Main ----
  
@@ -100,12 +100,110 @@
 +    }
 +}
 +
++// Dedicated forward-only route. This never reaches the training loop, writes
++// checkpoints, mutates the label cache, or starts an internal teacher search.
++fn diagnose_external(argv: &[String]) -> Result<(), String> {
++    let allowed = ["--positions", "--teacher-cache", "--external-teacher-id", "--weights", "--adam"];
++    let mut values = HashMap::new();
++    if argv.len() != allowed.len() * 2 {
++        return Err("diagnose-external requires --positions, --teacher-cache, --external-teacher-id, --weights and --adam".into());
++    }
++    for pair in argv.chunks_exact(2) {
++        if !allowed.contains(&pair[0].as_str()) || values.insert(pair[0].as_str(), pair[1].as_str()).is_some() {
++            return Err(format!("unknown or repeated diagnosis option: {}", pair[0]));
++        }
++    }
++    let identity = values["--external-teacher-id"];
++    if !identity.starts_with("external:") || identity.len() <= 9 {
++        return Err("diagnosis requires an explicit external teacher identity".into());
++    }
++    let path = Path::new(values["--positions"]);
++    let count = positions::validate_positions(path)?;
++    let samples = load_positions(path);
++    if count == 0 || samples.len() != count {
++        return Err("diagnostic positions are empty or incomplete".into());
++    }
++    let mut cache = HashMap::new();
++    let cache_text = fs::read_to_string(values["--teacher-cache"]).map_err(|e| e.to_string())?;
++    for line in cache_text.lines() {
++        let row: serde_json::Value = serde_json::from_str(line).map_err(|e| e.to_string())?;
++        let sfen = row["sfen"].as_str().ok_or("label SFEN missing")?;
++        let cp = row["score_cp"].as_i64().and_then(|v| i32::try_from(v).ok()).ok_or("invalid label cp")?;
++        if row["teacher_identity"].as_str() != Some(identity) || row["label_depth"].as_u64() != Some(0) || cp.abs_diff(0) >= 30000 {
++            return Err("invalid external label identity, sentinel, or mate-scale score".into());
++        }
++        if cache.insert(sfen.to_string(), cp).is_some() {
++            return Err("duplicate diagnostic label SFEN".into());
++        }
++    }
++    let mut seen = std::collections::HashSet::new();
++    for sample in &samples {
++        let sfen = board_to_sfen(&sample.board);
++        if !seen.insert(sfen.clone()) || !cache.contains_key(&sfen) {
++            return Err("duplicate diagnostic position or missing cached label".into());
++        }
++    }
++    if cache.len() != samples.len() {
++        return Err("diagnostic label set differs from position set".into());
++    }
++    let weights = sekirei_core::nnue::read_weights(Path::new(values["--weights"])).map_err(|e| e.to_string())?;
++    let raw = trainer::TrainWeights::load_adam_checkpoint(Path::new(values["--adam"])).map_err(|e| e.to_string())?;
++    let exported = raw.to_nnue_weights();
++    if exported.ft != weights.ft || exported.ft_bias != weights.ft_bias
++        || exported.l2 != weights.l2 || exported.l2_bias != weights.l2_bias
++        || exported.out != weights.out || exported.out_bias != weights.out_bias {
++        return Err("raw Adam checkpoint does not export to the supplied inference weights".into());
++    }
++    let mut floating = Trainer::new(42, 0.5);
++    floating.weights = raw;
++    floating.teacher_score_cap = 30000.0;
++    floating.exclude_mate_labels = true;
++    floating.search_target_weight = 1.0;
++    let mut quantized = Trainer::new(42, 0.5);
++    quantized.weights = trainer::TrainWeights::from_nnue_weights(&weights);
++    quantized.teacher_score_cap = 30000.0;
++    quantized.exclude_mate_labels = true;
++    quantized.search_target_weight = 1.0;
++    let empty = HashMap::new();
++    let mut new_entries = Vec::new();
++    let mut output = BufWriter::new(io::stdout().lock());
++    for (index, sample) in samples.iter().enumerate() {
++        let (_, _, raw_stats) = floating.eval_positions(std::slice::from_ref(sample), 0, &empty, &empty, &cache, &mut new_entries);
++        let (_, _, quantized_stats) = quantized.eval_positions(std::slice::from_ref(sample), 0, &empty, &empty, &cache, &mut new_entries);
++        let raw_cp = raw_stats.output_sum;
++        let quantized_cp = quantized_stats.output_sum;
++        if raw_stats.count != 1 || quantized_stats.count != 1 || !new_entries.is_empty()
++            || !raw_cp.is_finite() || !quantized_cp.is_finite() {
++            return Err("diagnostic forward was incomplete or attempted label generation".into());
++        }
++        let row = serde_json::json!({
++            "index": index,
++            "teacher_cp_stm": cache[&board_to_sfen(&sample.board)],
++            "raw_float_cp": raw_cp,
++            "quantized_float_cp": quantized_cp,
++            "inference_cp": sample.board.evaluate_with_weights(&weights),
++            "material_cp": sekirei_core::eval::material_score(&sample.board),
++        });
++        writeln!(output, "{row}").map_err(|e| e.to_string())?;
++    }
++    output.flush().map_err(|e| e.to_string())?;
++    Ok(())
++}
++
  fn main() {
 +    configure_training_floats();
++    let diagnosis_args: Vec<String> = std::env::args().skip(1).collect();
++    if diagnosis_args.first().map(String::as_str) == Some("diagnose-external") {
++        if let Err(error) = diagnose_external(&diagnosis_args[1..]) {
++            eprintln!("external diagnosis failed: {error}");
++            std::process::exit(1);
++        }
++        return;
++    }
      let args = match parse_args() {
          Ok(a) => a,
          Err(e) => {
-@@ -2721,6 +2764,12 @@
+@@ -2721,6 +2862,12 @@
                  filtered_valid.len(),
                  valid_total
              );

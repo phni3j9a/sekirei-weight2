@@ -33,7 +33,7 @@
 
 保管先のプロジェクトルートは `server` 所有・mode `0700` とし、NASのほかの利用者へ配布資料を公開しない。Git/Actionsには資料、教師重み、生ログ、詳細なコピー照合記録を含めない。公開するのは運用手順と集計した検証結果だけとする。main checkoutの互換リンクは `.gitignore` で除外し、PR統合前のmainでも除外されるようローカルの `.git/info/exclude` に同じパスを保持する。
 
-Git/worktree・build・venv・使用中のデータとモデル・実行中のログは内蔵SSDに置く。既存の `.pack` 13本と監査用venvは `suisho11beta-v1` に残っている。v0.3.39側へのimportと `audit-deps` は、同版の学習/監査を始める際に実施する。保管コピーを作っても、旧runtimeや完了済みrunの内容・絶対パス・fingerprintは書き換えない。
+Git/worktree・build・venv・使用中のデータとモデル・実行中のログは内蔵SSDに置く。既存の `.pack` 13本と監査用venvは `suisho11beta-v1` に残っている。Issue #13の学習入力作成は、この照合済みpackとvenvを明示的に参照し、v0.3.39側へ重複展開しない。比較エンジンはv0.3.39 runtime、学習器のbuild/data/runは別の `training-13-external-v*` runtimeを使う。[初回学習の条件と手順](FIRST_WEIGHT.md)を参照。保管コピーを作っても、旧runtimeや完了済みrunの内容・絶対パス・fingerprintは書き換えない。
 
 コピーと復元は次の手順で手動実行する。
 

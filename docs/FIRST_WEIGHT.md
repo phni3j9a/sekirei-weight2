@@ -15,6 +15,8 @@ MAEのpilot/formal gateを維持する。Top3にも別pilot（既存canonical/re
 
 実行失敗数・coverage・bound/mateは測定の健全性を確認する情報であり、追加のモデル性能指標にはしない。final splitの棋譜はこの評価経路で使用しない。
 
+初回の採用方針は、両指標が有効に測定でき、同じv0.3.39 baselineよりMAEが低く、Top3入り率が下がらない場合に限って候補を採用する。片方だけ改善した場合は保留し、両指標を記録する。絶対的なMAE目標値やTop3目標率はまだ設定しない。5局の開発結果を一般的な棋力の証明とはしない。
+
 ## 教師データと学習
 
 `scripts/pack_dataset.py` は既存の `suisho11beta-v1` runtimeに保存済みの13本をmanifest/内容hash照合して参照する。新v0.3.39 runtimeへ重複コピーする必要はない。専用の旧βvenv（cshogi 1.0.4 / NumPy 1.26.4）で復号する。
@@ -33,7 +35,7 @@ packの評価値は手番視点でそのまま渡す。`abs(cp)>=30000` はmate-
 
 ## 実行例と資源上限
 
-内蔵SSDに実行用のbuild/data/runを置く。開始時空き約30 GiB、初回学習は最大1時間、今回の追加作業領域8 GiB以下。先に256局面で速度/RSS/保存容量を測り、上限内の規模に調整する。エンジン比較はjobs=1/Threads=1、ビルドはjobs=2。NAS保管は環境文書の照合手順に従い、生データ・重み・raw logは公開しない。
+内蔵SSDに実行用のbuild/data/runを置く。開始時空き約30 GiB、初回学習は最大1時間、今回の追加作業領域8 GiB以下。短い256局面の疎通確認に加え、4,096局面の試走で速度/RSS/保存容量を確認し、上限内の規模に調整する。エンジン比較はjobs=1/Threads=1、ビルドはjobs=2。NAS保管は環境文書の照合手順に従い、生データ・重み・raw logは公開しない。
 
 ```sh
 python3 scripts/prepare_training.py --output "$TRAIN_RUNTIME"

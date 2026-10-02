@@ -100,11 +100,21 @@ Git/worktree・build・venv・使用中のデータ/重み・実行中の出力�
 
 ## 現在の改善実験
 
-Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](https://github.com/phni3j9a/sekirei-weight2/pull/16)で、約8時間の手動改善実験を進めている。保存済みcheckpointの診断では初回モデルの振幅不足を確認した。同じ55,404局面をconstant LRで12エポック学習すると、静的holdout MAEは713.274から665.273 cpへ減少したが、正式100万ノード比較はMAE **1201.084 cp** / Top3 **29.90%**で不採用だった。最良モデルは引き続き駒得fallback。
+Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](https://github.com/phni3j9a/sekirei-weight2/pull/16)で、約8時間の手動改善実験を行っている。固定100万ノードの正式比較は4候補で完了した。**採用基準のMAE改善とTop3維持を同時に満たす候補はなく、最良モデルは駒得fallbackのまま**である。
 
-駒得を正確に表す初期NNUEから低学習率で学習した候補は、正式MAE **1011.750 cp**へ改善したが、Top3 **48.19%**で維持条件を満たさず採用を保留した。[正式比較](docs/validation/weight-improvement-2026-10-03/material-e1/comparison.md)は有効で、最良モデルは駒得fallbackを維持する。同一checkpointのFTを最近傍丸めに変えた候補は正式MAE **985.098 cp** / Top3 **53.54%**となった。切り捨て版より両指標が改善したが、基準のTop3 **55.39%**に届かず採用は保留する。[最近傍丸めの正式比較](docs/validation/weight-improvement-2026-10-03/material-e1-nearest/comparison.md)を参照。次は調整する駒価値を13個に限定した候補を正式比較へ進める。
+| モデル | 正式MAE | 正式Top3入り率 | 採用 |
+| --- | ---: | ---: | --- |
+| 駒得fallback | 1084.479 cp | 55.39% | 現行を維持 |
+| constant LR・epoch12 | 1201.084 cp | 29.90% | 不採用 |
+| 駒得初期化・epoch1 | 1011.750 cp | 48.19% | 保留 |
+| 同epoch1・最近傍丸め | 985.098 cp | 53.54% | 保留 |
+| 112,681局面・13駒価値学習 | 1068.398 cp | 53.91% | 保留 |
 
-探索実装、教師、正式比較条件、採用基準は維持する。[実験の範囲・予算・結果](docs/WEIGHT_IMPROVEMENT.md)に記録し、採用候補が得られても残り時間で改善を続ける。PRは未マージ。
+両指標はdevelopment 5局の等重み平均。最近傍丸めは同じcheckpointの切り捨て版から両指標を改善したが、現行fallbackのTop3には達していない。13駒価値学習もMAEは改善したが、Top3維持条件を満たさなかった。[正式比較・手順・各グラフ](docs/WEIGHT_IMPROVEMENT.md)に採否と仮説を記録する。
+
+参考教師Suisho11Plusは、主教師βだけで確定した最良モデルについて17局面×3反復を完了した。[参考確認](docs/validation/weight-improvement-2026-10-03/plus-reference/reference.md)は型付き結果の安定性を示すが、正式な採用判断には使っていない。残り時間で112,681局面のNNUE追加学習と静的診断を進めており、この追加候補の正式比較は未実施。
+
+探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。PRは未マージ。
 
 ## 文書
 

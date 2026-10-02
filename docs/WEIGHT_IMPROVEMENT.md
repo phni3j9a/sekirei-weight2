@@ -112,7 +112,7 @@ seed42の生成weightは1,305,356 bytes、SHA-256 `bbe9fbea4c943d69d605190f9ef8c
 
 出力のholdout 2ファイルは旧ファイルとバイト単位で一致し、trainラベルは残ったtrain局面の集合に一致する。入力ファイルが処理中に変わらなかったことも確認する。新規のGit外ディレクトリにだけ出力し、現行の学習・診断ツールで使用できる4ファイルのmanifestと派生条件を記録する。5件のfixtureテストと、既存55,404/5,895局面・予約holdoutゲーム246件の読み取り検証を完了した。
 
-同じ13 packについて各400ゲームのprefixを使い、train **112,681局面** / frozen holdout **5,895局面**を作成した。準備全体13.53秒、holdout固定処理4.08秒。元holdoutの2ファイルはバイト単位で一致し、旧holdout 246ゲームと新たに予約された283ゲームは学習へ入れない。入力も処理前後で不変だった。独立1,000局の全88,187固有盤面を機械的に除外する条件は同じで、final専用ファイルは開いていない。派生manifest SHA-256は `ecc419da180b86b046e1af507e6de0e218d271a5d9eaa9bff07f19ec072719a6`。このデータで13変数の駒価値学習を実施した（後述）。NNUE全体を使う拡張学習は未実施。
+同じ13 packについて各400ゲームのprefixを使い、train **112,681局面** / frozen holdout **5,895局面**を作成した。準備全体13.53秒、holdout固定処理4.08秒。元holdoutの2ファイルはバイト単位で一致し、旧holdout 246ゲームと新たに予約された283ゲームは学習へ入れない。入力も処理前後で不変だった。独立1,000局の全88,187固有盤面を機械的に除外する条件は同じで、final専用ファイルは開いていない。派生manifest SHA-256は `ecc419da180b86b046e1af507e6de0e218d271a5d9eaa9bff07f19ec072719a6`。このデータで13変数の駒価値学習を実施した（後述）。NNUE全体を使う拡張学習は、正式比較4候補の終了後に別runで開始した。
 
 ## 同一checkpointの量子化方法の比較
 
@@ -161,11 +161,13 @@ NNUE全体の学習とは別に、学習できる値を基本7駒の価値と6�
 
 同じ5係数を拡張train **112,681局面**で学習し、全候補で同じcore完全一致ゲートを通過した。処理16.67秒。係数0.01の固定holdout MAEは **662.717 cp**（整数絶対誤差和3,906,717 / 5,895）だった。55,404局面版の664.187 cpより小さいため、拡張前に保存した規則に従って112,681局面版を次の正式候補に選んだ。データセット内は誤差和最小・同値なら強いridge、データセット間は同じholdoutの誤差和最小・同値なら旧55,404局面版という規則である。
 
-双方の全5候補・収束・保存済みcore出力・入力と生成物のSHAを再検証し、保留SFENの順序・教師値・13特徴・整数誤差和を照合した。選択重みSHA-256は `cb0406e7f24ef700da9977d0f284f0e6c80d1b00d8c20be2d69ae02e8b0e84cc`。[全5係数とデータ選択の集計](validation/weight-improvement-2026-10-03/material-fit-112k-static.json)に記録する。これは静的候補選択の完了であり、正式MAE・Top3と採用は未判定である。
+双方の全5候補・収束・保存済みcore出力・入力と生成物のSHAを再検証し、保留SFENの順序・教師値・13特徴・整数誤差和を照合した。選択重みSHA-256は `cb0406e7f24ef700da9977d0f284f0e6c80d1b00d8c20be2d69ae02e8b0e84cc`。[全5係数とデータ選択の集計](validation/weight-improvement-2026-10-03/material-fit-112k-static.json)に記録する。選択後の正式100万ノード比較は71.67分で完了し、MAE **1068.3977661710271 cp** / Top3 **0.5390542584330672**だった。基準からMAEは約16.081 cp減ったが、Top3は約1.483ポイント下がったため採用は保留する。正式証拠の8項目は有効で、5局等重みの有理数 `3405838399/3187800` と `41259407/76540360` からも同じ判定を確認した。[正式比較とグラフ](validation/weight-improvement-2026-10-03/material-fit-112k/comparison.md)を参照。
+
+これで主教師βを使う今回の正式候補4件はすべて完了した。MAEの最小値は最近傍丸め候補の985.098 cpだが、Top3を含む採用基準を満たさず、最良モデルはfallbackのMAE 1084.479 cp / Top3 55.3888%を維持する。残り時間の拡張NNUEは静的診断までとし、正式未評価の候補を採用しない。
 
 ## 正式比較の補助図と手数区間の診断
 
-完了済み3候補について、教師・比較基準のfallback・候補を5 panelの同じ生cp軸に重ねた補助図を加えた。既存MAE exportの4ファイルは変更せず、別のsupplementファイルとして保持する。確定cpだけを描き、bound・mate・no-scoreで線を切る。補正・平滑化・詰みのcp変換は行わない。SHA固定した正式比較receipt、入力ファイル集合とSHA、全570局面・Teacher-E 266点、各局と5局等重みMAEの有理数を照合した上で生成した。
+完了済み4候補について、教師・比較基準のfallback・候補を5 panelの同じ生cp軸に重ねた補助図を加えた。既存MAE exportの4ファイルは変更せず、別のsupplementファイルとして保持する。確定cpだけを描き、bound・mate・no-scoreで線を切る。補正・平滑化・詰みのcp変換は行わない。SHA固定した正式比較receipt、入力ファイル集合とSHA、全570局面・Teacher-E 266点、各局と5局等重みMAEの有理数を照合した上で生成した。
 
 各局の手数を `floor(3*(ply-1)/N)` により前・中・後の三分割へ分類した。将棋の序盤・中盤・終盤の意味分類ではない。次の表は同じ区間のTeacher-Eを局横断で合算した **micro診断**であり、正式な5局等重みの採用指標を置き換えない。候補の欠測で分母を減らさず、一件でも欠測があれば未定義とする。
 
@@ -175,10 +177,11 @@ NNUE全体の学習とは別に、学習できる値を基本7駒の価値と6�
 | constant epoch12 | 540.12 cp | 505.97 cp | 2067.05 cp |
 | 駒得初期化・epoch1 | 546.19 cp | 616.68 cp | 1634.57 cp |
 | 同epoch1・最近傍丸め | 530.17 cp | 590.41 cp | 1607.40 cp |
+| 112,681局面・13駒価値学習 | 591.95 cp | 597.24 cp | 1704.24 cp |
 
 最近傍丸め候補は切り捨て版より全三分割で誤差が小さくなった。一方、後1/3のmicro MAEはfallbackより大きいままだった。Teacher-E全体の絶対誤差中央値はfallbackの883.5 cpから744.5 cpへ減ったが、95分位は1993から2061 cp、最大は32941から33753 cpへ増えた。誤差の中心と大きな誤差で挙動が異なり、学習・静的診断の改善だけでは正式採用の二条件を保証できない。これらを理由に正式な採点対象や外れ値を除外しない。
 
-[constant epoch12の図](validation/weight-improvement-2026-10-03/constant-e12/supplement-three-series.svg)、[駒得epoch1の図](validation/weight-improvement-2026-10-03/material-e1/supplement-three-series.svg)、[最近傍丸めの図](validation/weight-improvement-2026-10-03/material-e1-nearest/supplement-three-series.svg)と、各comparisonにリンクした区間別表・誤差分位・生成manifestを参照。補助図はmatplotlib 3.11.2の専用描画環境で生成し、学習環境を変更していない。
+[constant epoch12の図](validation/weight-improvement-2026-10-03/constant-e12/supplement-three-series.svg)、[駒得epoch1の図](validation/weight-improvement-2026-10-03/material-e1/supplement-three-series.svg)、[最近傍丸めの図](validation/weight-improvement-2026-10-03/material-e1-nearest/supplement-three-series.svg)、[13駒価値学習の図](validation/weight-improvement-2026-10-03/material-fit-112k/supplement-three-series.svg)と、各comparisonにリンクした区間別表・誤差分位・生成manifestを参照。補助図はmatplotlib 3.11.2の専用描画環境で生成し、学習環境を変更していない。
 
 ## 量子化について次に検証すること
 
@@ -190,4 +193,12 @@ NNUE全体の学習とは別に、学習できる値を基本7駒の価値と6�
 
 量子化差を減らす課題と、教師の探索後の手に合う学習目的・データを作る課題は分けて追う。今回の観測だけではTop3未達の原因を特定できず、学習中の量子化を確実な改善策とは位置づけない。次の仮説も正式100万ノードの二指標で判断する。
 
-進行中の比較結果と再現手順は検証後に追記する。初回実験の基準は[初回weight](FIRST_WEIGHT.md)、全体の比較条件は[研究方針](RESEARCH.md)を参照。
+## Suisho11Plus の参考確認
+
+主教師βの正式4候補の採否を確定してから、選択済みfallbackについて固定development pilotの17局面を3反復した。新しい探索はPlusだけを実行し、βとSekireiの同条件・同identityの検証済みpilot記録を再利用した。全51件は成功し、Plusの最大node evidenceは1,000,741、17局面すべてで3反復の型付き結果が一致した。Plusの内訳はexact cp 12・bound cp 30・mate 9で、boundやmateをcpへ変換していない。
+
+Plus対βの共通exactは各反復2/17局面で平均絶対差581.5 cp、Plus対fallbackは4/17局面で953.5 cpだった。小さな共通部分の参考値であり、17局面全体の代表値・正式MAE・一般的な棋力を示さない。Plus 9.70gitとβ V9.20のエンジン差も含む。[型付き集計・通常手の一致・再現条件](validation/weight-improvement-2026-10-03/plus-reference/reference.md)を公開した。参考値はモデル選択・採用に使用していない。
+
+実行前のplan一致検査で2回停止した。保存済みpilotにはcshogi監査metadataがある一方、単体の`make_plan`はそのmetadataを付加しないことが原因だった。固定cshogi 1.0.4のvenvで既存`execute_run`と同じ`compare_cshogi`を明示的に追加し、保存planとの全dict一致を確認してから別名v3を実行した。失敗記録と修正前後のsourceを保持し、比較条件・validator・一致条件は緩めていない。
+
+初回実験の基準は[初回weight](FIRST_WEIGHT.md)、全体の比較条件は[研究方針](RESEARCH.md)を参照。

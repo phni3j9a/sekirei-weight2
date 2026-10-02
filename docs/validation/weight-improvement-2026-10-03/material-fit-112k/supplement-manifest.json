@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "purpose": "three-series derivative; formal metrics and adoption unchanged",
+  "public_comparison_sha256": "f269d75481c14d1915d7c93f68691313728a57b1bbaa347af007487472ab28cc",
+  "private_comparison_sha256": "4147e94a009174b7a9072b66c86812045b48e38fa6f669ee18082fc74e537016",
+  "source_script_sha256": "d81f0284636ac15e554652ad512cfcc1f7ca2044399cf4bbcda2fba3be1718fc",
+  "private_generation_record_sha256": "cddf0c02b34a9d12cda6d2e05afc74e317baf8b97de2cd73c08f2a313e6cba63",
+  "files": {
+    "supplement-methods.md": "111ebbeb92a3c0d8f16c4cd0ef6136afaa741f72f1affc6ab2badea57cfb3527",
+    "supplement-phase-summary.json": "ed9c8b82bdc2191b0bb028454062f2d0e316111563d118fce300b9128351f936",
+    "supplement-three-series.svg": "d45339c847a8138f1865f32260d7dad61a1476e1264f999becd43fcc60b10ec4"
+  },
+  "matplotlib": "3.11.2",
+  "numpy": "2.5.3",
+  "shared_y_limits_cp": [
+    -40000,
+    40000
+  ],
+  "panels": 5,
+  "root_preview_reviewed": true,
+  "publication_transform": {
+    "method": "Trim trailing spaces or tabs inside path d attributes only; no numeric or geometry changes",
+    "source_sha256": "8095762b3381e3d4b4354b922fb3b2b233358768902721cadcc8ed3f5c30b727",
+    "reference_normalizer_sha256": "fb0e3ceaf8ac6db9184aa74868482c1d7fcb410b93cfd98e7d39dc03a30013b9",
+    "generated_svg_sha256": "ce8b1190ae9c66ea4a2934b55a6dd0f6d3e3becd80deceec0bc3099144997215",
+    "published_svg_sha256": "d45339c847a8138f1865f32260d7dad61a1476e1264f999becd43fcc60b10ec4",
+    "xml_semantics_equal": true
+  }
+}

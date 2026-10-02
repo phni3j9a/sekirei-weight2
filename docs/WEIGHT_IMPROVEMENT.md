@@ -43,4 +43,30 @@ holdoutの静的誤差は減少しているが、trainとの差は広がって�
 
 診断機能追加前後の256局面・1エポックconstant学習smokeは、同じweight SHA-256 `df318ff8a4d2ec106126f36b4a1f3a308e1385a49d5a08b61bc5319f1900b993` を生成した。診断器追加による既存学習経路の変化がないことを小標本で確認した。
 
+## Constant 12エポック候補
+
+同じ55,404局面をconstant LR=0.001、seed42、fresh Adamで12エポック学習した。学習時間1,767.53秒、最大RSS約330 MiB、出力約765 MiB。最終weight SHA-256は `495373f626f4bf1bc7bd994a4daf802fd5c092c0ca59c62cd06d999b4ee936aa`。初回epochのbinは前回と完全一致しており、以降の学習率と学習量を変更した試行である。
+
+| checkpoint | train静的MAE | holdout静的MAE | holdout予測標準偏差 | holdout量子化差の平均絶対値 |
+| --- | ---: | ---: | ---: | ---: |
+| constant epoch6 | 未測定 | 668.295 cp | 607.573 cp | 8.513 cp |
+| constant epoch9 | 未測定 | 666.963 cp | 632.107 cp | 7.186 cp |
+| constant epoch12 | 205.609 cp | 665.273 cp | 704.293 cp | 6.488 cp |
+
+事前に選んだepoch12を正式比較へ進めた。epoch6/9は学習曲線の診断用で、正式候補の事後選び直しには使っていない。trainとholdoutの差が大きく、単なる学習延長では汎化の改善が小さくなっている。量子化復元floatとcore推論の差は引き続き1 cp未満。ここまでの数値は静的診断であり、採用結果ではない。
+
+## 駒得からの初期化
+
+次の仮説として、既存の駒得fallbackをdefault flat NNUEの初期重み内で厳密に表し、そこから外部教師ラベルへ学習する方法を準備した。探索、NNUE構造、`NnueOutput=absolute`は変更しない。`scripts/material_init.py`は固定commitとcore 4ファイルのSHA-256を照合し、標準ライブラリだけでSEKIRW01と上流互換sidecar、recipe、Python参照検証結果をGit外へ生成する。
+
+各視点の自分の駒を「歩・と金」と「その他の非玉駒」の2群に分ける。FTの2 channelへ格納値`駒価値/2`、bias 64を置くと、復元後は`1 + 群の駒価値/128`になる。L2の4 unitで両視点の2群をコピーし、出力係数`+8192,+8192,-8192,-8192`と既存の最終`/64`で、手番側の駒得差と一致する。持駒は固定上流の4 bank・枚数thresholdを使う。
+
+標準の駒総数以内では群の最大値は10,800/14,980 cp、FT最大累積7,554はclip上限8,128以下。各計算は整数または2の冪の分数で、f32の厳密表現範囲内に収まる。残り254 FT channelと28 L2 unitにはseed付きの小さな非ゼロ接続を置き、出力係数を0にする。初期出力を変えず、ClippedReLUの内側から学習を開始できる。ただし学習後の駒得保持や改善を保証するものではない。
+
+seed42の生成weightは1,305,356 bytes、SHA-256 `bbe9fbea4c943d69d605190f9ef8c6e9c7a4b9aa7c3a6be970d93e3405334e40`。公開fixture 15局面の全手順とSFENをcshogi 1.0.4で検証した。`scripts/material_init_probe.rs`を固定coreの既存rlibと同じCPU指定・`panic=abort`でリンクし、fixtureと合法手の遷移・undoを計7,705回評価した。捕獲632回、成り186回、打ち577回、undo 3,837回を含め、明示的再計算と増分accumulatorの双方がmaterialと誤差0 cpで一致した。この検証は初期値の機能確認であり、棋力評価ではない。Pythonの検証記録は`engine_verified=false`を維持し、実機検証を別の`engine-verification.json`に保存する。
+
+`scripts/train_cpu.py --init-weights PATH`は、固定構造・全float値の有限性・absolute sidecar・FNV-1aとSHA-256を検証して上流の既存初期化機能を呼ぶ。入力推論パラメータを使い、Adamのmomentとstepは新しくする。入力weightとsidecarが学習中に変わらなかったことも確認する。省略時は従来どおりrandom seed42。epoch集計metadataは初期化sidecarと形式が異なるため、そのまま初期化入力には使わない。
+
+大きな出力係数による勾配感度の違いがあるため、random初期化と同じLRが適切とは仮定しない。正式比較を終えてから小規模な学習の安定性を確かめ、次のrecipeを選ぶ。標準総駒数を超える任意SFEN、別の特徴構造、学習後の重みは初期値の厳密一致保証の対象外である。
+
 結果と再現手順は検証後に追記する。初回実験の基準は[初回weight](FIRST_WEIGHT.md)、全体の比較条件は[研究方針](RESEARCH.md)を参照。

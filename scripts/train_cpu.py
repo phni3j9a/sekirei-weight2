@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run bounded CPU training using verified external labels, with provenance."""
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -15,6 +16,50 @@ import time
 from benchmark import atomic_write_json, nonblocking_lock
 from pack_dataset import jsonl
 from prepare import REPO, sha256
+
+
+# Fixed v0.3.39 SEKIRW01: INPUT=2420, L1=256, L2=32. The format has no
+# dimension header, so exact length binds the standard architecture here.
+NNUE_FLOAT_OFFSET = 8 + 2420 * 256 * 2 + 256 * 2
+NNUE_WEIGHT_BYTES = NNUE_FLOAT_OFFSET + (2 * 256 * 32 + 32 + 32 + 1) * 4
+
+
+def verify_initial_weights(path):
+    """Validate an absolute inference model; its Adam state is never imported."""
+    if path is None:
+        return None
+    path = path.expanduser().resolve(strict=True)
+    data = path.read_bytes()
+    if len(data) != NNUE_WEIGHT_BYTES or data[:8] != b"SEKIRW01":
+        raise ValueError("initial weights must have the exact pinned SEKIRW01 structure")
+    if any(not math.isfinite(value) for (value,) in struct.iter_unpack("<f", data[NNUE_FLOAT_OFFSET:])):
+        raise ValueError("initial weights contain nonfinite floating-point parameters")
+    metadata_path = path.with_suffix(".meta.json").resolve(strict=True)
+    metadata_bytes = metadata_path.read_bytes()
+    metadata = json.loads(metadata_bytes)
+    if not isinstance(metadata, dict) or metadata.get("format") != "sekirei-nnue-output-v1":
+        raise ValueError("initial weights require a sekirei-nnue-output-v1 sidecar")
+    if metadata.get("nnue_output") != "absolute":
+        raise ValueError("initial weights must use absolute output")
+    fnv = 14695981039346656037
+    for byte in data:
+        fnv = ((fnv ^ byte) * 1099511628211) & ((1 << 64) - 1)
+    identity = f"{fnv:016x}"
+    if metadata.get("checkpoint_hash") != identity:
+        raise ValueError("initial weight sidecar is not bound to the supplied weight bytes")
+    return {"path": str(path), "sha256": hashlib.sha256(data).hexdigest(),
+            "bytes": len(data), "metadata_path": str(metadata_path),
+            "metadata_sha256": hashlib.sha256(metadata_bytes).hexdigest(),
+            "checkpoint_hash": identity, "nnue_output": "absolute",
+            "architecture": "INPUT=2420 L1=256 L2=32",
+            "optimizer": "fresh Adam moments and step=0; inference parameters only"}
+
+
+def verify_initial_weights_unchanged(initial):
+    if initial is not None:
+        if (sha256(Path(initial["path"])) != initial["sha256"]
+                or sha256(Path(initial["metadata_path"])) != initial["metadata_sha256"]):
+            raise RuntimeError("initial weights or sidecar changed during training")
 
 
 def float32(value):
@@ -58,6 +103,7 @@ def train(args):
         if not 1 <= args.max_positions <= len(rows):
             raise ValueError("max-positions exceeds the verified training dataset")
         rows = rows[:args.max_positions]
+    initial = verify_initial_weights(getattr(args, "init_weights", None))
     output.mkdir()
     jsonl(output / "positions.jsonl", rows)
     command = [build["binary"], "--positions", str(output / "positions.jsonl"),
@@ -72,18 +118,24 @@ def train(args):
                "--shuffle-seed", "42", "--seed", "42",
                "--output", str(output / "weights.bin"),
                "--checkpoint-dir", str(output / "checkpoints")]
+    if initial is not None:
+        command.extend(["--init-weights", initial["path"]])
     record = {"schema_version": 1, "status": "running", "argv": command,
               "dataset_manifest_sha256": sha256(dataset / "manifest.json"),
               "trainer_build": build, "positions": len(rows),
               "learning_rate": args.lr, "min_lr": args.min_lr,
               "lr_schedule": args.lr_schedule,
               "lr_schedule_epochs": args.lr_schedule_epochs or args.epochs,
-              "initialization": "random seed 42; fresh Adam state",
+              "initialization": ("inference weights; fresh Adam state" if initial is not None
+                                 else "random seed 42; fresh Adam state"),
+              "initial_weights": initial,
               "epochs": args.epochs, "timeout_seconds": args.seconds,
               "positions_sha256": sha256(output / "positions.jsonl"),
               "script_sha256": sha256(Path(__file__)),
               "float_subnormal_policy": "x86-ftz-daz",
-              "recipe": "external STM cp regression; random init; no WDL; no internal teacher search"}
+              "recipe": ("external STM cp regression; "
+                         + ("inference initialization" if initial is not None else "random init")
+                         + "; no WDL; no internal teacher search")}
     atomic_write_json(output / "run.json", record)
     started = time.monotonic()
     with nonblocking_lock(build_root / ".training.lock", exclusive=True):
@@ -106,10 +158,18 @@ def train(args):
     usage = resource.getrusage(resource.RUSAGE_CHILDREN)
     record.update(returncode=returncode, wall_seconds=time.monotonic() - started,
                   cpu_seconds=usage.ru_utime + usage.ru_stime, max_rss_kib=usage.ru_maxrss)
+    try:
+        verify_initial_weights_unchanged(initial)
+        record["initial_weights_unchanged"] = True
+    except (OSError, RuntimeError) as error:
+        record["initial_weights_unchanged"] = False
+        record["initial_weights_error"] = str(error)
     metadata = list((output / "checkpoints").glob("*.meta.json"))
     weights = output / "weights.bin"
     if returncode == 0 and record["status"] != "timeout":
         try:
+            if not record["initial_weights_unchanged"]:
+                raise RuntimeError(record["initial_weights_error"])
             if len(metadata) != args.epochs or not weights.is_file():
                 raise RuntimeError("missing epoch metadata or final weight")
             metas = [json.loads(p.read_text()) for p in sorted(metadata)]
@@ -155,6 +215,8 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--seconds", type=int, default=3600)
     parser.add_argument("--max-positions", type=int)
+    parser.add_argument("--init-weights", type=Path,
+                        help="absolute SEKIRW01 with bound output sidecar; starts fresh Adam state")
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--lr-schedule", choices=("step-half", "constant", "cosine"), default="step-half")
     parser.add_argument("--min-lr", type=float, default=0.0)

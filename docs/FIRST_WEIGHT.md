@@ -69,4 +69,6 @@ python3 scripts/train_cpu.py --dataset "$DATASET" --trainer "$TRAIN_RUNTIME" \
 
 v0.3.39 fallbackの正式run `development-baseline-20261002-v039-v1` は1,140/1,140 attempt、technical failure 0、missing/extra/duplicate 0で完了した。固定Teacher-Eは266/266を採点でき、5局等重みのMAEは **1,084.4786006022964 cp**。fingerprintは `b722baad6a29d4c70b32e7e0d05fdee378f6de4cf72075b6519d2c697642b60a`。[公開集計と5局のグラフ](validation/first-weight-2026-10-02/baseline/validation.md)を保存し、描画も確認した。
 
-候補のMAE・両モデルのTop3・採否は、残りの正式比較完了後に追記する。
+候補の正式run `development-candidate-20261002-55k-v1` も1,140/1,140 attempt、technical failure 0、Teacher-E coverage 266/266で完了した。MAEは **1,314.4807657318527 cp**で、baselineより230.002 cp悪化した。[候補の公開集計とグラフ](validation/first-weight-2026-10-02/candidate/validation.md)を保存し、描画を確認した。両runの教師側は全570局面・E集合266点・評価値/境界/詰み・bestmove・PV・最大nodeが一致しており、比較相手の差による悪化ではない。MAE改善の採用条件は未達である。
+
+両モデルのTop3と最終的な採否記録は、残りの正式比較完了後に追記する。

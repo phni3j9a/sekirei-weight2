@@ -25,7 +25,7 @@ Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) / [PR #14](ht
 - 教師packは内容重複を除いた13本（534,175,084 bytes）を非公開で保持。既存の教師を再利用し、全量JSONL展開を避けて学習入力を作る。
 - 独立した人間同士・平手・合法手・重複なしの1,000局から、解析前にdevelopment 5局 / final 5局を固定した。今回の正式評価はdevelopmentだけを使用した。[取得・分割の記録](docs/validation/shogiquest-corpus-2026-09-15.md)。
 - 生ログ、配布データ、学習weightはSSDと検証済みNAS保管先に保持し、公開Git/Actionsには集計・コード・設定だけを置く。
-- PRは未マージ。最良モデルの更新と、実験コード・知見の統合は別に判断する。
+- PR #14はマージ済み。初回weightは不採用のままで、最良モデルの更新と、実験コード・知見の統合は別に判断する。
 
 初期環境・教師監査は [PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) / [PR #4](https://github.com/phni3j9a/sekirei-weight2/pull/4)、v0.3.39移行は[検証記録](docs/validation/sekirei-v0.3.39-2026-09-19.md)に残す。v0.3.36の旧baseline（MAE 1,087.046 cp）は[履歴](docs/validation/development-baseline-2026-09-19/validation.md)として保持し、今回の候補との比較にはv0.3.39のbaselineを使う。
 
@@ -101,6 +101,8 @@ Git/worktree・build・venv・使用中のデータ/重み・実行中の出力�
 ## 次の到達点
 
 初回候補は評価値の振幅が小さく、MAEは5局中4局で悪化した。次に検証する仮説は、ランダム初期化のabsolute CP回帰が3エポックでは十分に学習できていない可能性。保存済みcheckpointと隔離済み保留局面による固定weightの診断を準備し、追加学習の必要性を確かめる。訓練lossだけではモデルを採用せず、採用指標は正式MAEとTop3の二つを維持する。
+
+Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15)で、約8時間の手動改善実験を開始した。まず量子化前後の固定checkpointを保留局面で診断し、学習率スケジュールと学習量を検討する。採用候補が得られても、残り時間で改善を続ける。[実験の範囲・予算・結果](docs/WEIGHT_IMPROVEMENT.md)に記録する。
 
 ## 文書
 

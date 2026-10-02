@@ -55,4 +55,12 @@ python3 scripts/train_cpu.py --dataset "$DATASET" --trainer "$TRAIN_RUNTIME" \
 
 候補用configは固定development configのcopyに `candidate_model.kind=nnue` とweightの絶対pathを指定する。実行時にEvalFileへ同じpathを渡し、ハッシュと明示的な読込成功応答を照合する。baselineのpilotを別weightのformalへ流用しない。weightなしのfallbackは別のbaselineとして保持する。
 
-検証結果・採否は実機測定完了後に追記する。
+## 初回生成結果（正式比較は実行中）
+
+- 学習55,404局面、保留5,895局面。元packは13本・各200局の上限で、独立1,000局の88,187種類の盤面を機械的に除外した。強化前に生成した入力とも全ファイルhashが一致した。
+- FTZ/DAZ版の3エポック学習は445.376秒、CPU時間444.644秒、最大RSS334,728 KiB。全エポックで55,404 cache hit / 0 miss、教師種別external、NNUE出力absoluteを確認した。
+- 学習率は固定upstreamのstep-halfで0.001 → 0.0005 → 0.00025。epoch metadataの `lr` は基準値0.001であり、各epochの実効値は学習ログに記録される。
+- 重みは1,305,356 bytes、SHA-256 `2aec057bec3a0f6fa54999aacfbdd16df6982de791e1f43f9090abb7ac4b0eb7`。3エポック終了のweightを候補とし、途中checkpointからの成績選択はしていない。
+- v0.3.39 fallback pilot `development-pilot-20261002-v039-v1` は102/102 attempt、technical failure 0、34/34 stable。最大node evidenceは1,001,086で、1,010,000の規定内。fingerprintは `019a2f0a6b32dea4cacdbd5aa0f2dad852a807d8f550fc6e09ab173cc8153377`。
+
+採否と2指標の値は正式比較完了後に追記する。

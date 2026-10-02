@@ -19,9 +19,9 @@ Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https
 - 10標本の固定V9.20再解析では、確定値6件のMAE 3.167 cp（最大11 cp）、境界値4件、保存指し手一致6件。互換性の小規模確認であり、元の生成環境との完全同一性の証明ではない。
 - 正式ベンチマーク用に、将棋クエストの公開棋譜から人間同士・平手・合法手・重複なしの1,000局をローカルへ固定し、その中から解析前に development 5局 / final 5局を選定済み。[取得・分割の検証記録](docs/validation/shogiquest-corpus-2026-09-15.md)。
 - `.pack` から外部ラベルcacheを介して学習器へ入力する経路を追加した。初回は55,404局面・3エポック・1時間上限で検証する。モデル採用判定は正式測定後に行い、定期自動実行は対象外。
-- Sekirei の今回の初期疎通は **駒得評価へのフォールバック**。学習済みモデルはまだない。
+- Sekirei の今回の初期疎通は **駒得評価へのフォールバック**。Issue #13で初回の学習済み候補を生成済みだが、採用は正式比較後に判断する。
 - Issue #7 のSekirei v0.3.36系列では、`development-pilot-20260916-v5` をreviewed/formal launch evidenceとして凍結し、同じexecution identityの正式測定 `development-baseline-20260916-v2` を完了した。正式測定は1,140/1,140 attempt、technical failure 0、teacher-E 266/266 coverageで、棋譜ごとのMAEを等重み平均したheadlineは **1,087.046 cp**。公開用の[検証値・グラフ・hash manifest](docs/validation/development-baseline-2026-09-19/validation.md)を履歴として追跡する。本正式測定とreport/export経路はfinal 5局へアクセスしていない。
-- v0.3.39は新しいruntimeへ分離し、上流v0.3.38の公開NNUE重みを入れずに駒得fallbackでまず探索差分だけを確認する。v0.3.36のpilot evidenceはv0.3.39へ流用せず、`formal.pilot_evidence` は未凍結に戻してある。
+- v0.3.39は新しいruntimeへ分離し、上流v0.3.38の公開NNUE重みを入れずに駒得fallbackでまず探索差分だけを確認する。v0.3.36のpilot evidenceはv0.3.39へ流用せず、Issue #13で新しい `development-pilot-20261002-v039-v1`（102/102、technical failure 0、34/34 stable）を確認し、v0.3.39 fallback用の `formal.pilot_evidence` を凍結した。
 - 旧 `development-baseline-20260916` は1,140/1,140 attemptを収集したが、現行の正式根拠にはできない。Teacher development-04 p077 の all-evidence max 1,001,086 は旧1,001,024を超え、Sekirei development-05 p122 は旧分類にない mate 1 / nodes 0 だった。この旧1,001,024をsource-derived guaranteeとして扱う主張は撤回する。`status=complete` は formal valid を意味せず、診断上の exact coverage 265/265 も headline やモデル採用の根拠ではない。
 - 現行契約は `go nodes 1000000` を両エンジンへ送り、`one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` により all-evidence max `M <= C(N)` を判定する。これは片側1%の運用上の比較・異常検出ガードレールであり、YaneuraOuの停止上限、内部仕事量の同値性、最低ノード目標ではない。pilot/formal の `max_reported_nodes` はともに 1,010,000 を事前登録する。旧v2/v3/v4はprior diagnostic、旧v5はv0.3.36 formalだけのlaunch evidenceである。
 
@@ -38,7 +38,7 @@ python3 scripts/benchmark.py plan --run-type pilot
 python3 scripts/benchmark.py plan --run-type formal
 ```
 
-planは実行せず入力集合を検査するため、未凍結でも作成できる。実際の `formal` 起動は、v0.3.39 pilotをレビューして `formal.pilot_evidence` を凍結するまでfail-closedで拒否する。
+planは実行せず入力集合を検査するため、未凍結でも作成できる。実際の `formal` 起動には、同じ候補・実行環境のpilotを検証して凍結した `formal.pilot_evidence` を必須とする。現在の設定にはv0.3.39 fallback用のpilotを凍結済みである。
 
 pilotは各棋譜の `{1, ceil(L/2), L}` のcanonical 15局面に regression の development-04:77 と development-05:122 を加えた17局面を、両エンジン・3回ずつ（102 attempt / 34 engine-position triple）計画する。formalは570局面を各1回ずつ（1,140 attempt）計画する。両計画の `max_reported_nodes` は、`one-sided-1-percent` v1 の `C(1,000,000)=1,010,000` を使う。plan時に固定audit runtimeの cshogi 1.0.4 が利用できれば、全570 occurrence・46,668合法root moveと分類を照合して結果を記録する（`--cshogi` は互換用に受理する）。これはCIの必須依存ではない。
 

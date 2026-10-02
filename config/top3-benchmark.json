@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "metric": "teacher_best_in_candidate_top3",
+  "teacher_reference": "validated development formal MultiPV=1, go nodes 1000000",
+  "candidate_multipv": 3,
+  "requested_nodes": 1000000,
+  "eligibility": "normal classified positions with at least four legal moves",
+  "exclusions": ["terminal positions", "at most three legal moves", "hash-bound mate-in-one shortcut"],
+  "aggregation": "mean of five per-game hit proportions",
+  "pilot": "canonical development pilot subset intersected with eligibility; three repetitions",
+  "incomplete_top3": "invalid measurement, never silently dropped from denominator",
+  "tie_policy": "exact USI move membership in the three reported legal distinct roots; no tie expansion",
+  "candidate_selection": "last complete depth must provide MultiPV slots 1,2,3 and match bestmove"
+}

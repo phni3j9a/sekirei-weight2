@@ -8,6 +8,8 @@
 
 ## 現在の段階
 
+Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) で、配布packからのゲーム単位分割・外部ラベル入力・CPU学習・明示的なNNUE読込・同一重みの2指標比較を実装中。採用指標は **評価値MAE** と **水匠の最善手がSekireiのTop3に入る割合** に絞る。初回の条件・実行方法・測定結果は [初回weight](docs/FIRST_WEIGHT.md) にまとめる。
+
 Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) で初期環境を整備し、Issue [#3](https://github.com/phni3j9a/sekirei-weight2/issues/3) / [PR #4](https://github.com/phni3j9a/sekirei-weight2/pull/4) で主教師を水匠11βへ切り替えて生成済み教師データを監査した。Issue [#5](https://github.com/phni3j9a/sekirei-weight2/issues/5) では独立評価棋譜を固定し、Issue [#7](https://github.com/phni3j9a/sekirei-weight2/issues/7) で初期baselineを確定した。Issue [#9](https://github.com/phni3j9a/sekirei-weight2/issues/9) ではSekireiをv0.3.39へ更新する。
 
 - Sekirei / sekirei-trainはv0.3.39、shogiesaと水匠11β用やねうら王V9.20もcommit単位で固定。
@@ -16,7 +18,7 @@ Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https
 - 実機でv0.3.39 Sekireiと水匠11βの100万ノード指定探索、shogiesaの一局面ラベル生成を確認済み。[v0.3.39移行検証](docs/validation/sekirei-v0.3.39-2026-09-19.md)。教師データ監査は[β環境と教師監査](docs/validation/suisho11beta-2026-09-15.md)、旧Plus環境は[初期検証](docs/validation/environment-2026-09-14.md)に残す。
 - 10標本の固定V9.20再解析では、確定値6件のMAE 3.167 cp（最大11 cp）、境界値4件、保存指し手一致6件。互換性の小規模確認であり、元の生成環境との完全同一性の証明ではない。
 - 正式ベンチマーク用に、将棋クエストの公開棋譜から人間同士・平手・合法手・重複なしの1,000局をローカルへ固定し、その中から解析前に development 5局 / final 5局を選定済み。[取得・分割の検証記録](docs/validation/shogiquest-corpus-2026-09-15.md)。
-- `.pack` から学習器への入力経路、本格学習、モデル採用判定、定期自動実行は次の段階。
+- `.pack` から外部ラベルcacheを介して学習器へ入力する経路を追加した。初回は55,404局面・3エポック・1時間上限で検証する。モデル採用判定は正式測定後に行い、定期自動実行は対象外。
 - Sekirei の今回の初期疎通は **駒得評価へのフォールバック**。学習済みモデルはまだない。
 - Issue #7 のSekirei v0.3.36系列では、`development-pilot-20260916-v5` をreviewed/formal launch evidenceとして凍結し、同じexecution identityの正式測定 `development-baseline-20260916-v2` を完了した。正式測定は1,140/1,140 attempt、technical failure 0、teacher-E 266/266 coverageで、棋譜ごとのMAEを等重み平均したheadlineは **1,087.046 cp**。公開用の[検証値・グラフ・hash manifest](docs/validation/development-baseline-2026-09-19/validation.md)を履歴として追跡する。本正式測定とreport/export経路はfinal 5局へアクセスしていない。
 - v0.3.39は新しいruntimeへ分離し、上流v0.3.38の公開NNUE重みを入れずに駒得fallbackでまず探索差分だけを確認する。v0.3.36のpilot evidenceはv0.3.39へ流用せず、`formal.pilot_evidence` は未凍結に戻してある。

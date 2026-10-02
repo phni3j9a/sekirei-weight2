@@ -33,6 +33,8 @@ def advertised_options():
         ("SearchMode", "combo", "Speculative"),
         ("SpecTopN", "spin", "0"),
         ("EvalDir", "string", "/tmp/fake-eval"),
+        ("EvalFile", "string", ""),
+        ("NnueOutput", "string", "absolute"),
     ):
         if kind == "spin":
             emit(f"option name {name} type spin default {default} min 0 max 1000000")
@@ -161,6 +163,7 @@ def run_search():
     emit("bestmove 7g7f")
 
 
+eval_file = None
 for command in sys.stdin:
     command = command.strip()
     if command == "usi":
@@ -169,9 +172,15 @@ for command in sys.stdin:
         advertised_options()
         emit("usiok")
     elif command.startswith("setoption"):
+        if command.startswith("setoption name EvalFile value "):
+            eval_file = command.removeprefix("setoption name EvalFile value ")
         if MODE == "bad-option" and "Threads" in command:
             emit("unknown option Threads")
     elif command == "isready":
+        if eval_file and MODE == "loaded-weight":
+            emit(f"info string NNUE weights loaded from {eval_file}")
+        if eval_file and MODE == "bad-weight":
+            emit("info string weight load failed: invalid header")
         if MODE == "startup-error":
             emit("error! startup failed")
         emit("readyok")

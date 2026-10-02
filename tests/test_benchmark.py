@@ -1191,7 +1191,7 @@ class USIProcessTests(unittest.TestCase):
                     execute_run(runtime, config, "pilot", run_id="resume-fixture", resume=True)
                 if field == "max_reported_nodes_evidence":
                     with self.assertRaisesRegex(ValueError, "raw observation schema"):
-                        report_from_run(runtime / "runs/resume-fixture")
+                        report_from_run(runtime / "runs/resume-fixture", config=config)
                 target.write_text(original_record)
 
             def rewrite_raw(mutator, *, record=None):
@@ -1385,7 +1385,7 @@ class USIProcessTests(unittest.TestCase):
             self.assertEqual(resumed["status"], "complete")
             after = {path.name: path.read_bytes() for path in attempt_files}
             self.assertEqual(before, after)
-            report = report_from_run(runtime / "runs/resume-fixture", Path(temp) / "report")
+            report = report_from_run(runtime / "runs/resume-fixture", Path(temp) / "report", config=config)
             self.assertEqual(report["universe"]["total_occurrences"], 17)
             self.assertEqual(report["repeatability"]["attempt_count"], 102)
             self.assertTrue(report["validity"]["evidence_validator_passed"])
@@ -1425,7 +1425,7 @@ class USIProcessTests(unittest.TestCase):
             self.assertTrue(all(record["result"]["failure_reason"] == "malformed_score" for record in records))
             self.assertTrue(all(record["result"]["max_reported_nodes_evidence"] == 2000 for record in records))
             with mock.patch("benchmark_report.load_config", return_value=config):
-                report = report_from_run(runtime / "runs/malformed-score-fixture")
+                report = report_from_run(runtime / "runs/malformed-score-fixture", config=config)
             self.assertEqual(report["validity"]["technical_failure_count"], 102)
             self.assertFalse(report["validity"]["complete_evidence_valid"])
             config["formal"]["max_reported_nodes"] = node_reporting_limit(config["requested_nodes"])
@@ -1497,7 +1497,7 @@ class USIProcessTests(unittest.TestCase):
             target.write_text(original_record)
             changed_option = copy.deepcopy(config)
             changed_option["engines"]["sekirei"]["options"]["Hash"] = "64"
-            with self.assertRaisesRegex(ConfigurationError, "execution identity"):
+            with self.assertRaisesRegex(BenchmarkError, "engine configuration"):
                 validate_formal_gate(runtime, changed_option)
             config["formal"]["pilot_evidence"]["observed_max_reported_nodes"] = observed + 1
             with self.assertRaisesRegex(ConfigurationError, "observed maximum mismatch"):

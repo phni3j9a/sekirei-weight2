@@ -1,0 +1,120 @@
+--- a/crates/sekirei-train/src/main.rs
++++ b/crates/sekirei-train/src/main.rs
+@@ -98,6 +98,7 @@
+ 
+ struct Args {
+     games_dir: Option<PathBuf>,
++    external_teacher_id: Option<String>, // precomputed labels only, never internal search
+     positions_path: Option<PathBuf>, // --positions: shogiesa positions.jsonl
+     ranking_pairs_path: Option<PathBuf>, // --ranking-pairs: strict diagnostic root-ranking JSON
+     ranking_epochs: usize,           // --ranking-epochs (ranking-pairs mode only)
+@@ -503,6 +504,7 @@
+ fn parse_args() -> Result<Args, String> {
+     let argv: Vec<String> = std::env::args().skip(1).collect();
+     let mut games_dir = None;
++    let mut external_teacher_id: Option<String> = None;
+     let mut positions_path: Option<PathBuf> = None;
+     let mut ranking_pairs_path: Option<PathBuf> = None;
+     let mut ranking_epochs = 1usize;
+@@ -598,6 +600,9 @@
+                 i += 1;
+                 games_dir = argv.get(i).map(PathBuf::from);
+             }
++            "--external-teacher-id" => {
++                external_teacher_id = Some(next_value(&argv, &mut i, "--external-teacher-id")?);
++            }
+             "--positions" => {
+                 i += 1;
+                 positions_path = argv.get(i).map(PathBuf::from);
+@@ -1130,6 +1135,7 @@
+ 
+     Ok(Args {
+         games_dir,
++        external_teacher_id,
+         positions_path,
+         ranking_pairs_path,
+         ranking_epochs,
+@@ -1279,6 +1285,19 @@
+ /// all previous behavior. A fixed NNUE teacher is loaded once for the process;
+ /// its weight-byte hash prevents cache or resume reuse with another teacher.
+ fn configure_teacher(args: &Args) -> Result<String, String> {
++    if let Some(identity) = &args.external_teacher_id {
++        if !identity.starts_with("external:") || identity.len() <= 9
++            || args.positions_path.is_none() || !args.strict_positions
++            || !args.cache_only || !args.reuse_teacher_cache || args.teacher_cache_path.is_none()
++            || args.validation_ratio != 0.0 || args.search_target_weight != 1.0
++            || args.teacher_weights.is_some() || !matches!(args.teacher_eval, TeacherEval::Material)
++            || args.resume_checkpoint.is_some() || args.resume_adam.is_some()
++            || args.source_cap != 0 || args.scored_path.is_some()
++        {
++            return Err("external labels require external:<identity>, strict positions, complete cache-only input, external game split, and a fresh run".into());
++        }
++        return Ok(identity.clone());
++    }
+     let mut identity = match args.teacher_eval {
+         TeacherEval::Material => "material".to_string(),
+         TeacherEval::Nnue => {
+@@ -1989,10 +2008,11 @@
+         "label_depth": args.label_depth,
+         "label_time_ms": args.label_time_ms,
+         "label_nodes": args.label_nodes,
++        "float_subnormal_policy": if std::env::var("SEKIREI_TRAIN_FTZ_DAZ").as_deref() == Ok("1") { "x86-ftz-daz" } else { "inherited" },
+         "teacher_score_cap": args.teacher_score_cap,
+         "exclude_mate_labels": args.exclude_mate_labels,
+         "search_target_weight": args.search_target_weight,
+-        "teacher_eval": format!("{:?}", args.teacher_eval).to_lowercase(),
++        "teacher_eval": if args.external_teacher_id.is_some() { "external".to_string() } else { format!("{:?}", args.teacher_eval).to_lowercase() },
+         "teacher_nnue_output": args.teacher_nnue_output.as_str(),
+         "nnue_output": args.nnue_output.as_str(),
+         "teacher_identity": teacher_identity,
+@@ -2240,6 +2260,7 @@
+ }
+ 
+ fn print_usage() {
++    eprintln!("  --external-teacher-id <external:id>  Strict complete precomputed labels; requires positions, cache-only and external game split");
+     eprintln!(
+         "Usage: train (--games <dir> | --positions <jsonl>) [--output weights.bin] [--epochs 3] [--sample 4]"
+     );
+@@ -2466,7 +2487,29 @@
+ 
+ // ---- Main ----
+ 
++// Training-only policy. SSE/AVX subnormal inputs/results are zeroed when
++// explicitly requested; this never changes the comparison engine binary.
++#[allow(deprecated)]
++fn configure_training_floats() {
++    match std::env::var("SEKIREI_TRAIN_FTZ_DAZ").as_deref() {
++        Err(_) | Ok("0") => {},
++        Ok("1") => {
++            #[cfg(target_arch = "x86_64")]
++            unsafe {
++                use std::arch::x86_64::{_mm_getcsr, _mm_setcsr};
++                _mm_setcsr(_mm_getcsr() | 0x8040);
++                assert_eq!(_mm_getcsr() & 0x8040, 0x8040);
++            }
++            #[cfg(not(target_arch = "x86_64"))]
++            panic!("FTZ/DAZ recipe requires x86_64");
++            eprintln!("Training floats: FTZ/DAZ enabled (MXCSR bits 15/6)");
++        },
++        Ok(_) => panic!("SEKIREI_TRAIN_FTZ_DAZ must be 0 or 1"),
++    }
++}
++
+ fn main() {
++    configure_training_floats();
+     let args = match parse_args() {
+         Ok(a) => a,
+         Err(e) => {
+@@ -2721,6 +2764,12 @@
+                 filtered_valid.len(),
+                 valid_total
+             );
++            if args.external_teacher_id.is_some()
++                && (filtered_train.len() != train_total || filtered_valid.len() != valid_total)
++            {
++                eprintln!("error: external label cache is incomplete; refusing partial training");
++                std::process::exit(1);
++            }
+             train_samples = filtered_train;
+             valid_samples = filtered_valid;
+             split_h = split_hash(

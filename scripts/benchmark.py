@@ -3128,6 +3128,8 @@ class USIProcess:
 
 def _engine_error(line):
     lowered = line.casefold()
+    if "weight load failed" in lowered:
+        return True
     if "error!" in lowered:
         return True
     if any(marker in lowered for marker in ("unknown option", "no such option", "file not found", "unknown command")):
@@ -3220,6 +3222,17 @@ def _mark_cleanup_failure(result, error):
     return marked
 
 
+def _validate_weight_loaded(events, options):
+    """An advertised EvalFile/readyok alone does not prove NNUE activation."""
+    path = options.get("EvalFile")
+    if not path:
+        return
+    expected = f"info string NNUE weights loaded from {path}"
+    received = [event["line"] for event in events if event.get("direction") == "receive"]
+    if received.count(expected) != 1 or any(_engine_error(line) for line in received):
+        raise ConfigurationError("candidate NNUE load confirmation missing or failed")
+
+
 def run_engine_attempt(
     binary,
     position,
@@ -3268,6 +3281,7 @@ def run_engine_attempt(
         phase = "isready"
         process.send("isready")
         _wait_for(process, lambda line: line == "readyok", "isready")
+        _validate_weight_loaded(process.events, options)
         phase = "usinewgame"
         process.send("usinewgame")
         phase = "position"
@@ -3429,7 +3443,11 @@ def _model_identity(config):
     model = config.get("candidate_model", {"kind": "material_fallback", "path": None})
     kind = model.get("kind")
     if kind == "material_fallback":
+        if model.get("path") is not None or config["engines"]["sekirei"]["options"].get("EvalFile"):
+            raise ConfigurationError("material fallback must not specify a weight")
         return {"kind": kind, "path": None, "sha256": None, "bytes": None}
+    if kind != "nnue":
+        raise ConfigurationError("candidate model kind must be material_fallback or nnue")
     path_value = model.get("path")
     if not path_value:
         raise ConfigurationError("candidate model path is required for a non-fallback model")
@@ -3462,6 +3480,24 @@ def runtime_identity(runtime, config):
         "teacher_weight": weight,
         "candidate_model": _model_identity(config),
     }
+
+
+def _validate_candidate_configuration(manifest, config):
+    recorded = manifest.get("runtime_identity", {}).get("candidate_model", {})
+    current = _model_identity(config)
+    # Content identity survives archival relocation; the original absolute path
+    # must still agree with the recorded USI activation evidence.
+    if any(recorded.get(key) != current[key] for key in ("kind", "sha256", "bytes")):
+        raise BenchmarkError("run candidate model does not match the requested configuration")
+    payload = manifest["fingerprint_payload"]
+    if payload.get("engines") != config["engines"]:
+        raise BenchmarkError("run engine configuration does not match the requested configuration")
+    options = payload.get("resolved_options", {}).get("sekirei", {})
+    if recorded.get("kind") == "nnue":
+        if options.get("EvalFile") != recorded.get("path") or options.get("NnueOutput") != "absolute":
+            raise BenchmarkError("run NNUE options do not match its recorded weight identity")
+    elif options.get("EvalFile"):
+        raise BenchmarkError("fallback run unexpectedly loaded a weight")
 
 
 def binary_identity(path):
@@ -3836,6 +3872,7 @@ def _validate_engine_lifecycle(
     )
     if bestmoves[0] <= go_index or bestmoves[0] >= quit_index:
         raise BenchmarkError(f"raw bestmove appeared before the observation: {expected['attempt_id']}")
+    _validate_weight_loaded(engine_events[:readyok[0] + 1], expected_options)
 
 
 def _compare_raw_observation(record, observed, runner_status):
@@ -4172,6 +4209,7 @@ def validate_run_artifacts(
         raise BenchmarkError("run manifest parser identity is invalid")
     if manifest.get("runtime_identity") != execution_payload.get("runtime"):
         raise BenchmarkError("run manifest runtime identity does not match its fingerprint")
+    _validate_candidate_configuration(manifest, config)
     if (
         execution_payload.get("runner") != runner_identity
         or execution_payload.get("engines") != fingerprint_payload.get("engines")
@@ -4549,6 +4587,13 @@ def _runtime_options(config, runtime):
     if config["engines"]["teacher"].get("weight_required", True):
         weight = verify_weight(runtime)
         teacher["EvalDir"] = str(weight.parent)
+    model = _model_identity(config)
+    if model["kind"] == "nnue":
+        candidate_options = options["sekirei"]
+        if candidate_options.get("EvalFile", model["path"]) != model["path"]:
+            raise ConfigurationError("EvalFile differs from candidate model identity")
+        candidate_options["EvalFile"] = model["path"]
+        candidate_options["NnueOutput"] = "absolute"
     return options
 
 
@@ -4614,7 +4659,7 @@ def _execute_run_locked(runtime, config, run_type, *, run_id=None, resume=False)
             "split": "development",
             "created_at": utc_now(),
             "provenance": {
-                "config_sha256": sha256(CONFIG_PATH),
+                "config_sha256": json_sha256(config),
                 "repo": repo_identity(),
             },
             "fingerprint": current_fingerprint,
@@ -4880,13 +4925,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("plan", "pilot", "formal", "resume", "status"))
     parser.add_argument("--runtime", type=Path, default=DEFAULT_RUNTIME)
+    parser.add_argument("--config", type=Path, default=CONFIG_PATH)
     parser.add_argument("--run-id")
     parser.add_argument("--run-type", choices=("pilot", "formal"))
     parser.add_argument("--type", dest="run_type_alias", choices=("pilot", "formal"), help=argparse.SUPPRESS)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--cshogi", action="store_true", help="compare all converted moves with pinned cshogi")
     args = parser.parse_args(argv)
-    config = load_config()
+    config = load_config(args.config)
     runtime = args.runtime.expanduser().resolve()
     if args.action == "status":
         print(json.dumps(status(runtime), indent=2, ensure_ascii=False))

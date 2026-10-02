@@ -350,12 +350,12 @@ def _position_type_diagnostics(plan, teacher_rows, candidate_rows):
     }
 
 
-def load_run(run_dir):
+def load_run(run_dir, config=None):
     """Load a run manifest, plan, and all immutable attempt records."""
     try:
         manifest, plan, _universe, attempts, _expected, _games = validate_run_artifacts(
             run_dir,
-            load_config(),
+            config or load_config(),
             require_complete=True,
         )
     except Exception as error:
@@ -1752,8 +1752,8 @@ def export_public(output_dir, report, *, source_game_ids=None):
     return hashes
 
 
-def report_from_run(run_dir, output_dir=None, *, accuracy_thresholds=None):
-    manifest, plan, attempts = load_run(run_dir)
+def report_from_run(run_dir, output_dir=None, *, accuracy_thresholds=None, config=None):
+    manifest, plan, attempts = load_run(run_dir, config)
     teacher_rows = [row for row in attempts if row.get("engine_id") == "teacher"]
     candidate_rows = [row for row in attempts if row.get("engine_id") == "sekirei"]
     report = score_observations(
@@ -1762,6 +1762,7 @@ def report_from_run(run_dir, output_dir=None, *, accuracy_thresholds=None):
         candidate_rows,
         accuracy_thresholds=accuracy_thresholds,
         evidence_validator_passed=True,
+        config=config,
     )
     validity = report.get("validity")
     if isinstance(validity, dict):
@@ -1796,16 +1797,18 @@ def main(argv=None):
     parser.add_argument("action", choices=("report", "export"))
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--config", type=Path)
     parser.add_argument("--threshold", type=float, action="append", dest="thresholds")
     args = parser.parse_args(argv)
+    config = load_config(args.config) if args.config else load_config()
     if args.action == "export":
         # Export is an aggregate-only boundary: report_from_run validates and
         # scores in memory, and no local/per-position tree is created.
-        report = report_from_run(args.run_dir, None, accuracy_thresholds=args.thresholds)
+        report = report_from_run(args.run_dir, None, accuracy_thresholds=args.thresholds, config=config)
         hashes = export_public(args.output, report)
         print(json.dumps(hashes, indent=2, ensure_ascii=False))
     else:
-        report = report_from_run(args.run_dir, args.output, accuracy_thresholds=args.thresholds)
+        report = report_from_run(args.run_dir, args.output, accuracy_thresholds=args.thresholds, config=config)
         print(json.dumps({key: report[key] for key in ("headline", "e_exact_coverage", "bound_diagnostic", "mate_diagnostic")}, indent=2, ensure_ascii=False))
     return 0
 

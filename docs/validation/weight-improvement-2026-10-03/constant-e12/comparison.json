@@ -1,0 +1,297 @@
+{
+  "schema_version": 1,
+  "report": "constant-learning-rate-12-epoch-development-comparison",
+  "candidate_label": "random-seed42-constant-lr0.001-12epochs",
+  "candidate_weight_sha256": "495373f626f4bf1bc7bd994a4daf802fd5c092c0ca59c62cd06d999b4ee936aa",
+  "candidate_weight_bytes": 1305356,
+  "training": {
+    "positions": 55404,
+    "epochs": 12,
+    "learning_rate": 0.001,
+    "lr_schedule": "constant",
+    "initialization": "random seed 42; fresh Adam state",
+    "float_subnormal_policy": "x86-ftz-daz",
+    "wall_seconds": 1767.5340080033056,
+    "cpu_seconds": 1765.1726879999999,
+    "max_rss_kib": 338152
+  },
+  "conditions": {
+    "sekirei": "v0.3.39",
+    "teacher": "Suisho Concerto 202512 (Suisho11beta)",
+    "requested_nodes": 1000000,
+    "threads": 1,
+    "hash_mib": 128,
+    "mae_multipv": 1,
+    "candidate_top3_multipv": 3,
+    "games": 5,
+    "occurrences": 570,
+    "teacher_exact_count": 266,
+    "top3_eligible_count": 551,
+    "aggregation": "equal mean of five per-game metrics",
+    "nnue_output": "absolute",
+    "final_used": false
+  },
+  "decision": {
+    "comparison_valid": true,
+    "adopt": false,
+    "result": "reject",
+    "mae_improved": false,
+    "top3_preserved": false,
+    "rule": "MAE strictly lower and Top3 non-decreasing; exact rational comparison"
+  },
+  "headline": {
+    "baseline_mae_cp": 1084.4786006022964,
+    "candidate_mae_cp": 1201.0835676642198,
+    "mae_delta_cp": 116.60496706192359,
+    "baseline_top3_rate": 0.5538875742592971,
+    "candidate_top3_rate": 0.2990421704438336,
+    "top3_delta_percentage_points": -25.484540381546353,
+    "exact_ratios": {
+      "baseline": {
+        "mae": {
+          "numerator": 1152366961,
+          "denominator": 1062600
+        },
+        "top3": {
+          "numerator": 127184263,
+          "denominator": 229621080
+        }
+      },
+      "candidate": {
+        "mae": {
+          "numerator": 1276271399,
+          "denominator": 1062600
+        },
+        "top3": {
+          "numerator": 480664703,
+          "denominator": 1607347560
+        }
+      }
+    }
+  },
+  "per_game": [
+    {
+      "ordinal": 1,
+      "teacher_exact_count": 42,
+      "baseline_mae_cp": 367.4047619047619,
+      "candidate_mae_cp": 644.7380952380952,
+      "mae_delta_cp": 277.3333333333333,
+      "top3_denominator": 84,
+      "baseline_top3_hits": 49,
+      "candidate_top3_hits": 27,
+      "baseline_top3_rate": 0.5833333333333334,
+      "candidate_top3_rate": 0.32142857142857145
+    },
+    {
+      "ordinal": 2,
+      "teacher_exact_count": 72,
+      "baseline_mae_cp": 1514.4166666666667,
+      "candidate_mae_cp": 1629.7916666666667,
+      "mae_delta_cp": 115.375,
+      "top3_denominator": 122,
+      "baseline_top3_hits": 83,
+      "candidate_top3_hits": 40,
+      "baseline_top3_rate": 0.680327868852459,
+      "candidate_top3_rate": 0.32786885245901637
+    },
+    {
+      "ordinal": 3,
+      "teacher_exact_count": 66,
+      "baseline_mae_cp": 1079.2878787878788,
+      "candidate_mae_cp": 1507.2424242424242,
+      "mae_delta_cp": 427.95454545454544,
+      "top3_denominator": 127,
+      "baseline_top3_hits": 55,
+      "candidate_top3_hits": 23,
+      "baseline_top3_rate": 0.4330708661417323,
+      "candidate_top3_rate": 0.18110236220472442
+    },
+    {
+      "ordinal": 4,
+      "teacher_exact_count": 40,
+      "baseline_mae_cp": 1222.675,
+      "candidate_mae_cp": 818.95,
+      "mae_delta_cp": -403.725,
+      "top3_denominator": 104,
+      "baseline_top3_hits": 55,
+      "candidate_top3_hits": 29,
+      "baseline_top3_rate": 0.5288461538461539,
+      "candidate_top3_rate": 0.27884615384615385
+    },
+    {
+      "ordinal": 5,
+      "teacher_exact_count": 46,
+      "baseline_mae_cp": 1238.608695652174,
+      "candidate_mae_cp": 1404.695652173913,
+      "mae_delta_cp": 166.08695652173913,
+      "top3_denominator": 114,
+      "baseline_top3_hits": 62,
+      "candidate_top3_hits": 44,
+      "baseline_top3_rate": 0.543859649122807,
+      "candidate_top3_rate": 0.38596491228070173
+    }
+  ],
+  "evidence": {
+    "mae_formal_valid": true,
+    "top3_formal_valid": true,
+    "mae_attempts": 1140,
+    "top3_attempts": 551,
+    "top3_pilot_attempts": 36,
+    "top3_pilot_stable": true,
+    "reference_checks": {
+      "execution_except_model": true,
+      "occurrences": true,
+      "teacher_results": true,
+      "teacher_E_cp": true,
+      "top3_occurrences": true,
+      "top3_legal_moves_sha256": true,
+      "top3_denominators": true,
+      "top3_teacher_bestmoves": true
+    },
+    "comparison_inputs_unchanged": true,
+    "mae_fingerprint": "c5f4beb4ddef422bc42cfa7f55fd4144293ede4f866ff8297ea40816814f0466",
+    "top3_fingerprint": "6a0ad21bb45db1cb350c9c7011c759886a9fae4a2b355bfe02e7eeb9983879ef",
+    "baseline_mae_fingerprint": "b722baad6a29d4c70b32e7e0d05fdee378f6de4cf72075b6519d2c697642b60a",
+    "baseline_top3_fingerprint": "59d02420b8fe68c76a6b95a41a9bc46e50619dd2f48873157aab08fd2a5e53c4"
+  },
+  "recovery": {
+    "cause": "configuration key sorting changed engine iteration and USI option order after MAE completion",
+    "resolution": "restored recorded order into a new config and completed new Top3 pilot/formal runs",
+    "config_values_unchanged": true,
+    "original_failed_evaluation_preserved": true,
+    "original_mae_manifest_hash_unchanged": true,
+    "mae_reused_without_search": true,
+    "mae_report_recomputed_equal": true,
+    "top3_parent_identity_matches": true
+  },
+  "static_diagnostics": {
+    "train": {
+      "overall": {
+        "count": 55404,
+        "inference_mae_cp": 205.60867446393763,
+        "material_mae_cp": 859.3176304959931,
+        "raw_float_mae_cp": 207.6372157814408,
+        "inference_vs_raw_mean_absolute_difference_cp": 7.470922100355493
+      },
+      "absolute_teacher_bins": {
+        "0..500": {
+          "count": 33304,
+          "inference_mae_cp": 88.1440667787653,
+          "material_mae_cp": 524.2594282969013,
+          "raw_float_mae_cp": 89.4101878509423,
+          "inference_vs_raw_mean_absolute_difference_cp": 4.016620315040444
+        },
+        "500..1000": {
+          "count": 7532,
+          "inference_mae_cp": 156.43547530536378,
+          "material_mae_cp": 1033.3831651619755,
+          "raw_float_mae_cp": 159.37282336828116,
+          "inference_vs_raw_mean_absolute_difference_cp": 10.42877899885051
+        },
+        "1000..2000": {
+          "count": 8171,
+          "inference_mae_cp": 200.16264839064985,
+          "material_mae_cp": 1272.3835515848734,
+          "raw_float_mae_cp": 204.69518589882995,
+          "inference_vs_raw_mean_absolute_difference_cp": 15.97473883334141
+        },
+        "2000..5000": {
+          "count": 5881,
+          "inference_mae_cp": 517.5844244176161,
+          "material_mae_cp": 1612.661452133991,
+          "raw_float_mae_cp": 519.5827242133366,
+          "inference_vs_raw_mean_absolute_difference_cp": 11.959004280701357
+        },
+        ">5000": {
+          "count": 516,
+          "inference_mae_cp": 5035.422480620155,
+          "material_mae_cp": 4816.953488372093,
+          "raw_float_mae_cp": 5034.087085812591,
+          "inference_vs_raw_mean_absolute_difference_cp": 1.4329195244367732
+        }
+      },
+      "within_2000": {
+        "count": 49007,
+        "inference_mae_cp": 117.31693431550595,
+        "material_mae_cp": 727.2435366376232,
+        "raw_float_mae_cp": 119.38452396141399,
+        "inference_vs_raw_mean_absolute_difference_cp": 6.995912367594051
+      },
+      "negative_teacher_count": 21235,
+      "negative_teacher_mean_cp": -709.4380974805745,
+      "prediction_mean_on_negative_teacher_cp": -565.6936190251943
+    },
+    "holdout": {
+      "overall": {
+        "count": 5895,
+        "inference_mae_cp": 665.2731128074639,
+        "material_mae_cp": 809.7962680237489,
+        "raw_float_mae_cp": 666.2181105022414,
+        "inference_vs_raw_mean_absolute_difference_cp": 6.782103306201679
+      },
+      "absolute_teacher_bins": {
+        "0..500": {
+          "count": 3508,
+          "inference_mae_cp": 255.3839794754846,
+          "material_mae_cp": 507.07867730900796,
+          "raw_float_mae_cp": 257.878899706946,
+          "inference_vs_raw_mean_absolute_difference_cp": 4.435340662774637
+        },
+        "500..1000": {
+          "count": 779,
+          "inference_mae_cp": 630.2426187419769,
+          "material_mae_cp": 1004.7496790757381,
+          "raw_float_mae_cp": 632.0315456549531,
+          "inference_vs_raw_mean_absolute_difference_cp": 8.097870576978496
+        },
+        "1000..2000": {
+          "count": 912,
+          "inference_mae_cp": 1089.9791666666667,
+          "material_mae_cp": 1229.9638157894738,
+          "raw_float_mae_cp": 1088.7049826822783,
+          "inference_vs_raw_mean_absolute_difference_cp": 10.90126531584221
+        },
+        "2000..5000": {
+          "count": 654,
+          "inference_mae_cp": 1976.625382262997,
+          "material_mae_cp": 1390.2140672782875,
+          "raw_float_mae_cp": 1972.0620994130406,
+          "inference_vs_raw_mean_absolute_difference_cp": 11.642859149781208
+        },
+        ">5000": {
+          "count": 42,
+          "inference_mae_cp": 5908.690476190476,
+          "material_mae_cp": 4316.428571428572,
+          "raw_float_mae_cp": 5898.486903599331,
+          "inference_vs_raw_mean_absolute_difference_cp": 13.254736037481399
+        }
+      },
+      "within_2000": {
+        "count": 5199,
+        "inference_mae_cp": 457.9547989998077,
+        "material_mae_cp": 708.4552798615118,
+        "raw_float_mae_cp": 459.68276561712116,
+        "inference_vs_raw_mean_absolute_difference_cp": 6.118363183790685
+      },
+      "negative_teacher_count": 2287,
+      "negative_teacher_mean_cp": -755.229558373415,
+      "prediction_mean_on_negative_teacher_cp": 0.4704853519895059
+    }
+  },
+  "limitations": [
+    "Static predictions compare the network output directly with existing pack labels; they are not the formal 1000000-node scores.",
+    "The pack holdout is distinct from the untouched final evaluation split.",
+    "Small raw-float versus inference differences do not explain the much larger train/holdout gap or guarantee search agreement.",
+    "Five development games do not establish general playing strength.",
+    "Material initialization and data-diversity changes remain hypotheses, not demonstrated improvements."
+  ],
+  "evidence_sha256": {
+    "private_comparison": "78785c5952fc41a39701c54c7241439dca459adec634ee3568fbf4a5c1450e4c",
+    "completed_evaluation": "bb3d92eab2e77e0c58053ace4a6951170ad8774ca8783b9a647972e1218bff48",
+    "mae_report": "99fe4572a104a6eb39952d3ee0f5112561c3661941a7dd483907dceb75fbc79d",
+    "top3_report": "a12a7386d3ca8e7b16ee9e697b3e941fb1e37507b8a466b4d7cc38e1d7a19037",
+    "training_run": "c632551a87b88f0fa5fc5219631d398d00b334c454f7a78f3fc5d9a63f39a081",
+    "train_static_predictions": "dc1076a186d85cd8a685f08b6d062be5e25de68eca3c4acfb7816f1f93cfa568",
+    "holdout_static_predictions": "6f4f2581526b65af1f80dd1fa775834ba4cfc2e3edfbc9d7c61fa7b02206977e"
+  }
+}

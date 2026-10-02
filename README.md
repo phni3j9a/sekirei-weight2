@@ -98,11 +98,11 @@ python3 scripts/smoke.py
 
 Git/worktree・build・venv・使用中のデータ/重み・実行中の出力は内蔵SSDを使う。完了した成果物はファイル集合・サイズ・SHA-256を照合して手動で保管する。既存runは絶対パスを含むため、NASコピーを直接実行用runtimeとせず、SSD側の参照パスも維持する。[配置・コピーと復元の手順](docs/ENVIRONMENT.md#内蔵ssdとnasの運用)、[移設の検証記録](docs/validation/storage-2026-10-02.md)を参照。
 
-## 次の到達点
+## 現在の改善実験
 
-初回候補は評価値の振幅が小さく、MAEは5局中4局で悪化した。次に検証する仮説は、ランダム初期化のabsolute CP回帰が3エポックでは十分に学習できていない可能性。保存済みcheckpointと隔離済み保留局面による固定weightの診断を準備し、追加学習の必要性を確かめる。訓練lossだけではモデルを採用せず、採用指標は正式MAEとTop3の二つを維持する。
+Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](https://github.com/phni3j9a/sekirei-weight2/pull/16)で、約8時間の手動改善実験を進めている。保存済みcheckpointの診断では初回モデルの振幅不足を確認した。同じ55,404局面をconstant LRで12エポック学習すると、静的holdout MAEは713.274から665.273 cpへ減少したが、正式100万ノード比較はMAE **1201.084 cp** / Top3 **29.90%**で不採用だった。最良モデルは引き続き駒得fallback。
 
-Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15)で、約8時間の手動改善実験を開始した。まず量子化前後の固定checkpointを保留局面で診断し、学習率スケジュールと学習量を検討する。採用候補が得られても、残り時間で改善を続ける。[実験の範囲・予算・結果](docs/WEIGHT_IMPROVEMENT.md)に記録する。
+次は駒得を正確に表す初期NNUEからの低学習率学習と、保留5,895局面を固定した学習データの多様化を検証する。探索実装、教師、正式比較条件、採用基準は維持する。[実験の範囲・予算・結果](docs/WEIGHT_IMPROVEMENT.md)に記録し、採用候補が得られても残り時間で改善を続ける。PRは未マージ。
 
 ## 文書
 

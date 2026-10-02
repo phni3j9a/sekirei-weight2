@@ -65,6 +65,19 @@ holdoutの静的誤差は減少しているが、trainとの差は広がって�
 | 2,000超〜5,000 cp | 517.58 | 1,976.63 | 1,390.21 |
 | 5,000 cp超 | 5,035.42 | 5,908.69 | 4,316.43 |
 
+## Constant 12エポック候補の正式評価
+
+固定100万ノード比較はMAE・Top3とも有効に完了し、候補は**不採用**。教師の570局面の結果とexact-cp集合266点、Top3対象551局面、モデル以外の実行identityが基準と一致することを再検証した。
+
+| 指標 | 現行の駒得fallback | constant epoch12 | 候補 − 基準 |
+| --- | ---: | ---: | ---: |
+| MAE | 1084.479 cp | 1201.084 cp | +116.605 cp |
+| Top3入り率 | 55.3888% | 29.9042% | −25.4845ポイント |
+
+旧3エポック候補に対してMAEは減少したが、Top3はさらに低下した。学習量を増やして静的holdout MAEを下げても、探索後の両指標は改善しなかった。静的診断は次の仮説とcheckpoint選択に用い、採用判断を代替しない。[正式比較と5局の集計](validation/weight-improvement-2026-10-03/constant-e12/comparison.md)を参照。
+
+MAE完了後、実行補助スクリプトが候補configをキー順に保存し、再読込したTop3側でengine・setoptionの順序が変わったため、既存validatorが不一致を検出して停止した。実行済みMAEのimmutable manifestから元の順序を復元し、config値の同一性、MAE全attemptとraw log、再生成reportの一致を確認してからTop3だけを実行した。失敗したv1と修復したv2は別の記録として保持し、基準やvalidatorを緩めていない。以後の補助スクリプトは順序を保って保存し、再読込後にも順序を照合する。
+
 ## 駒得からの初期化
 
 次の仮説として、既存の駒得fallbackをdefault flat NNUEの初期重み内で厳密に表し、そこから外部教師ラベルへ学習する方法を準備した。探索、NNUE構造、`NnueOutput=absolute`は変更しない。`scripts/material_init.py`は固定commitとcore 4ファイルのSHA-256を照合し、標準ライブラリだけでSEKIRW01と上流互換sidecar、recipe、Python参照検証結果をGit外へ生成する。
@@ -77,7 +90,9 @@ seed42の生成weightは1,305,356 bytes、SHA-256 `bbe9fbea4c943d69d605190f9ef8c
 
 `scripts/train_cpu.py --init-weights PATH`は、固定構造・全float値の有限性・absolute sidecar・FNV-1aとSHA-256を検証して上流の既存初期化機能を呼ぶ。入力推論パラメータを使い、Adamのmomentとstepは新しくする。入力weightとsidecarが学習中に変わらなかったことも確認する。省略時は従来どおりrandom seed42。epoch集計metadataは初期化sidecarと形式が異なるため、そのまま初期化入力には使わない。
 
-大きな出力係数による勾配感度の違いがあるため、random初期化と同じLRが適切とは仮定しない。正式比較を終えてから小規模な学習の安定性を確かめ、次のrecipeを選ぶ。標準総駒数を超える任意SFEN、別の特徴構造、学習後の重みは初期値の厳密一致保証の対象外である。
+大きな出力係数による勾配感度の違いがあるため、random初期化と同じLRが適切とは仮定しない。学習集合の先頭4,096局面・1エポックでLR 0.00001と0.0001を直列に試した。固定holdoutのcore MAEはそれぞれ812.780 / 771.748 cp、量子化差の平均絶対値は13.996 / 66.193 cp、最大値は45.192 / 232.036 cpだった。量子化復元floatとcore推論の最大差は両者とも1 cp未満で、検証を通過した。
+
+事前に決めた「検証を通過した試行のうちholdout core MAEが小さいLR」に従い0.0001を選び、55,404局面・6エポック・constant LR・seed42・fresh Adamの学習を開始した。checkpointは事前指定したepoch1/3/6のうち固定holdout core MAEが最小のものを選び、同値なら早いepochを採る。最終的な採用には別途100万ノード比較を要求する。量子化差はrandom初期化時より大きく、引き続き診断する。標準総駒数を超える任意SFEN、別の特徴構造、学習後の重みは初期値の厳密一致保証の対象外である。
 
 ## 保留データを固定したデータ拡大
 

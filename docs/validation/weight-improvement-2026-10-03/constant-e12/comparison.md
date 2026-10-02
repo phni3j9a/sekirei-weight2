@@ -54,3 +54,5 @@ train/保留差は極端な教師値だけに集中していない。教師絶�
 - [改善実験の条件と続き](../../../WEIGHT_IMPROVEMENT.md)
 
 候補のMAE公開exportは元の4ファイルをそのまま保持している。生成された見出しは共通の「baseline validation」だが、記載されたfingerprintと数値はこの候補のものである。
+
+補助資料： [教師・基準・候補の3系列図](supplement-three-series.svg) / [手数の三分割と誤差分布](supplement-methods.md) / [補助集計](supplement-phase-summary.json) / [生成manifest](supplement-manifest.json)。正式指標と採否は変更しない。

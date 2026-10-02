@@ -29,3 +29,5 @@ MAEは570局面・1,140 attemptを完了し、固定Teacher-E 266点を全て採
 - [比較値とidentity](comparison.json)
 
 MAE公開exportの4ファイルは元のまま保持した。生成見出しは共通の「baseline validation」だが、fingerprintと数値はこの候補のもの。
+
+補助資料： [教師・基準・候補の3系列図](supplement-three-series.svg) / [手数の三分割と誤差分布](supplement-methods.md) / [補助集計](supplement-phase-summary.json) / [生成manifest](supplement-manifest.json)。正式指標と採否は変更しない。

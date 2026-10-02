@@ -163,4 +163,21 @@ NNUE全体の学習とは別に、学習できる値を基本7駒の価値と6�
 
 双方の全5候補・収束・保存済みcore出力・入力と生成物のSHAを再検証し、保留SFENの順序・教師値・13特徴・整数誤差和を照合した。選択重みSHA-256は `cb0406e7f24ef700da9977d0f284f0e6c80d1b00d8c20be2d69ae02e8b0e84cc`。[全5係数とデータ選択の集計](validation/weight-improvement-2026-10-03/material-fit-112k-static.json)に記録する。これは静的候補選択の完了であり、正式MAE・Top3と採用は未判定である。
 
+## 正式比較の補助図と手数区間の診断
+
+完了済み3候補について、教師・比較基準のfallback・候補を5 panelの同じ生cp軸に重ねた補助図を加えた。既存MAE exportの4ファイルは変更せず、別のsupplementファイルとして保持する。確定cpだけを描き、bound・mate・no-scoreで線を切る。補正・平滑化・詰みのcp変換は行わない。SHA固定した正式比較receipt、入力ファイル集合とSHA、全570局面・Teacher-E 266点、各局と5局等重みMAEの有理数を照合した上で生成した。
+
+各局の手数を `floor(3*(ply-1)/N)` により前・中・後の三分割へ分類した。将棋の序盤・中盤・終盤の意味分類ではない。次の表は同じ区間のTeacher-Eを局横断で合算した **micro診断**であり、正式な5局等重みの採用指標を置き換えない。候補の欠測で分母を減らさず、一件でも欠測があれば未定義とする。
+
+| モデル | 前1/3 MAE | 中1/3 MAE | 後1/3 MAE |
+| --- | ---: | ---: | ---: |
+| 駒得fallback | 561.72 cp | 840.62 cp | 1572.15 cp |
+| constant epoch12 | 540.12 cp | 505.97 cp | 2067.05 cp |
+| 駒得初期化・epoch1 | 546.19 cp | 616.68 cp | 1634.57 cp |
+| 同epoch1・最近傍丸め | 530.17 cp | 590.41 cp | 1607.40 cp |
+
+最近傍丸め候補は切り捨て版より全三分割で誤差が小さくなった。一方、後1/3のmicro MAEはfallbackより大きいままだった。Teacher-E全体の絶対誤差中央値はfallbackの883.5 cpから744.5 cpへ減ったが、95分位は1993から2061 cp、最大は32941から33753 cpへ増えた。誤差の中心と大きな誤差で挙動が異なり、学習・静的診断の改善だけでは正式採用の二条件を保証できない。これらを理由に正式な採点対象や外れ値を除外しない。
+
+[constant epoch12の図](validation/weight-improvement-2026-10-03/constant-e12/supplement-three-series.svg)、[駒得epoch1の図](validation/weight-improvement-2026-10-03/material-e1/supplement-three-series.svg)、[最近傍丸めの図](validation/weight-improvement-2026-10-03/material-e1-nearest/supplement-three-series.svg)と、各comparisonにリンクした区間別表・誤差分位・生成manifestを参照。補助図はmatplotlib 3.11.2の専用描画環境で生成し、学習環境を変更していない。
+
 結果と再現手順は検証後に追記する。初回実験の基準は[初回weight](FIRST_WEIGHT.md)、全体の比較条件は[研究方針](RESEARCH.md)を参照。

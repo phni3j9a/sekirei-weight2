@@ -102,7 +102,9 @@ Git/worktree・build・venv・使用中のデータ/重み・実行中の出力�
 
 Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](https://github.com/phni3j9a/sekirei-weight2/pull/16)で、約8時間の手動改善実験を進めている。保存済みcheckpointの診断では初回モデルの振幅不足を確認した。同じ55,404局面をconstant LRで12エポック学習すると、静的holdout MAEは713.274から665.273 cpへ減少したが、正式100万ノード比較はMAE **1201.084 cp** / Top3 **29.90%**で不採用だった。最良モデルは引き続き駒得fallback。
 
-次は駒得を正確に表す初期NNUEからの低学習率学習と、保留5,895局面を固定した学習データの多様化を検証する。探索実装、教師、正式比較条件、採用基準は維持する。[実験の範囲・予算・結果](docs/WEIGHT_IMPROVEMENT.md)に記録し、採用候補が得られても残り時間で改善を続ける。PRは未マージ。
+駒得を正確に表す初期NNUEから低学習率で学習した候補は、正式MAE **1011.750 cp**へ改善したが、Top3 **48.19%**で維持条件を満たさず採用を保留した。[正式比較](docs/validation/weight-improvement-2026-10-03/material-e1/comparison.md)は有効で、最良モデルは駒得fallbackを維持する。同一checkpointの量子化方法、調整する駒価値の数を制限した学習、保留5,895局面を固定したデータ拡大を次の仮説として検証する。
+
+探索実装、教師、正式比較条件、採用基準は維持する。[実験の範囲・予算・結果](docs/WEIGHT_IMPROVEMENT.md)に記録し、採用候補が得られても残り時間で改善を続ける。PRは未マージ。
 
 ## 文書
 

@@ -220,3 +220,13 @@ Plus対βの共通exactは各反復2/17局面で平均絶対差581.5 cp、Plus�
 実行前のplan一致検査で2回停止した。保存済みpilotにはcshogi監査metadataがある一方、単体の`make_plan`はそのmetadataを付加しないことが原因だった。固定cshogi 1.0.4のvenvで既存`execute_run`と同じ`compare_cshogi`を明示的に追加し、保存planとの全dict一致を確認してから別名v3を実行した。失敗記録と修正前後のsourceを保持し、比較条件・validator・一致条件は緩めていない。
 
 初回実験の基準は[初回weight](FIRST_WEIGHT.md)、全体の比較条件は[研究方針](RESEARCH.md)を参照。
+
+## 今回の完了状態と保存
+
+今回の手動実験は、正式4候補の比較、Plus参考確認、拡張NNUEの静的診断、実装・集計の検証まで完了した。**モデル採用の改善は未達で、最良はmaterial fallbackのまま**である。追加NNUE最近傍版は次回の正式比較候補として保持する。量子化を考慮した学習は仮説の調査だけで、実装・学習は行っていない。
+
+全実験プロセスの終了後、campaign・専用trainer・完了比較16 runを凍結し、既存NASの新しい保管先へコピーした。20,765通常ファイル、757ディレクトリ、4 symlink、2,417,083,627 bytesについて、コピー前後の原本と保存先のファイル集合・サイズ・SHA-256、directory集合、symlink文字列が一致した。2026-10-02 22:05:34 UTCに検証が完了した。[保存の集約receipt](validation/weight-improvement-2026-10-03/archive.json)を公開し、詳細ファイル一覧は非公開に保持する。
+
+コピー中のlog・制御fileと、保存後の終了監査・最終Git記録は、凍結したcampaignの外で管理する。元のSSDデータ・重み・runtimeと参照パスは保持した。主比較バイナリや旧学習データ等の既存依存は従来の保存記録も必要であり、今回のコピーだけを全環境の独立backupとは呼ばない。
+
+公開fixture 146 tests、構文・JSON・差分検査、実機での学習smokeとcore一致検証、各候補の正式比較検証、独立した集計・公開境界の監査を通過した。README・研究・環境文書とPR #16にコードと結果を保存する。PRは未マージで、専用worktreeとbranchをレビュー用に残す。定期実行や自動マージは有効にしていない。

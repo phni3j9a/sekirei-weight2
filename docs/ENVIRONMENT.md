@@ -38,7 +38,11 @@
 
 保管先のプロジェクトルートは `server` 所有・mode `0700` とし、NASのほかの利用者へ配布資料を公開しない。Git/Actionsには資料、教師重み、生ログ、詳細なコピー照合記録を含めない。公開するのは運用手順と集計した検証結果だけとする。main checkoutの互換リンクは `.gitignore` で除外し、PR統合前のmainでも除外されるようローカルの `.git/info/exclude` に同じパスを保持する。
 
-Git/worktree・build・venv・使用中のデータとモデル・実行中のログは内蔵SSDに置く。既存の `.pack` 13本と監査用venvは `suisho11beta-v1` に残っている。Issue #13の学習入力作成は、この照合済みpackとvenvを明示的に参照し、v0.3.39側へ重複展開しない。比較エンジンはv0.3.39 runtime、学習器のbuild/data/runは別の `training-13-external-v*` runtimeを使う。[初回学習の条件と手順](FIRST_WEIGHT.md)を参照。保管コピーを作っても、旧runtimeや完了済みrunの内容・絶対パス・fingerprintは書き換えない。 Issue #15も同じ教師packと `suisho11beta-v1/venv/bin/python`（cshogi 1.0.4 / NumPy 1.26.4）を明示利用する。学習・診断のソース変更は専用 `training-15-v1` に限定し、正式比較は固定v0.3.39 runtimeを使う。完了時のNAS保管結果は照合後に記録する。
+Git/worktree・build・venv・使用中のデータとモデル・実行中のログは内蔵SSDに置く。既存の `.pack` 13本と監査用venvは `suisho11beta-v1` に残っている。Issue #13の学習入力作成は、この照合済みpackとvenvを明示的に参照し、v0.3.39側へ重複展開しない。比較エンジンはv0.3.39 runtime、学習器のbuild/data/runは別の `training-13-external-v*` runtimeを使う。[初回学習の条件と手順](FIRST_WEIGHT.md)を参照。保管コピーを作っても、旧runtimeや完了済みrunの内容・絶対パス・fingerprintは書き換えない。
+
+Issue #15も同じ教師packと `suisho11beta-v1/venv/bin/python`（cshogi 1.0.4 / NumPy 1.26.4）を明示利用する。学習・診断のソース変更は専用 `training-15-v1` に限定し、正式比較は固定v0.3.39 runtimeを使う。
+
+Issue #15のcampaign・専用trainer・完了比較16 runは `archives/2026-10-03/issue-15-eight-hour-v1` へ保管した。source-before/source-after/destinationのファイル集合・サイズ・SHA-256、directory集合、symlink文字列を全照合し、20,765 files・757 directories・4 symlinks・2,417,083,627 bytesで一致した。非公開receiptは `receipts/issue15-eight-hour-v1`、[公開集計](validation/weight-improvement-2026-10-03/archive.json)には集約値とhashだけを置く。SSD原本は削除していない。比較バイナリ・旧データ等の既存依存は従来のruntimeと保管記録を併用し、このコピー単体で全環境を独立復元できるとは扱わない。
 
 コピーと復元は次の手順で手動実行する。
 

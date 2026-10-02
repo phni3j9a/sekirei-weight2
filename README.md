@@ -100,7 +100,7 @@ Git/worktree・build・venv・使用中のデータ/重み・実行中の出力�
 
 ## 現在の改善実験
 
-Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](https://github.com/phni3j9a/sekirei-weight2/pull/16)で、約8時間の手動改善実験を行っている。固定100万ノードの正式比較は4候補で完了した。**採用基準のMAE改善とTop3維持を同時に満たす候補はなく、最良モデルは駒得fallbackのまま**である。
+Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](https://github.com/phni3j9a/sekirei-weight2/pull/16)で、約8時間を目安にした手動改善実験を終えた。固定100万ノードの正式比較は4候補で完了した。**採用基準のMAE改善とTop3維持を同時に満たす候補はなく、最良モデルは駒得fallbackのまま**である。
 
 | モデル | 正式MAE | 正式Top3入り率 | 採用 |
 | --- | ---: | ---: | --- |
@@ -114,7 +114,7 @@ Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](ht
 
 参考教師Suisho11Plusは、主教師βだけで確定した最良モデルについて17局面×3反復を完了した。[参考確認](docs/validation/weight-improvement-2026-10-03/plus-reference/reference.md)は型付き結果の安定性を示すが、正式な採用判断には使っていない。112,681局面のNNUE追加学習と静的診断も完了し、選択済みepoch3の最近傍丸め版は固定holdout MAE **644.599 cp**となった。この追加候補の正式比較は未実施のため採用せず、次回検証用に保持する。
 
-探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。PRは未マージ。
+探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PRは未マージ。
 
 ## 文書
 

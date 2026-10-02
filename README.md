@@ -8,66 +8,46 @@
 
 ## 現在の段階
 
-Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) で、配布packからのゲーム単位分割・外部ラベル入力・CPU学習・明示的なNNUE読込・同一重みの2指標比較を実装中。採用指標は **評価値MAE** と **水匠の最善手がSekireiのTop3に入る割合** に絞る。初回の条件・実行方法・測定結果は [初回weight](docs/FIRST_WEIGHT.md) にまとめる。
+Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) / [PR #14](https://github.com/phni3j9a/sekirei-weight2/pull/14) で、配布packから最初の学習済みweightを生成し、固定v0.3.39で比較した。採用指標は **評価値MAE** と **水匠の最善手がSekireiのTop3に入る割合** の二つ。
 
-Issue [#1](https://github.com/phni3j9a/sekirei-weight2/issues/1) / [PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) で初期環境を整備し、Issue [#3](https://github.com/phni3j9a/sekirei-weight2/issues/3) / [PR #4](https://github.com/phni3j9a/sekirei-weight2/pull/4) で主教師を水匠11βへ切り替えて生成済み教師データを監査した。Issue [#5](https://github.com/phni3j9a/sekirei-weight2/issues/5) では独立評価棋譜を固定し、Issue [#7](https://github.com/phni3j9a/sekirei-weight2/issues/7) で初期baselineを確定した。Issue [#9](https://github.com/phni3j9a/sekirei-weight2/issues/9) ではSekireiをv0.3.39へ更新する。
+初回は55,404局面・3エポックをCPUで学習し、445.376秒、最大RSS約327 MiBで完了した。ゲーム単位で分離した保留5,895局面は学習に使わず、取得済み独立1,000局の全盤面を学習・保留から機械的に除外した。学習器の専用checkoutだけに外部ラベル入力とFTZ/DAZ設定を追加し、探索エンジンは固定版を維持している。
+
+正式比較は完了し、**初回候補は不採用**。事前に固定したMAE改善の条件を満たさなかった。
+
+| 採用指標 | v0.3.39駒得fallback | 初回weight |
+| --- | ---: | ---: |
+| MAE（低いほどよい） | 1084.479 cp | 1314.481 cp |
+| Top3入り率（高いほどよい） | 55.39% | 36.12% |
+
+両指標ともdevelopment 5局の等重み平均で、正式測定の検証は有効。[比較集計と採否](docs/validation/first-weight-2026-10-02/comparison.md)、[初回weightの条件・結果・次の仮説](docs/FIRST_WEIGHT.md)と、[baseline](docs/validation/first-weight-2026-10-02/baseline/validation.md) / [候補](docs/validation/first-weight-2026-10-02/candidate/validation.md)の評価値グラフを参照。
 
 - Sekirei / sekirei-trainはv0.3.39、shogiesaと水匠11β用やねうら王V9.20もcommit単位で固定。
-- ビルド・重み照合・USI疎通はPython標準ライブラリで実行。`.pack` の局面復号と外部CSAの合法手確認だけは専用venvに固定したcshogi / NumPyを使う。
-- β・100万ノードとして配布された `.pack` 15本を取り込み、同一内容の2本を除いた13本（534,175,084 bytes）をローカルで管理。ゲーム境界を保つストリーム復号と標本再解析が可能。
-- 実機でv0.3.39 Sekireiと水匠11βの100万ノード指定探索、shogiesaの一局面ラベル生成を確認済み。[v0.3.39移行検証](docs/validation/sekirei-v0.3.39-2026-09-19.md)。教師データ監査は[β環境と教師監査](docs/validation/suisho11beta-2026-09-15.md)、旧Plus環境は[初期検証](docs/validation/environment-2026-09-14.md)に残す。
-- 10標本の固定V9.20再解析では、確定値6件のMAE 3.167 cp（最大11 cp）、境界値4件、保存指し手一致6件。互換性の小規模確認であり、元の生成環境との完全同一性の証明ではない。
-- 正式ベンチマーク用に、将棋クエストの公開棋譜から人間同士・平手・合法手・重複なしの1,000局をローカルへ固定し、その中から解析前に development 5局 / final 5局を選定済み。[取得・分割の検証記録](docs/validation/shogiquest-corpus-2026-09-15.md)。
-- `.pack` から外部ラベルcacheを介して学習器へ入力する経路を追加した。初回は55,404局面・3エポック・1時間上限で検証する。モデル採用判定は正式測定後に行い、定期自動実行は対象外。
-- Sekirei の今回の初期疎通は **駒得評価へのフォールバック**。Issue #13で初回の学習済み候補を生成済みだが、採用は正式比較後に判断する。
-- Issue #7 のSekirei v0.3.36系列では、`development-pilot-20260916-v5` をreviewed/formal launch evidenceとして凍結し、同じexecution identityの正式測定 `development-baseline-20260916-v2` を完了した。正式測定は1,140/1,140 attempt、technical failure 0、teacher-E 266/266 coverageで、棋譜ごとのMAEを等重み平均したheadlineは **1,087.046 cp**。公開用の[検証値・グラフ・hash manifest](docs/validation/development-baseline-2026-09-19/validation.md)を履歴として追跡する。本正式測定とreport/export経路はfinal 5局へアクセスしていない。
-- v0.3.39は新しいruntimeへ分離し、上流v0.3.38の公開NNUE重みを入れずに駒得fallbackでまず探索差分だけを確認する。v0.3.36のpilot evidenceはv0.3.39へ流用せず、Issue #13で新しい `development-pilot-20261002-v039-v1`（102/102、technical failure 0、34/34 stable）を確認し、v0.3.39 fallback用の `formal.pilot_evidence` を凍結した。
-- 旧 `development-baseline-20260916` は1,140/1,140 attemptを収集したが、現行の正式根拠にはできない。Teacher development-04 p077 の all-evidence max 1,001,086 は旧1,001,024を超え、Sekirei development-05 p122 は旧分類にない mate 1 / nodes 0 だった。この旧1,001,024をsource-derived guaranteeとして扱う主張は撤回する。`status=complete` は formal valid を意味せず、診断上の exact coverage 265/265 も headline やモデル採用の根拠ではない。
-- 現行契約は `go nodes 1000000` を両エンジンへ送り、`one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` により all-evidence max `M <= C(N)` を判定する。これは片側1%の運用上の比較・異常検出ガードレールであり、YaneuraOuの停止上限、内部仕事量の同値性、最低ノード目標ではない。pilot/formal の `max_reported_nodes` はともに 1,010,000 を事前登録する。旧v2/v3/v4はprior diagnostic、旧v5はv0.3.36 formalだけのlaunch evidenceである。
+- 教師packは内容重複を除いた13本（534,175,084 bytes）を非公開で保持。既存の教師を再利用し、全量JSONL展開を避けて学習入力を作る。
+- 独立した人間同士・平手・合法手・重複なしの1,000局から、解析前にdevelopment 5局 / final 5局を固定した。今回の正式評価はdevelopmentだけを使用した。[取得・分割の記録](docs/validation/shogiquest-corpus-2026-09-15.md)。
+- 生ログ、配布データ、学習weightはSSDと検証済みNAS保管先に保持し、公開Git/Actionsには集計・コード・設定だけを置く。
+- PRは未マージ。最良モデルの更新と、実験コード・知見の統合は別に判断する。
 
-最新のv0.3.39 fallbackの正式baselineは **MAE 1,084.479 cp**（1,140/1,140 attempt、technical failure 0、Teacher-E coverage 266/266）。[公開検証・グラフ](docs/validation/first-weight-2026-10-02/baseline/validation.md)を確認できる。初回weightの正式比較とTop3測定はIssue #13で実行中。
+初期環境・教師監査は [PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) / [PR #4](https://github.com/phni3j9a/sekirei-weight2/pull/4)、v0.3.39移行は[検証記録](docs/validation/sekirei-v0.3.39-2026-09-19.md)に残す。v0.3.36の旧baseline（MAE 1,087.046 cp）は[履歴](docs/validation/development-baseline-2026-09-19/validation.md)として保持し、今回の候補との比較にはv0.3.39のbaselineを使う。
 
-## 開発用 100万ノード baseline
+## 開発用100万ノード比較
 
-以下の完了済み結果はSekirei v0.3.36の履歴である。v0.3.39は別のexecution identityなので、同じ入力・契約でpilotを再取得してから新しいformal baselineを作る。
+固定development 5局の各記録指し手直後、計570局面を入力にする。MAEは両エンジンをMultiPV=1・100万ノード指定で測定し、教師のexact cp集合266点を固定したまま、棋譜ごとの平均絶対誤差を5局で等重み平均する。bound・mate・no-scoreをcpへ変換せず、候補の欠測で分母を減らさない。
 
-Issue #7 の実装は、`benchmarks/shogiquest-v1/development` の5局だけを固定入力にする。初期局面は含めず、各棋譜の記録指し手の直後を一つの occurrence として扱うため、合計570局面になる。同じ指し手列が別の棋譜に現れても occurrence は共有しない。`final` を選べるパス引数は用意していない。
+Top3は別runでSekireiをMultiPV=3・100万ノード指定で測定する。対象は事前分類がnormalかつ合法手4手以上の551局面。正式MAE runの水匠のbestmoveが3候補に含まれる割合を棋譜ごとに求め、5局で等重み平均する。詳細な対象集合・候補不足・同点・pilotの契約は [初回weight](docs/FIRST_WEIGHT.md#評価指標)に固定する。
 
-標準ライブラリのboard trackerは固定hashのCSAについて、手番・所有者・成り・駒取り・打ち駒を含む厳密な移動遷移／擬似合法性を検査してUSI履歴へ変換する。盤面分類は `config/development-position-classifications.json` に入力・履歴・position hashを束縛して保持する。これは pinned cshogi 1.0.4 で全570 occurrence・全46,668合法root moveを再生して生成・検証した監査メタデータで、強制1手5件、mate-in-one available の development-05 p122（合法手217、mating move `2g4g`）、終端詰み1件を含む。CIの標準ライブラリ検査だけから完全合法性を主張しない。計画とhashを確認するコマンドは次のとおり。実行結果は外部runtimeへ保存され、CIはネットワークや教師重みを必要としない。
+MAEのpilotは17局面×両エンジン×3反復、Top3のpilotはその対象集合との共通部分12局面×3反復。完全性・再現性と同じweight identityを確認してからformalを実行する。モデルのハッシュと明示的な重み読込応答を検証し、異なるweightのpilotやMAE runを流用しない。
 
 ```sh
 python3 scripts/benchmark.py plan --run-type pilot
 python3 scripts/benchmark.py plan --run-type formal
-```
-
-planは実行せず入力集合を検査するため、未凍結でも作成できる。実際の `formal` 起動には、同じ候補・実行環境のpilotを検証して凍結した `formal.pilot_evidence` を必須とする。現在の設定にはv0.3.39 fallback用のpilotを凍結済みである。
-
-pilotは各棋譜の `{1, ceil(L/2), L}` のcanonical 15局面に regression の development-04:77 と development-05:122 を加えた17局面を、両エンジン・3回ずつ（102 attempt / 34 engine-position triple）計画する。formalは570局面を各1回ずつ（1,140 attempt）計画する。両計画の `max_reported_nodes` は、`one-sided-1-percent` v1 の `C(1,000,000)=1,010,000` を使う。plan時に固定audit runtimeの cshogi 1.0.4 が利用できれば、全570 occurrence・46,668合法root moveと分類を照合して結果を記録する（`--cshogi` は互換用に受理する）。これはCIの必須依存ではない。
-
-v0.3.36の実機では `development-pilot-20260916-v5`（17局面・102 attempt）を完了し、その全attemptから `observed_max_reported_nodes=1,001,086` を再計算した。technical failure 0、34/34 engine-position triple stable、complete evidence validである。`go nodes 1000000` は両エンジンへ送り、`one-sided-1-percent` v1 の整数式 `C(N)=N+floor(N/100)` により all-evidence max `M <= C(N)` を受理した。`C(1,000,000)=1,010,000` は inclusive だが、片側1%の運用上の比較・異常検出ガードレールであり、YaneuraOuの数学的停止上限、内部仕事量の同値性、最低ノード目標ではない。`reported_nodes_at_score`、`last_reported_nodes`、全有効値の `max_reported_nodes_evidence` は別々に保持し、current-go の欠落・負値・malformed・重複と earlier overrun を後続値で隠さない。この旧v5 evidenceはv0.3.39のformal gateには使わない。
-
-正式測定 `development-baseline-20260916-v2`（fingerprint `d1708915e2de8bfd22d1d3c29eb10cc10f45926da4f0f2357dd87a0e407ab084`）は570局面×2エンジンの1,140/1,140 attemptを完了した。全attemptがdeadline内完了、cleanup/supervisor正常、engine return code 0で、technical failure・missing/extra/duplicateは0。Teacherは `exact_cp=266 / bound_cp=273 / mate=31`、Sekireiは `exact_cp=561 / mate=8 / no_score=1` だった。Teacher-EのSekirei exact coverageは266/266、5局の等重みheadline MAEは `1,087.0461722818245 cp`（全E点のmicro MAEは `1,136.8684210526317 cp`）。Mの最大値はTeacher `1,001,086`、Sekirei `1,000,004` で、両方とも `>C=0`。公開exportは [`docs/validation/development-baseline-2026-09-19`](docs/validation/development-baseline-2026-09-19/validation.md) に固定した。これは学習前の駒得fallback baselineであり、モデル品質が十分という意味ではない。final 5局は本測定・report/export経路では未アクセスである。
-
-nonterminal の Sekirei には hash-bound の0 nodes例外が二つある。forced-single 5件は exact cp（`status=exact_cp`、`score_kind=cp`、`score_bound_stm=exact`、整合するcp値）に限り、正常lifecycle、全structured node evidenceが存在して全て0、reported/last/maxが0、in-check・合法手1・sole move一致、normal bestmoveとPV head一致を要求する（PV全体はmate-in-oneの一手PVとは区別し、head以降を許容する）。mate-in-one available は development-05 p122 のみ（黒番・非チェック・合法手217・mating move `2g4g`）で、さらに exact raw `score mate 1`、合法normal bestmove、PV一手、PV headとbestmove一致、凍結リスト一致を要求する。どちらもpositive/missing/invalid/mixed/duplicate/集計不整合を受理しない。別枠のTeacher terminal checkmateは、同一要求内の厳密な mate -1/resign responseだけを許容する。説明不能な normal、その他のTeacher/engine、bound cp・mate・no-score等のforced救済、resignの不正な組み合わせ、PV不一致、分類改ざんは受理しない。forced/mateはcpやexact-cp headlineへ変換しない。旧 v3/v4 と旧 `development-baseline-20260916` はprior diagnosticとしてのみ保持し、final 5局は未読・未変更である。
-
-`development-pilot-20260916-v4` は102/102 attempt、technical failure 0、34/34 stable、observed max `M=1,001,086 <= C(1,000,000)=1,010,000` だったが、forced例外のnode summary集計検査を強化する前のparser identityで生成されたprior diagnosticである。formal freezeには使わず、v5とは区別する。`development-pilot-20260916-v5` は parser `usi-observation-v4` のv0.3.36 identityでreviewed/formal launch evidenceとして凍結した。Teacherは `exact_cp=9 / bound_cp=30 / mate=12`、M evidence `51/48/3/0/0`（evidence/positive/zero/missing/invalid）、max `1,001,086`、`>N=39`、`>C=0`。Sekireiは `exact_cp=45 / mate=3 / no_score=3`、M evidence `48/42/6/3/0`、max `1,000,001`、`>N=3`、`>C=0` だった。Sekireiのmissing 3件はterminal no_score、zero 6件はforced-single 3件とmate-in-one 3件、Teacherのzero 3件はterminalである。pilotなのでheadlineは定義しない。対応するv0.3.36 formal v2は上記のとおり完了したが、final 5局は本測定経路で未アクセスである。旧 `development-baseline-20260916` formalは実行済みだがinvalidであり、formal v2やv4/v5とは別枠で扱う。監査条件でforced例外を取り落として付された旧 findingは現行仕様の誤読として撤回済みである。
-
-```sh
 python3 scripts/benchmark.py status
 ```
 
-旧v0.3.36のreport/exportは、当時の固定版 `ed76730`（PR #8統合時点）の専用worktreeから次のコマンドを実行する。現行v0.3.39のcheckoutではtoolchain lock不一致として拒否される。保存先の移設でこの検証条件を緩めない。
+planはエンジンを起動せず入力集合を検査する。現在の `config/development-benchmark.json` にはv0.3.39 fallback用のpilot evidenceを凍結済み。候補用configは個別runtimeに保持する。[学習から正式比較までの実行例](docs/FIRST_WEIGHT.md#実行例と資源上限)を参照。
 
-```sh
-python3 scripts/benchmark_report.py report \
-  --run-dir ~/.local/share/sekirei-weight2/suisho11beta-v1/runs/development-baseline-20260916-v2 \
-  --output ~/.local/share/sekirei-weight2/suisho11beta-v1/reports/development-baseline-v2-report
-python3 scripts/benchmark_report.py export \
-  --run-dir ~/.local/share/sekirei-weight2/suisho11beta-v1/runs/development-baseline-20260916-v2 \
-  --output /tmp/development-baseline-v2-export
-```
+ノード判定は `one-sided-1-percent` v1の `C(N)=N+floor(N/100)` を使い、全有効node evidenceの最大値 `M <= 1,010,000` を要求する。これは片側1%の運用上の比較・異常検出ガードレールであり、停止上限の数学的保証や内部仕事量の同値性を示さない。hash-boundのforced-single・mate-in-one・terminal例外、USI lifecycle、timeout、cleanup、resumeの厳密な検証は [研究方針](docs/RESEARCH.md) / [環境文書](docs/ENVIRONMENT.md#開発baseline-runnerのruntime)に記録する。
 
-raw USI log、attempt JSON、manifest、重み・モデル・絶対パスを含むレポートは、ローカルruntimeとNASの非公開保管コピーだけで扱う。attemptとreportには position type、canonical/regression selection、分類別coverage、engine別のpositive node evidenceと全structured nodeの `M` 分布（evidence/positive/zero/missing/invalid、p50/p95/p99/max、`>N`、`>C(N)`、最大overrun/rate）を保持する。`reported_nodes_at_score`、`last_reported_nodes`、`max_reported_nodes_evidence` は別フィールドである。`export` は空の出力ディレクトリ直下に4つのredacted public fileだけを書き、履歴・source game ID・ローカルパス・モデルパスをレビュー時に拒否する。quantileはソート済み有限M値の `(n-1)*p` 位置を線形補間する。supervisor、resume、cleanupの厳密な契約は従来どおり維持する。v5はv0.3.36 formalのreviewed evidenceであり、旧v2/v3/v4と `development-baseline-20260916` は旧semanticsのprior diagnosticとして区別する。
+公開exportは履歴・source game ID・ローカルパス・モデルパスを除いた4ファイルだけを出力する。生USI、attempt、詳細reportは非公開runtimeに保持する。旧v0.3.36 runを再検証する場合は、当時の固定版 `ed76730` の専用worktreeを使い、現行のtoolchain lockやfingerprintを書き換えない。
 
 ## 使い始める
 
@@ -120,9 +100,7 @@ Git/worktree・build・venv・使用中のデータ/重み・実行中の出力�
 
 ## 次の到達点
 
-v0.3.36の固定development 5局baselineと重ね合わせグラフは履歴として確定した。次はv0.3.39でpilotとformal baselineを再取得し、その後、生成済み `.pack` をゲーム単位で train / development に分割して全量JSONL展開を避けた学習入力経路を作る。このMac miniのCPUで小規模学習を一周通し、同じ正式契約でv0.3.39 baselineとの差を測る。
-
-主指標は、教師がexact cpを返した固定E点を分母とする棋譜ごとのMAEを5局で等重み平均する。教師bound/mate、候補mate/no-scoreはcpへ変換せず別診断に残し、候補の出力でE点の分母を変えない。
+初回候補は評価値の振幅が小さく、MAEは5局中4局で悪化した。次に検証する仮説は、ランダム初期化のabsolute CP回帰が3エポックでは十分に学習できていない可能性。保存済みcheckpointと隔離済み保留局面による固定weightの診断を準備し、追加学習の必要性を確かめる。訓練lossだけではモデルを採用せず、採用指標は正式MAEとTop3の二つを維持する。
 
 ## 文書
 
@@ -130,7 +108,8 @@ v0.3.36の固定development 5局baselineと重ね合わせグラフは履歴と�
 - [固定環境・再現手順・制約](docs/ENVIRONMENT.md)
 - [Sekirei v0.3.39移行検証](docs/validation/sekirei-v0.3.39-2026-09-19.md)
 - [将棋クエスト独立棋譜の取得・分割](docs/validation/shogiquest-corpus-2026-09-15.md)
-- [開発用100万ノードbaselineの検証値・グラフ](docs/validation/development-baseline-2026-09-19/validation.md)
+- [初回weightの学習条件・正式比較・採否](docs/FIRST_WEIGHT.md)
+- [旧v0.3.36 baselineの検証値・グラフ](docs/validation/development-baseline-2026-09-19/validation.md)
 - [開発運用](AGENTS.md)
 - [外部ソフト・資料の出典](docs/PROVENANCE.md)
 

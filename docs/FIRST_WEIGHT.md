@@ -55,7 +55,7 @@ python3 scripts/train_cpu.py --dataset "$DATASET" --trainer "$TRAIN_RUNTIME" \
 
 候補用configは固定development configのcopyに `candidate_model.kind=nnue` とweightの絶対pathを指定する。実行時にEvalFileへ同じpathを渡し、ハッシュと明示的な読込成功応答を照合する。baselineのpilotを別weightのformalへ流用しない。weightなしのfallbackは別のbaselineとして保持する。
 
-## 初回生成結果（正式比較は実行中）
+## 初回生成・正式比較の結果
 
 - 学習55,404局面、保留5,895局面。元packは13本・各200局の上限で、独立1,000局の88,187種類の盤面を機械的に除外した。強化前に生成した入力とも全ファイルhashが一致した。
 - FTZ/DAZ版の3エポック学習は445.376秒、CPU時間444.644秒、最大RSS334,728 KiB。全エポックで55,404 cache hit / 0 miss、教師種別external、NNUE出力absoluteを確認した。
@@ -71,4 +71,23 @@ v0.3.39 fallbackの正式run `development-baseline-20261002-v039-v1` は1,140/1,
 
 候補の正式run `development-candidate-20261002-55k-v1` も1,140/1,140 attempt、technical failure 0、Teacher-E coverage 266/266で完了した。MAEは **1,314.4807657318527 cp**で、baselineより230.002 cp悪化した。[候補の公開集計とグラフ](validation/first-weight-2026-10-02/candidate/validation.md)を保存し、描画を確認した。両runの教師側は全570局面・E集合266点・評価値/境界/詰み・bestmove・PV・最大nodeが一致しており、比較相手の差による悪化ではない。MAE改善の採用条件は未達である。
 
-両モデルのTop3と最終的な採否記録は、残りの正式比較完了後に追記する。
+Top3正式runも両者551/551、valid、候補不足・欠測・技術失敗0で完了した。対象局面と棋譜別分母の一致を確認した。各モデルのTop3 pilotは36/36、12局面の3反復が安定していた。
+
+| 採用指標 | v0.3.39 fallback | 初回weight | 変化 |
+| --- | ---: | ---: | ---: |
+| MAE | 1084.479 cp | 1314.481 cp | +230.002 cp |
+| Top3入り率 | 55.3888% | 36.1241% | -19.2646ポイント |
+
+**候補は不採用**。事前に固定したMAE改善の条件を満たさないため、既存fallbackを比較基準として残す。初回weight生成と有効な2指標比較は完了した。[正式比較の集計](validation/first-weight-2026-10-02/comparison.md)には棋譜別の値・run fingerprint・Top3集計・重みhashを残す。コードと知見の統合を目的とするPR #14は、モデルの採用と区別する。
+
+評価の8 run（MAE/Top3のbaseline/候補それぞれのpilot/formal）、4つのMAE report、総括JSON、設定・runnerのsnapshotはNASの `archives/2026-10-02/issue-13-first-weight-evaluation` に保管した。prepare/benchmark排他lockを保持し、7,378ファイル・56,449,967 bytesとディレクトリ集合をコピー前後で照合、全SHA-256一致を確認した。学習archiveと同様に、SSDの実行用参照は保持する。
+
+正式比較4 runの `go` 送信から `bestmove` 受信までの実測時間の合計は約88分49秒だった。内訳はbaseline MAE 1,883.617秒、候補MAE 2,348.670秒、baseline Top3 330.555秒、候補Top3 766.007秒。各attemptの `wall_go_to_bestmove_ns` を合計した値で、プロセス起動・重み読込・pilot・report検証・保存処理は含まない。学習445.376秒に比べ、今回の一周では正式比較が主な計算時間を占めた。
+
+## 初回の悪化から分かったこと
+
+MAEは5局中4局で悪化、1局で改善した。同じTeacher-E 266点で候補の評価値範囲は−756〜732 cp、fallbackは−3,530〜2,820 cpで、候補が優劣の大きさを小さく評価する傾向がある。例えばdevelopment-01 p083は教師−2,194 cp、fallback−2,570 cp、候補−168 cpだった。極端な教師exact 2点だけでは、正式MAE差+230.002 cpの大半を説明しない。
+
+訓練中の予測振幅もepochごとに増えているが、教師ラベルの振幅に達していない。これは更新途中を含む訓練集計であり、固定checkpointの保留性能ではない。原因を学習不足・量子化・分布差のいずれかに断定しない。
+
+次に検証する仮説は「ランダム初期化のabsolute CP回帰は3 epochでは教師cpの振幅をまだ学び切れていない」の一つ。追加学習の前に、保存済み3 checkpointを隔離済み保留5,895局面で固定して比較する軽い診断が候補になる。この診断は今回未実施で、次の実験では固定checkpointを評価する経路の確認・準備から始める。モデルの採用指標は引き続き正式MAEとTop3の二つだけとする。

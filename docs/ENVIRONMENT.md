@@ -14,6 +14,9 @@
 | `/mnt/storage/NAS/sekirei-weight2/materials/pixiv_fanbox_yaneurao` | ユーザー提供資料・配布アーカイブの原本 |
 | `/mnt/storage/NAS/sekirei-weight2/datasets/suisho11beta-1m` | 教師 `.pack` とmanifestの検証済み保管コピー |
 | `/mnt/storage/NAS/sekirei-weight2/archives/2026-10-02/runtimes` | 3系列の重み・既存run・build manifest等の保管コピー。実行用runtimeではない |
+| `/mnt/storage/NAS/sekirei-weight2/archives/2026-10-02/issue-13-first-weight-training` | 初回学習3系列・中断証拠・学習入力・checkpoint・weightの検証済み保管コピー |
+| `/mnt/storage/NAS/sekirei-weight2/archives/2026-10-02/issue-13-first-weight-evaluation` | 初回正式比較8 run・report・設定/runner snapshotの検証済み保管コピー |
+| `~/.local/share/sekirei-weight2/training-13-external-v3` | FTZ/DAZ学習器、初回weight・checkpoint、候補用比較config |
 | `/mnt/storage/NAS/sekirei-weight2/receipts` | 非公開のファイル一覧・サイズ・SHA-256とコピー照合記録 |
 | `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/sources` | v0.3.39比較系列のupstreamソース |
 | `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-v1/build` | v0.3.39比較系列のビルド生成物 |
@@ -151,7 +154,7 @@ Teacher-EのSekirei exact coverageは266/266、5局を等重みで平均した�
 
 USI node grammar は、`go nodes <[0-9]+>`（ASCII 十進数字列、符号なし）から対応する `bestmove` までの各 structured `info` 行を左から解釈する。`info string` は free text として無視し、`pv`・`string`・`refutation`・`currline` の可変長 payload 内の token は解釈しない。payload 前の各行には `nodes <[0-9]+>` を高々一組だけ許容し、欠落・重複・負値・符号付き／非整数値は無効な node evidence として扱う。
 
-Sekirei の `isready` は重み読込失敗後でも応答するため、将来のモデル評価ではファイルハッシュと読込成功の確認が必要。今回の smoke は明示的な駒得評価であり、旧モデルやランダム重みを学習済みとして扱わない。
+Sekirei の `isready` は重み読込失敗後でも応答するため、Issue #13のモデル評価ではファイルハッシュと明示的な読込成功応答を必須にした。初期smokeの駒得評価と、今回生成した学習済み候補の正式評価を区別する。
 
 ノード上限到達が aspiration 探索の途中になると、やねうら王の最終 `info` に上限・下限が付くことがある。`OutputFailLHPV=false` でも最後の報告には付く場合がある。これはノード指定の疎通失敗ではないが、確定値の採点には使えない。smoke と監査では境界の向きと生の値を保存し、先後反転では上限／下限も反転する。また `go nodes` は上限であり、探索が完了すれば100万より手前で正常終了しうる。current-go の対応bestmoveまでの structured `info` を走査し、`info string` と `pv` payload は境界として nodes を読まない。各行の nodes は一組だけを許容し、重複・欠落・負値・malformedを技術失敗として、選択score行・最後の有効値・全有効値の最大 `M` を別保存する。`M <= C(N)` を `one-sided-1-percent` v1 のinclusiveな運用ガードレールとして適用するが、これは数学的停止上限・内部仕事量の同値性・最低ノード目標ではない。説明不能な0、timeout/cleanup/protocol failureは成功扱いにしない。
 
@@ -161,7 +164,7 @@ shogiesa の固定版は `position sfen ...` で局面を渡し、同じプロ�
 
 独立評価用には、将棋クエストの公開棋譜1,000局をGit外runtimeへ固定し、エンジン解析前にdevelopment 5局 / final 5局を選定した。取得状態を再利用するため、公開Web画面へ繰り返しアクセスする必要はない。出典、filter、実測、snapshot hash、制約は[将棋クエスト独立棋譜corpusの固定](validation/shogiquest-corpus-2026-09-15.md)に記録する。
 
-固定版の `sekirei-train` と `shogiesa` はGenSfen `.pack` を直接は読まない。ストリーム復号から学習入力への接続、固定棋譜の100万ノード比較、複数棋譜の採点、CPUでの小規模学習は次の到達点。βへの切替と監査結果は [β環境と教師監査](validation/suisho11beta-2026-09-15.md)、旧Plus環境は [初期検証](validation/environment-2026-09-14.md) に記録する。
+固定版の `sekirei-train` と `shogiesa` はGenSfen `.pack` を直接は読まない。ストリーム復号から学習入力への接続、固定棋譜の100万ノード比較、複数棋譜の採点、CPUでの小規模学習はIssue #13で実装・実測した。[初回weightの条件と結果](FIRST_WEIGHT.md)を参照。βへの切替と監査結果は [β環境と教師監査](validation/suisho11beta-2026-09-15.md)、旧Plus環境は [初期検証](validation/environment-2026-09-14.md) に記録する。
 
 公開 GitHub Actions では Python の構文、USI スコア受理のテスト、設定 JSON を検証する。教師重みを CI へアップロードせず、実エンジンと教師の smoke は Mac mini で実行する。
 

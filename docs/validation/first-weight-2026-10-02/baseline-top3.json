@@ -1,0 +1,42 @@
+{
+  "metric": "teacher_best_in_candidate_top3",
+  "run_type": "formal",
+  "fingerprint": "59d02420b8fe68c76a6b95a41a9bc46e50619dd2f48873157aab08fd2a5e53c4",
+  "attempts": 551,
+  "eligible_positions": 551,
+  "valid": true,
+  "failures": [],
+  "top3_rate": 0.5538875742592971,
+  "per_game": {
+    "development-01": {
+      "denominator": 84,
+      "hits": 49,
+      "observed": 84,
+      "rate": 0.5833333333333334
+    },
+    "development-02": {
+      "denominator": 122,
+      "hits": 83,
+      "observed": 122,
+      "rate": 0.680327868852459
+    },
+    "development-03": {
+      "denominator": 127,
+      "hits": 55,
+      "observed": 127,
+      "rate": 0.4330708661417323
+    },
+    "development-04": {
+      "denominator": 104,
+      "hits": 55,
+      "observed": 104,
+      "rate": 0.5288461538461539
+    },
+    "development-05": {
+      "denominator": 114,
+      "hits": 62,
+      "observed": 114,
+      "rate": 0.543859649122807
+    }
+  }
+}

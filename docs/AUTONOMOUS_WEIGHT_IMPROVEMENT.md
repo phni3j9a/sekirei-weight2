@@ -135,12 +135,25 @@ native/nearest両重みを既存core probeへ渡し、元train112,681・holdout5
 
 候補自身のMAE pilotは102/102 attemptを完了し、2026-10-03 08:28:27 UTCに正式MAEへ進んだ。独立監査は全raw SHA・position・USI lifecycle・option順・deadline・cleanup・supervisor・exit 0、両engineの17局面×3反復安定と51回ずつのweight読込を確認した。技術失敗・欠測・invalid node evidenceは0。最大報告はSekirei 1,000,001 / teacher 1,001,086で規定内、入力241ファイルの検証前後hashも一致した。fingerprintは`e5d41c0e6b6c107bba743137a4a781fb5402c853843da520ff49e4729f8da23b`、独立監査receipt SHAは`9f3099746275e388a8837f4d9b69a09b5f84ea602d300158e0d2180dc7c5e001`。訂正v2がpilot中の検証である点も独立照合し、開始前の記録へ読み替えていない。正式MAE・Top3の採否は未確定である。
 
+## functional-anchorの正式結果
+
+候補自身の全4runは2026-10-03 08:24:33〜09:33:07 UTC、4,114.338秒（約68.6分）で完了した。MAE pilot102、正式MAE1,140、Top3 pilot36、正式Top3551の計1,829 attempt。厳密比較は8identity一致・Teacher-E266/266・Top3551/551・7,365入力fileのhashと集合不変を確認し、有効に完了した。
+
+| 採用指標（5局等重み） | 現行fallback | functional-anchor half epoch3最近傍 |
+| --- | ---: | ---: |
+| MAE | 1084.478601 cp | 995.803800 cp |
+| Top3入り率 | 55.388757% | 55.382847% |
+
+候補の厳密有理数はMAE `176356853/177100`、Top3 `59346323/107156504`。MAEは約88.674800 cp改善したが、Top3は約0.005910ポイント低下し、維持条件を満たさない。全551点のhit合計は両者304だが、採用に使う固定指標は各局を等重みとした平均であり、表示丸めや全局面の直接平均で採用へ読み替えない。[正式比較とグラフ](validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/comparison.md)を公開し、最良fallbackを維持する。formal launcherはexit0で終了し、goalは継続中。独立全run監査とNAS保存は残る。
+
 ## 条件付きbounded-material案の純粋検証
 
-現在のfunctional-anchorが有効な正式比較で採用未達だった場合に限り、固定material seed42からFT全体と駒得経路を固定し、補助28ユニットだけを元教師Oへ直接学習する案を準備している。補助FTには駒の位置・種類・所有者・玉・持駒の固定random特徴を含み、駒得だけの入力ではない。fresh Adam・seed/shuffle42・3epoch/epoch3・LR0.0001・step-half3を候補条件とし、補助出力係数の実数上界99 cpを一つだけ固定する。100 cpの整数差に1 cpの丸め余裕を見込む仮説であり、探索Top3維持や全coreでの整数差上限を確認した段階ではない。条件案SHAは`70d86307d5a23319d70dd6fa8cedb472954f178c3663d4265a7c982a85befd5e`。現在の未完了formal結果やfinalから条件を選んでいない。
+functional-anchorの有効な正式比較で採用未達という開始条件を満たしたため、次は固定material seed42からFT全体と駒得経路を固定し、補助28ユニットだけを元教師Oへ直接学習する案を準備している。補助FTには駒の位置・種類・所有者・玉・持駒の固定random特徴を含み、駒得だけの入力ではない。fresh Adam・seed/shuffle42・3epoch/epoch3・LR0.0001・step-half3を候補条件とし、補助出力係数の実数上界99 cpを一つだけ固定する。100 cpの整数差に1 cpの丸め余裕を見込む仮説であり、探索Top3維持や全coreでの整数差上限を確認した段階ではない。条件案SHAは`70d86307d5a23319d70dd6fa8cedb472954f178c3663d4265a7c982a85befd5e`。この条件はformal終了前に保存し、当時の未完了結果やfinalから選んでいない。
 
 `scripts/bounded_material.py`はbyte入力だけを扱い、固定FT/FT bias、駒得L2の全512行×4列、駒得bias/out、出力biasと材入力から補助へのpositive-zeroを検証する。補助outの実binary32値をexact Fractionで集計し、`127/64 * Σabs <= 99`を判定する。13件の合成fixtureで座標改変・非有限値・サイズ/magic・符号付きzero・隣接f32予算境界などを確認した。固定referenceのFT `/64→×64`復元は純粋な算術確認であり、実Adamのfloat FT固定や実エンジン検証ではない。recipeのtrainer・optimizer・学習・実core整数差・採用の各フラグは未検証のまま保持する。moduleはファイル保存・学習・engine起動を行わない。
 
 専用trainerの更新maskはparameterとAdam m/vの呼出しをskipし、補助outを各Adam更新後に一様縮小して保存f32の予算を再検査する設計とする。実装、専用source/build、metadata/source binding、保存後のnative/Adam再構成、全局面core・incremental/undo、候補自身の正式比較はまだ必要。既存prepare/exportの固定source guardは変更せず、専用経路で新patchを束縛する。次案の実学習・実probeは開始していない。
+
+pure contractのcommit `be7e0da`はCI217公開fixture tests成功（118.346秒）。型検査前の専用trainer追加patchもprivate stagingに準備したが、rustfmt parse/dry-applyを通した段階であり、8件のRust testや実build・学習の成功へ読み替えない。
 
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

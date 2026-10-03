@@ -233,7 +233,7 @@ sourceだけの準備・独立レビューではL2/biasの2つのAdam LR operand
 
 全3epochのnative/Adam/metadata、元Oの復元入力、静的/core/incremental証拠、evaluation/4run、失敗した初回起動と18ファイルのsnapshot、復旧と監査のsource/receiptをNASへ保存した。14 source roots・3,965 files・77 directories・0 symlinks・355,207,871 bytesで、コピー前後と保存先の集合・size・SHA-256を照合した。SSD原本・参照パスを保持し、build/venvは除外した。[公開保存集計](validation/autonomous-weight-2026-10-03/bounded-material-fanin509-100cp-e3/archive.json)を参照。
 
-## 次の固定案：対になった線形補助出力
+## 第六候補：対になった線形補助出力
 
 第五候補の正式成績を見る前に、元train112,681局面だけで残差`d=T−M`を診断した。残差の平均は244.461116cp、中央値122cp、標準偏差1339.422567cpで、絶対値198cp超は81,456局面（72.289028%）だった。残差が大きい例は少数の外れ値だけではない。Huber幅99cpの単一STM定数に対する微分は補正99cpでも負であり、lossだけの置換で正の定数補正を防げるとは判断しなかった。これはonline勾配やAdamの因果の実測ではない。
 
@@ -243,8 +243,39 @@ sourceだけの準備・独立レビューではL2/biasの2つのAdam LR operand
 
 実数残差の条件付き上界は98.75cpで、既存の観測integer-core駒得差100cp guardを維持する。従来の補助out L1契約は新しい固定out(+64,−64)には適用できないため、旧guardを変更せず専用の機能的契約を検証する。元inputの合法性・source・除外、保存bytes、全局面core、incremental/undo、候補自身のpilotと固定100万ノード比較を通すまで採用しない。最終5局は使わない。
 
-条件案SHAは`dabad54e419237335fd1f370063a0c6e82ac7b58ac27f0d20fd91ca21d9dd900`で、第五候補の正式成績参照前に固定した。旧generic solverの有理数PSD検査は254次元で計算予算を圧迫し得るため、固定整数designから唯一のproducerが`G=ZᵀZ`を生成したことをsource・digest・originで束縛し、`vᵀGv=Σ(Zv)²>=0`による専用検証を準備した。旧任意GramのPSD guardは保持する。新構造の実学習・core・正式測定は未実施で、good modelの達成と扱わない。goalは継続中。
+条件案SHAは`dabad54e419237335fd1f370063a0c6e82ac7b58ac27f0d20fd91ca21d9dd900`で、第五候補の正式成績参照前に固定した。旧generic solverの有理数PSD検査は254次元で計算予算を圧迫し得るため、固定整数designから唯一のproducerが`G=ZᵀZ`を生成したことをsource・digest・originで束縛し、`vᵀGv=Σ(Zv)²>=0`による専用検証を準備した。旧任意GramのPSD guardは保持する。条件案を固定した時点では新構造の実fit・core・正式測定は未実施だった。以下に実行結果を記録する。
 
 専用の`paired_linear.py`は254個の保存f32からnative全bytesを再構成し、FT/駒得、sign-bit、zero、exact L1を検査する。`fit_paired_linear.py`は元TRAINの位置順を保ってSFENで教師ラベルを結合し、整数designから唯一のGram producerと固定FISTAへ渡す。design・target・Gram・右辺・f64/f32係数・exact dyadic certificateを個別artifactとして保存する。実OpenBLASのsetter/getterとlibrary SHAで1threadを確認し、全fit1,200秒は外process supervisorでも制限する。子processは終了証明を主張せず、親がwait/reap・group停止・入力/sourceの再hashを確認した後にrunとabsolute sidecarを作る。
 
-既存を含む288 testsが成功（標準環境では数値13件をskip）。固定NumPyで数値13件とnative/activation16件、追加fit-driver13件も成功した。第五候補の有効な不採用・独立監査・停止を46個の現在inputと照合し、次案へのactivationを確認した。これらは準備の検証であり、新しいモデルの学習・core観測・正式比較はまだ行っていない。
+既存を含む288 testsが成功（標準環境では数値13件をskip）。固定NumPyで数値13件とnative/activation16件、追加fit-driver13件も成功した。第五候補の有効な不採用・独立監査・停止を46個の現在inputと照合し、次案へのactivationを確認した。これらは準備の検証であり、以下の実fit・core観測・正式比較と区別する。
+
+### 実fit・技術検証
+
+元train112,681局面に対するfitは32.573954秒・22反復で終了した。Adam、epoch追加、resume、別条件へのfallbackは使っていない。保存f32のexact L1は`161791/4096=39.499755859375`で、非zero係数は254個中1個だった。f64・solver f32・保存f32の三つのcertificateを別workerが整数・dyadic演算で再計算し、FW gap/N=0、zero/materialからのexact目的差が非正であることを確認した。この最適性は固定の学習目的に対する結果であり、探索後の改善を意味しない。
+
+native SHA-256は`12cc820db432fd2677ffcb37d58bab1536f2b03471af0fe14ad26997e2841de3`。stock v0.3.39 coreの全118,591局面（train112,681・holdout5,895・fixture15）でself-load・material参照とのbridge・有限値・観測駒得差100cp以内を確認した。最大差はtrain60cp・holdout55cp・fixture9cp。incremental/undoの8,185観測でもrefreshとの差0、capture・promotion・drop・undo・null undoと親状態の復元を確認し、最大駒得差40cpだった。これは有限の観測範囲の検証である。
+
+numeric監査の最初の起動は外部SHA指定の誤りで入力読取前に拒否され、正しい固定値で再実行した。coreの最初の起動も、専用出力のguardが保護入力との包含を過剰に判定してprobe前に拒否された。元sourceと失敗記録を保持し、全保護入力との重なりを明示拒否する別sourceで再実行した。いずれもモデルの再学習や採用条件の緩和は行っていない。
+
+### 正式比較・無効な初回履歴
+
+初回の正式測定はMAEの937試行目でsupervisorのterminal statusが欠落し、cleanup failureとして無効になった。旧937試行・own pilot102試行・評価状態・sourceとcontrolの原本およびmirrorを4,218ファイルのsnapshotへ凍結し、6排他lock・2回のprocess観測・3,967入力の前後照合で停止とモデル不変を確認した。同時刻付近のPython general protection faultは観測したが、対象PIDと役割の因果対応は確認できず、原因は未確定。失敗した試行の短いlog offsetを実際の終了所要時間とは扱わない。
+
+同じfit/nativeを使い、別のmeasurement attemptでown MAE pilot・正式MAE・own Top3 pilot・正式Top3を全て新規実行した。旧途中結果は再利用していない。固定venv/NumPy/cshogiとlaunch preflightを外部SHAで束縛し、候補own MAE pilot102試行の独立監査を通した後、四段階は正常終了した。測定時のGit commitは`480bd14844242770a3faf82fea1b2707530fc7a5`。
+
+| 指標 | 駒得fallback | 第六候補 | 差 |
+| --- | ---: | ---: | ---: |
+| MAE | 1084.478601 cp | 1087.385635 cp | +2.907034 cp |
+| Top3入り率 | 55.388757% | 54.483043% | −0.905714ポイント |
+
+候補のexact MAEは`13701059/12600`、Top3は`15363717/28199080`。独立監査で候補・基準それぞれ1,829試行のraw SHA、options、nodes、score、bestmove、runner/supervisor lifecycleを再解析し、8比較identity・有理数集計・共同採用判定の一致を確認した。**正式比較は有効だが不採用**で、最良モデルは駒得fallbackのまま。final 5局は使っていない。[公開比較とグラフ](validation/autonomous-weight-2026-10-04/paired-linear-constrained-ridge1-l1-39p5-v2/comparison.md)を参照。
+
+停止確認sourceの旧版は比較checkの辞書をboolとして受け取る不整合があった。旧版を保持し、producerの5辞書/3list・string identityの厳密なshape、typed true、SHA一致、mismatch_countの非bool整数0、CP/AU全record一致を検証する別版へ修正した。実producerから作る合成正常controlで旧版の拒否と修正版の通過を再現し、13 testsと独立peerを通した後、実停止確認も成功した。8,194入力の前後一致、6排他lockと2回の空process観測を記録した。
+
+単一fitのnative・元design/Gram/係数/certificate・元Oの復元5入力・core/incremental証拠・新四段階のevaluation/run・無効な初回測定・sourceとcontrol・凍結completionを既存NASへ保管した。初回履歴の原本とmirror全4,218ファイルも保存対象へ対応付けた。archive-supportを含む15 source roots・8,164 files・80 directories・0 symlinks・230,230,076 bytesについて、source-before/source-after/destinationの集合・size・SHA-256とdirectory/symlink集合が一致した。保存helperと外側workerは正常終了・wait/reap・group停止を確認し、SSD原本を保持した。[公開保存集計](validation/autonomous-weight-2026-10-04/paired-linear-constrained-ridge1-l1-39p5-v2/archive.json)には集約値とhashのみを置く。固定runtime・compiler/build・audit venv・教師・baseline等はSSDの既存依存を使い、このコピーだけで全環境を復元できるとは扱わない。
+
+### 次の方針
+
+固定の凸目的に対するexact gap=0が確認されたため、同じ目的の反復やepochを増やす案は選ばない。次はflat特徴の白視点を`80−square`へ回転し、持駒aux bankを`0=3 / 1=2`へ共有する評価特徴の一案を準備する。源コードだけの独立検証では盤面4,536通り・持駒threshold152通りの対応が一致した。静的forwardの対応を目指す変更であり、100万ノード探索のPVやscoreの物理対称性は保証しない。
+
+探索・合法手・盤面・USIの源コードと100万ノード条件を維持し、評価特徴だけを専用compile featureと別native magicで扱う。旧stock loader/metadata/comparatorのguardは保持する。新binaryのfallbackをown pilotを含む全四段階で新規測定し、基準の不変性を確認してから同じbinaryの候補と比較する。専用build・新モデルfit・formalは未実施。現在のMac mini CPUと既存ストレージの範囲でgoalを継続する。

@@ -67,6 +67,10 @@ Issue #17のfunctional-anchor halfも有効な正式比較でMAE改善・Top3維
 Issue #17のbounded-material E3は有効な正式比較でMAE・Top3とも悪化し、不採用とした。成功v3の全3epoch/native/Adam/metadata、metadata名誤りで停止したv2の実epoch1と旧source/helper、元O復元入力・全証拠・4run・凍結completionを `archives/2026-10-03/issue-17-bounded-material-residual-100cp-e3-v1` へ保存し、3,899 files・71 directories・0 symlinks・428,614,972 bytesのsource前後/保存先一致を確認した。private receiptは `receipts/issue17-bounded-material-residual-100cp-e3-v1`、[公開集計](validation/autonomous-weight-2026-10-03/bounded-material-residual-100cp-e3/archive.json)を残す。SSD原本と参照パスを保持し、専用build/venvはSSDに残す。保存helperが許容しないbuild lockを外側で保持した再試行も記録し、partial NAS copyの再利用やguardの緩和はしていない。
 
 
+Issue #17のFanIn509 E3は有効な正式比較でMAE改善・Top3低下のため不採用だった。全3epochのnative/Adam/metadata、元O復元入力、全証拠と4run、固定venvへの起動復旧と失敗snapshotを `archives/2026-10-04/issue-17-bounded-material-fanin509-100cp-e3-v1` へ保存し、3,965 files・77 directories・0 symlinks・355,207,871 bytesのsource前後/保存先一致を確認した。[公開集計](validation/autonomous-weight-2026-10-03/bounded-material-fanin509-100cp-e3/archive.json)を参照。SSD原本・参照パス・専用build/venvを保持した。
+
+Issue #17の対線形補助出力・制約付きridge=1候補も、有効な正式比較でMAE・Top3とも悪化し、不採用とした。単一fitのnative/design/Gram/係数/certificate、元O復元5入力、core/incremental証拠、新四段階のevaluation/run、無効な初回測定の原本とmirror全4,218ファイル、固定control/source/completionを `archives/2026-10-04/issue-17-paired-linear-constrained-ridge1-l1-39p5-v2` へ保存した。archive-supportを含む15 source roots・8,164 files・80 directories・0 symlinks・230,230,076 bytesがコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-paired-linear-constrained-ridge1-l1-39p5-v2`、[公開集計](validation/autonomous-weight-2026-10-04/paired-linear-constrained-ridge1-l1-39p5-v2/archive.json)に集約値とhashだけを残す。初回cleanup failureを有効測定へ混ぜず、新四段階を全て新規取得した。SSD原本と既存runtime/build/venv/教師等への依存を維持する。
+
 ## 固定ソフト
 
 完全な commit とハッシュは [toolchain.lock.json](../config/toolchain.lock.json) にある。

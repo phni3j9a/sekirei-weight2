@@ -86,7 +86,13 @@ rfkit-rs の Planner → 一つの Issue → Worker → 検証済み PR の骨�
 
 ## Issue #13 初回weightの到達点
 
-配布packから55,404局面を抽出し、外部ラベルを使ったCPU学習3エポックと、同じv0.3.39のfallback/候補について正式MAE・Top3比較を完了した。候補はMAE改善条件を満たさず不採用とした。[正式比較](validation/first-weight-2026-10-02/comparison.md)と[学習条件・次の仮説](FIRST_WEIGHT.md)を参照。次は評価値の振幅が小さい原因を診断する。最良モデルの更新は未達であり、今回の実験経路と結果の統合とは区別する。
+配布packから55,404局面を抽出し、外部ラベルを使ったCPU学習3エポックと、同じv0.3.39のfallback/候補について正式MAE・Top3比較を完了した。候補はMAE改善条件を満たさず不採用とした。[正式比較](validation/first-weight-2026-10-02/comparison.md)と[学習条件・次の仮説](FIRST_WEIGHT.md)を参照。最良モデルの更新は未達であり、今回の実験経路と結果の統合とは区別する。
+
+## Issue #15 継続するウェイト改善
+
+保存済みcheckpointの静的診断では振幅不足とtrain/holdoutの汎化差を確認した。同じデータをconstant LRで12エポック学習するとholdout MAEは減少したが、正式比較はMAE 1201.084 cp / Top3 29.90%で不採用だった。静的誤差の改善を採用へ読み替えず、現行fallbackを維持する。
+
+駒得からの初期化、同一checkpointのFT最近傍丸め、112,681局面での13駒価値学習まで正式比較を完了した。最近傍丸め候補はMAE 985.098 cp / Top3 53.54%で、同checkpointの切り捨て版より両指標が改善したが、fallbackのTop3 55.39%を維持できなかった。4候補とも採用基準未達で最良fallbackを維持する。旧holdout 5,895局面をバイト単位で固定した追加NNUE学習は静的診断用で、正式未評価の候補は採用しない。Suisho11Plusの17局面×3反復も完了し、参考確認として分離した。初期値のcore一致、量子化差、学習後の静的診断、探索後の正式評価を別々に記録する。[実験条件と結果](WEIGHT_IMPROVEMENT.md)を参照。
 
 ## Issue #9 Sekirei v0.3.39への移行
 

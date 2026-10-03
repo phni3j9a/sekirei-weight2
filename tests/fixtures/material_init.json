@@ -1,0 +1,205 @@
+[
+  {
+    "name": "opening-pawn-sequence-00",
+    "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": []
+  },
+  {
+    "name": "opening-pawn-sequence-01",
+    "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/2P6/PP1PPPPPP/1B5R1/LNSGKGSNL w - 2",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-02",
+    "sfen": "lnsgkgsnl/1r5b1/pppppp1pp/6p2/9/2P6/PP1PPPPPP/1B5R1/LNSGKGSNL b - 3",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-03",
+    "sfen": "lnsgkgsnl/1r5b1/pppppp1pp/6p2/9/2P4P1/PP1PPPP1P/1B5R1/LNSGKGSNL w - 4",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-04",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1pp/1p4p2/9/2P4P1/PP1PPPP1P/1B5R1/LNSGKGSNL b - 5",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-05",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1pp/1p4p2/7P1/2P6/PP1PPPP1P/1B5R1/LNSGKGSNL w - 6",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-06",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1pp/6p2/1p5P1/2P6/PP1PPPP1P/1B5R1/LNSGKGSNL b - 7",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-07",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1pp/6pP1/1p7/2P6/PP1PPPP1P/1B5R1/LNSGKGSNL w - 8",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e",
+      "2e2d"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-08",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1pp/6pP1/9/1pP6/PP1PPPP1P/1B5R1/LNSGKGSNL b - 9",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e",
+      "2e2d",
+      "8e8f"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-09",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1+Pp/6p2/9/1pP6/PP1PPPP1P/1B5R1/LNSGKGSNL w P 10",
+    "expected_cp_stm": -700,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e",
+      "2e2d",
+      "8e8f",
+      "2d2c+"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-10",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1+Pp/6p2/9/2P6/P+p1PPPP1P/1B5R1/LNSGKGSNL b Pp 11",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e",
+      "2e2d",
+      "8e8f",
+      "2d2c+",
+      "8f8g+"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-11",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1+Pp/6pP1/9/2P6/P+p1PPPP1P/1B5R1/LNSGKGSNL w p 12",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e",
+      "2e2d",
+      "8e8f",
+      "2d2c+",
+      "8f8g+",
+      "P*2d"
+    ]
+  },
+  {
+    "name": "opening-pawn-sequence-12",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1+Pp/6pP1/9/1pP6/P+p1PPPP1P/1B5R1/LNSGKGSNL b - 13",
+    "expected_cp_stm": 0,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e",
+      "2e2d",
+      "8e8f",
+      "2d2c+",
+      "8f8g+",
+      "P*2d",
+      "P*8f"
+    ]
+  },
+  {
+    "name": "optional-promotion-branch-0",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1+Pp/6p2/9/2P6/Pp1PPPP1P/1B5R1/LNSGKGSNL b Pp 11",
+    "expected_cp_stm": 500,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e",
+      "2e2d",
+      "8e8f",
+      "2d2c+",
+      "8f8g"
+    ]
+  },
+  {
+    "name": "optional-promotion-branch-1",
+    "sfen": "lnsgkgsnl/1r5b1/p1pppp1+Pp/6pP1/9/2P6/Pp1PPPP1P/1B5R1/LNSGKGSNL w p 12",
+    "expected_cp_stm": -500,
+    "from_startpos_usi": [
+      "7g7f",
+      "3c3d",
+      "2g2f",
+      "8c8d",
+      "2f2e",
+      "8d8e",
+      "2e2d",
+      "8e8f",
+      "2d2c+",
+      "8f8g",
+      "P*2d"
+    ]
+  }
+]

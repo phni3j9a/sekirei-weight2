@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "scope": "13 material parameters; train-only ridge; frozen holdout selection",
+  "counts": {
+    "holdout": 5895,
+    "train": 55404
+  },
+  "lambda_grid": [
+    0.01,
+    0.1,
+    1.0,
+    10.0,
+    100.0
+  ],
+  "selected_ridge": 0.01,
+  "selected_weight_sha256": "480e1512af475945ddcdfe9212d73f545a83badee09e7cb0ab1966c92c23c9f7",
+  "selection_rule": "minimum exact holdout absolute-error sum across all 5 lambdas; ties stronger lambda",
+  "all_fits_converged": true,
+  "all_candidates_core_exact": true,
+  "source_input_build_unchanged": true,
+  "search_performed": false,
+  "adoption": false,
+  "wall_seconds": 11.441016756929457,
+  "candidates": [
+    {
+      "ridge": 0.01,
+      "train": {
+        "absolute_error_sum_cp": 38648678,
+        "bias_cp": -235.60771785430654,
+        "count": 55404,
+        "mae_cp": 697.5792000577576,
+        "rmse_cp": 1210.2533062106663
+      },
+      "holdout": {
+        "absolute_error_sum_cp": 3915381,
+        "bias_cp": -195.38880407124682,
+        "count": 5895,
+        "mae_cp": 664.1867684478372,
+        "rmse_cp": 1093.8102848623103
+      },
+      "core_verified": true,
+      "weight_sha256": "480e1512af475945ddcdfe9212d73f545a83badee09e7cb0ab1966c92c23c9f7",
+      "solver": {
+        "iterations": 2836,
+        "max_iterations": 250000,
+        "distance_bound_cp": 9.946539888973474e-05,
+        "distance_tolerance_cp": 0.0001,
+        "kkt_residual_l2": 1.989307977794695e-06,
+        "objective_gap_bound": 9.893365576294046e-11,
+        "certificate_caveat": "mathematical bounds evaluated in float64; not an interval-arithmetic proof"
+      }
+    },
+    {
+      "ridge": 0.1,
+      "train": {
+        "absolute_error_sum_cp": 39184342,
+        "bias_cp": -236.50014439390657,
+        "count": 55404,
+        "mae_cp": 707.2475272543498,
+        "rmse_cp": 1214.516070871569
+      },
+      "holdout": {
+        "absolute_error_sum_cp": 3945903,
+        "bias_cp": -193.19643765903308,
+        "count": 5895,
+        "mae_cp": 669.3643765903308,
+        "rmse_cp": 1093.3848632584568
+      },
+      "core_verified": true,
+      "weight_sha256": "1bef982a086085e432e38e95213e5c4871df939707115282ce04f47d4eb78105",
+      "solver": {
+        "iterations": 1108,
+        "max_iterations": 250000,
+        "distance_bound_cp": 9.927185410110079e-05,
+        "distance_tolerance_cp": 0.0001,
+        "kkt_residual_l2": 1.985437082022016e-05,
+        "objective_gap_bound": 9.854901016670242e-10,
+        "certificate_caveat": "mathematical bounds evaluated in float64; not an interval-arithmetic proof"
+      }
+    },
+    {
+      "ridge": 1.0,
+      "train": {
+        "absolute_error_sum_cp": 42487744,
+        "bias_cp": -238.06696267417516,
+        "count": 55404,
+        "mae_cp": 766.8714172261931,
+        "rmse_cp": 1270.75927335624
+      },
+      "holdout": {
+        "absolute_error_sum_cp": 4246471,
+        "bias_cp": -186.9406276505513,
+        "count": 5895,
+        "mae_cp": 720.3513146734521,
+        "rmse_cp": 1147.262879571673
+      },
+      "core_verified": true,
+      "weight_sha256": "a7c54456734216760acc2a834263a31468cef984a502ec8295cad7933b4e16cb",
+      "solver": {
+        "iterations": 162,
+        "max_iterations": 250000,
+        "distance_bound_cp": 9.296273737841544e-05,
+        "distance_tolerance_cp": 0.0001,
+        "kkt_residual_l2": 0.0001859254747568309,
+        "objective_gap_bound": 8.64207054088824e-09,
+        "certificate_caveat": "mathematical bounds evaluated in float64; not an interval-arithmetic proof"
+      }
+    },
+    {
+      "ridge": 10.0,
+      "train": {
+        "absolute_error_sum_cp": 46158464,
+        "bias_cp": -239.88383510215868,
+        "count": 55404,
+        "mae_cp": 833.1251173200491,
+        "rmse_cp": 1343.527040328284
+      },
+      "holdout": {
+        "absolute_error_sum_cp": 4621437,
+        "bias_cp": -185.23206106870228,
+        "count": 5895,
+        "mae_cp": 783.9587786259542,
+        "rmse_cp": 1229.6981242057534
+      },
+      "core_verified": true,
+      "weight_sha256": "099ea5ea2114b444c0538c9964548e3d6de6d1ae742a63cc45207b1a2ed62ba5",
+      "solver": {
+        "iterations": 23,
+        "max_iterations": 250000,
+        "distance_bound_cp": 8.422364143234964e-05,
+        "distance_tolerance_cp": 0.0001,
+        "kkt_residual_l2": 0.0016844728286469928,
+        "objective_gap_bound": 7.093621776125003e-08,
+        "certificate_caveat": "mathematical bounds evaluated in float64; not an interval-arithmetic proof"
+      }
+    },
+    {
+      "ridge": 100.0,
+      "train": {
+        "absolute_error_sum_cp": 47396946,
+        "bias_cp": -240.42350732799076,
+        "count": 55404,
+        "mae_cp": 855.4787740957331,
+        "rmse_cp": 1366.080468692258
+      },
+      "holdout": {
+        "absolute_error_sum_cp": 4751227,
+        "bias_cp": -186.425614927905,
+        "count": 5895,
+        "mae_cp": 805.9757421543682,
+        "rmse_cp": 1256.98380276244
+      },
+      "core_verified": true,
+      "weight_sha256": "0a415f1ea66a592fc50eec67be52bada162a054ceca319e5a6b559b394bd4224",
+      "solver": {
+        "iterations": 6,
+        "max_iterations": 250000,
+        "distance_bound_cp": 1.3206653330737294e-05,
+        "distance_tolerance_cp": 0.0001,
+        "kkt_residual_l2": 0.0026413306661474587,
+        "objective_gap_bound": 1.7441569219827443e-08,
+        "certificate_caveat": "mathematical bounds evaluated in float64; not an interval-arithmetic proof"
+      }
+    }
+  ],
+  "private_summary_sha256": "2aa64f591aa1c3a31d8d7adad32cf12ea6536425784753c954cd211e6b2ecc91",
+  "private_run_sha256": "c99b8790a5bafb4a6fcb140326f8533cd66869731096fe82bab34eb550474480",
+  "interpretation": "low-dimensional constrained fit; rounded integer material; static selection is not 1M-node adoption"
+}

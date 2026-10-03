@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "report": "fixed-development-weight-comparison",
+  "candidate_label": "material-seed42-constant-lr0.0001-epoch1",
+  "baseline_label": "駒得fallback",
+  "candidate_weight_sha256": "8a3e1503b2e6af14f54bc200dd757a7bb9a2abdf754b932052770bf4ab520f79",
+  "candidate_weight_bytes": 1305356,
+  "conditions": {
+    "sekirei": "v0.3.39",
+    "teacher": "Suisho Concerto 202512 (Suisho11beta)",
+    "requested_nodes": 1000000,
+    "threads": 1,
+    "hash_mib": 128,
+    "mae_multipv": 1,
+    "candidate_top3_multipv": 3,
+    "games": 5,
+    "occurrences": 570,
+    "teacher_exact_count": 266,
+    "top3_eligible_count": 551,
+    "aggregation": "equal mean of five per-game metrics",
+    "nnue_output": "absolute",
+    "final_used": false
+  },
+  "decision": {
+    "comparison_valid": true,
+    "adopt": false,
+    "decision": "hold",
+    "mae_improved": true,
+    "top3_preserved": false,
+    "rule": "MAE strictly lower and Top3 non-decreasing; exact rational comparison"
+  },
+  "headline": {
+    "baseline_mae_cp": 1084.4786006022964,
+    "candidate_mae_cp": 1011.7496790890269,
+    "mae_delta_cp": -72.72892151326934,
+    "baseline_top3_rate": 0.5538875742592971,
+    "candidate_top3_rate": 0.4819222732387761,
+    "top3_delta_percentage_points": -7.196530102052104,
+    "exact_ratios": {
+      "baseline": {
+        "mae": {
+          "numerator": 1152366961,
+          "denominator": 1062600
+        },
+        "top3": {
+          "numerator": 127184263,
+          "denominator": 229621080
+        }
+      },
+      "candidate": {
+        "mae": {
+          "numerator": 97735019,
+          "denominator": 96600
+        },
+        "top3": {
+          "numerator": 25820553,
+          "denominator": 53578252
+        }
+      }
+    }
+  },
+  "per_game": [
+    {
+      "ordinal": 1,
+      "teacher_exact_count": 42,
+      "baseline_mae_cp": 367.4047619047619,
+      "candidate_mae_cp": 168.61904761904762,
+      "mae_delta_cp": -198.78571428571428,
+      "top3_denominator": 84,
+      "baseline_top3_hits": 49,
+      "candidate_top3_hits": 43,
+      "baseline_top3_rate": 0.5833333333333334,
+      "candidate_top3_rate": 0.5119047619047619
+    },
+    {
+      "ordinal": 2,
+      "teacher_exact_count": 72,
+      "baseline_mae_cp": 1514.4166666666667,
+      "candidate_mae_cp": 1532.3333333333333,
+      "mae_delta_cp": 17.916666666666668,
+      "top3_denominator": 122,
+      "baseline_top3_hits": 83,
+      "candidate_top3_hits": 65,
+      "baseline_top3_rate": 0.680327868852459,
+      "candidate_top3_rate": 0.5327868852459017
+    },
+    {
+      "ordinal": 3,
+      "teacher_exact_count": 66,
+      "baseline_mae_cp": 1079.2878787878788,
+      "candidate_mae_cp": 1265.6666666666667,
+      "mae_delta_cp": 186.37878787878788,
+      "top3_denominator": 127,
+      "baseline_top3_hits": 55,
+      "candidate_top3_hits": 55,
+      "baseline_top3_rate": 0.4330708661417323,
+      "candidate_top3_rate": 0.4330708661417323
+    },
+    {
+      "ordinal": 4,
+      "teacher_exact_count": 40,
+      "baseline_mae_cp": 1222.675,
+      "candidate_mae_cp": 718.825,
+      "mae_delta_cp": -503.85,
+      "top3_denominator": 104,
+      "baseline_top3_hits": 55,
+      "candidate_top3_hits": 44,
+      "baseline_top3_rate": 0.5288461538461539,
+      "candidate_top3_rate": 0.4230769230769231
+    },
+    {
+      "ordinal": 5,
+      "teacher_exact_count": 46,
+      "baseline_mae_cp": 1238.608695652174,
+      "candidate_mae_cp": 1373.304347826087,
+      "mae_delta_cp": 134.69565217391303,
+      "top3_denominator": 114,
+      "baseline_top3_hits": 62,
+      "candidate_top3_hits": 58,
+      "baseline_top3_rate": 0.543859649122807,
+      "candidate_top3_rate": 0.5087719298245614
+    }
+  ],
+  "evidence": {
+    "mae_formal_valid": true,
+    "top3_formal_valid": true,
+    "mae_attempts": 1140,
+    "top3_attempts": 551,
+    "reference_checks": {
+      "execution_except_model": true,
+      "occurrences": true,
+      "teacher_results": true,
+      "teacher_E_cp": true,
+      "top3_occurrences": true,
+      "top3_legal_moves_sha256": true,
+      "top3_denominators": true,
+      "top3_teacher_bestmoves": true
+    },
+    "comparison_inputs_unchanged": true,
+    "mae_fingerprint": "31e46a8f95bf2d40c4667009fc306e89c77dc8454f5132b3497bc73effc4fd29",
+    "top3_fingerprint": "2bf3a096598f58294a8f773802d9534edc82aea4fb2e115b700a7f55bc6b1e5f",
+    "baseline_mae_fingerprint": "b722baad6a29d4c70b32e7e0d05fdee378f6de4cf72075b6519d2c697642b60a",
+    "baseline_top3_fingerprint": "59d02420b8fe68c76a6b95a41a9bc46e50619dd2f48873157aab08fd2a5e53c4"
+  },
+  "evidence_sha256": {
+    "private_comparison": "9e3026623e07ee927384a0a638117e202b8a1d90963d6729bbb30cc9dce86faf",
+    "completed_evaluation": "a2ffa66dabca4778ebb99c20c79d901b55c6670d0360e26e10ced3f9d60f0dc9"
+  },
+  "limitations": [
+    "Fixed development five-game result; no claim about final data or general playing strength.",
+    "Static holdout diagnostics are distinct from these 1000000-node adoption metrics."
+  ]
+}

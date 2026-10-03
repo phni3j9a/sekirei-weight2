@@ -1,0 +1,180 @@
+{
+  "conditions": {
+    "attempt_timeout_seconds": 180,
+    "hash_mib": 128,
+    "max_reported_nodes": 1010000,
+    "multipv": 1,
+    "plus_engine": "YaneuraOu NNUE 9.70git",
+    "primary_engine": "YaneuraOu V9.20",
+    "requested_nodes": 1000000,
+    "threads": 1
+  },
+  "format": "sekirei-plus-reference-public-v1",
+  "interpretation": {
+    "cp_differences_are_primary_formal_mae": false,
+    "cp_differences_are_representative_headline": false,
+    "reference_used_for_selection_or_adoption": false,
+    "repetitions_are_independent_positions": false,
+    "teacher_comparison_includes_engine_difference": true
+  },
+  "known_startup_warning_events": 561,
+  "known_startup_warning_types_observed": 2,
+  "observations_per_engine": 51,
+  "pairwise": {
+    "plus_vs_beta": [
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 10,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 2,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 691,
+          "mean_abs_cp_difference": 581.5
+        },
+        "repetition": 1
+      },
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 10,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 2,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 691,
+          "mean_abs_cp_difference": 581.5
+        },
+        "repetition": 2
+      },
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 10,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 2,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 691,
+          "mean_abs_cp_difference": 581.5
+        },
+        "repetition": 3
+      }
+    ],
+    "plus_vs_sekirei": [
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 7,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 4,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 1350,
+          "mean_abs_cp_difference": 953.5
+        },
+        "repetition": 1
+      },
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 7,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 4,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 1350,
+          "mean_abs_cp_difference": 953.5
+        },
+        "repetition": 2
+      },
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 7,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 4,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 1350,
+          "mean_abs_cp_difference": 953.5
+        },
+        "repetition": 3
+      }
+    ]
+  },
+  "provenance": {
+    "joined_sha256": "17667887f87c32032507b226fbb4fe3a894f0a170dac9d4f36ce4935a79eac82",
+    "manifest_sha256": "d3186f0481d90fd170f368c9b9b6a1e8e3c2a56abcff107777f1f298e0283b18",
+    "plan_file_sha256": "b7080cde491bf509cf22c3c914b4096075700f7ffd0173b6eebe58334bcb2238",
+    "private_input_inventory_sha256": "36a5bcbd5eba68674cecf5fb87c62a51d471ddc6d9b9fea49b7fa228454e1463",
+    "publisher_sha256": "448aa97c6564cf3e90daec0ebc901dfcd51f8fee6d68cffbb098e77a02b67d78",
+    "source_wrapper_sha256": "9742396144f84e6a402dba31b2f212f6e7217803d0052dcb46a9b63ab2904790",
+    "summary_sha256": "889e4bdfd2a4caae4f1f1c4c32e1d65c8ffb24023e1a67de7870613dfb87c626"
+  },
+  "purpose": "reference_only_not_model_selection_or_adoption",
+  "repetitions": 3,
+  "selected_model": {
+    "bytes": null,
+    "kind": "material_fallback",
+    "sha256": null
+  },
+  "status": "complete",
+  "teacher_id": "suisho11plus-20260525",
+  "teacher_role": "reference",
+  "teachers": {
+    "beta": {
+      "all_three_typed_results_equal_positions": 17,
+      "max_reported_nodes_evidence": 1001086,
+      "observation_count": 51,
+      "reproducibility_denominator_positions": 17,
+      "statuses": {
+        "bound_cp": 30,
+        "exact_cp": 9,
+        "mate": 12,
+        "no_score": 0
+      },
+      "sum_go_to_bestmove_seconds": 115.052400182
+    },
+    "plus": {
+      "all_three_typed_results_equal_positions": 17,
+      "max_reported_nodes_evidence": 1000741,
+      "observation_count": 51,
+      "reproducibility_denominator_positions": 17,
+      "statuses": {
+        "bound_cp": 30,
+        "exact_cp": 12,
+        "mate": 9,
+        "no_score": 0
+      },
+      "sum_go_to_bestmove_seconds": 70.520458773
+    },
+    "sekirei": {
+      "all_three_typed_results_equal_positions": 17,
+      "max_reported_nodes_evidence": 1000002,
+      "observation_count": 51,
+      "reproducibility_denominator_positions": 17,
+      "statuses": {
+        "bound_cp": 0,
+        "exact_cp": 42,
+        "mate": 6,
+        "no_score": 3
+      },
+      "sum_go_to_bestmove_seconds": 25.719813787
+    }
+  },
+  "unique_positions": 17
+}

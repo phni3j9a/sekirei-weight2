@@ -1,0 +1,33 @@
+# 駒得初期化・epoch1の最近傍丸め：正式比較
+
+**採用条件を満たさなかった。** 正式MAEとTop3の証拠は有効で、固定教師・対象集合・モデル以外の実行条件が比較基準と一致した。
+
+| 採用指標 | 駒得fallback | 候補 | 候補 − 基準 |
+| --- | ---: | ---: | ---: |
+| MAE | 1084.479 cp | 985.098 cp | -99.381 cp |
+| Top3入り率 | 55.3888% | 53.5381% | -1.8506ポイント |
+
+採用条件は「MAEが厳密に改善し、Top3入り率が下がらないこと」。各局の整数cp誤差・hit数から5局等重みの有理数で判定した。未丸め値と分数は comparison.json に保存する。
+
+両者100万ノード指定、Threads=1、Hash=128 MiB。MAEはMultiPV=1、Top3はSekireiの別runでMultiPV=3。最終評価用データは使っていない。
+
+| 局 | 教師exact点数 | 基準MAE | 候補MAE | 基準Top3 hit / 対象 | 候補Top3 hit / 対象 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 42 | 367.405 | 157.071 | 49 / 84 | 46 / 84 |
+| 2 | 72 | 1514.417 | 1482.153 | 83 / 122 | 72 / 122 |
+| 3 | 66 | 1079.288 | 1294.515 | 55 / 127 | 56 / 127 |
+| 4 | 40 | 1222.675 | 658.425 | 55 / 104 | 54 / 104 |
+| 5 | 46 | 1238.609 | 1333.326 | 62 / 114 | 66 / 114 |
+
+MAEは570局面・1,140 attemptを完了し、固定Teacher-E 266点を全て採点した。Top3は対象551点を全て測定した。比較検証では教師の型付き評価・bestmove・PV、Teacher-Eのcp、Top3の対象・合法手・分母・参照bestmoveを照合した。
+
+候補：`55k-material-e1-nearest`。重みSHA-256：`a44d128d5cf4346c1daa30ab999796d13dfdd12516010d1db549dea2013e866f`。
+
+この結果は固定development 5局の測定であり、最終評価や一般的な棋力の改善は示さない。学習・診断条件と次の判断は[改善実験](../../../WEIGHT_IMPROVEMENT.md)を参照。
+
+- [候補の評価値集計とグラフ](mae/validation.md)
+- [比較値とidentity](comparison.json)
+
+MAE公開exportの4ファイルは元のまま保持した。生成見出しは共通の「baseline validation」だが、fingerprintと数値はこの候補のもの。
+
+補助資料： [教師・基準・候補の3系列図](supplement-three-series.svg) / [手数の三分割と誤差分布](supplement-methods.md) / [補助集計](supplement-phase-summary.json) / [生成manifest](supplement-manifest.json)。正式指標と採否は変更しない。

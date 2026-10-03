@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "purpose": "three-series derivative; formal metrics and adoption unchanged",
+  "public_comparison_sha256": "5ec590e0765936010abb9840c37a2bff89b0b1d659b52ada72412867f01d2953",
+  "private_comparison_sha256": "32bde6c45a82852eeef9a09c6dbf22563cdab0e54ff1e0b2174fd1b268bd23b6",
+  "source_script_sha256": "d81f0284636ac15e554652ad512cfcc1f7ca2044399cf4bbcda2fba3be1718fc",
+  "private_generation_record_sha256": "fa6d5901948c54df8dce69390cdb0772f05a17b94c3220927f05f7b2f62a3499",
+  "files": {
+    "supplement-methods.md": "9868cabe856b57986faf33fb773f5d047414d0d97a1a3406ef0d066022cb2b2d",
+    "supplement-phase-summary.json": "ce76e2b5ca9aa8f5e98b636964985c757e520e7b05ec97bd6136ad523f9bcd2e",
+    "supplement-three-series.svg": "b6e2b9760fec1ef761125b73a48abc9d283cc8a2291954ffc5fa5508ed589032"
+  },
+  "matplotlib": "3.11.2",
+  "numpy": "2.5.3",
+  "shared_y_limits_cp": [
+    -40000,
+    40000
+  ],
+  "panels": 5,
+  "root_preview_reviewed": true,
+  "publication_transform": {
+    "method": "Trim trailing spaces or tabs inside path d attributes only; no numeric or geometry changes",
+    "source_sha256": "fb0e3ceaf8ac6db9184aa74868482c1d7fcb410b93cfd98e7d39dc03a30013b9",
+    "generated_svg_sha256": "776678666e0d4e6e163301b52fc20e7a8f774366bccac9b43a8302754217c410",
+    "published_svg_sha256": "b6e2b9760fec1ef761125b73a48abc9d283cc8a2291954ffc5fa5508ed589032",
+    "xml_semantics_equal": true
+  }
+}

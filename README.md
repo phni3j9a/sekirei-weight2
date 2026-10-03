@@ -25,7 +25,7 @@ Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) / [PR #14](ht
 - 教師packは内容重複を除いた13本（534,175,084 bytes）を非公開で保持。既存の教師を再利用し、全量JSONL展開を避けて学習入力を作る。
 - 独立した人間同士・平手・合法手・重複なしの1,000局から、解析前にdevelopment 5局 / final 5局を固定した。今回の正式評価はdevelopmentだけを使用した。[取得・分割の記録](docs/validation/shogiquest-corpus-2026-09-15.md)。
 - 生ログ、配布データ、学習weightはSSDと検証済みNAS保管先に保持し、公開Git/Actionsには集計・コード・設定だけを置く。
-- PRは未マージ。最良モデルの更新と、実験コード・知見の統合は別に判断する。
+- PR #14はマージ済み。初回weightは不採用のままで、最良モデルの更新と、実験コード・知見の統合は別に判断する。
 
 初期環境・教師監査は [PR #2](https://github.com/phni3j9a/sekirei-weight2/pull/2) / [PR #4](https://github.com/phni3j9a/sekirei-weight2/pull/4)、v0.3.39移行は[検証記録](docs/validation/sekirei-v0.3.39-2026-09-19.md)に残す。v0.3.36の旧baseline（MAE 1,087.046 cp）は[履歴](docs/validation/development-baseline-2026-09-19/validation.md)として保持し、今回の候補との比較にはv0.3.39のbaselineを使う。
 
@@ -98,9 +98,23 @@ python3 scripts/smoke.py
 
 Git/worktree・build・venv・使用中のデータ/重み・実行中の出力は内蔵SSDを使う。完了した成果物はファイル集合・サイズ・SHA-256を照合して手動で保管する。既存runは絶対パスを含むため、NASコピーを直接実行用runtimeとせず、SSD側の参照パスも維持する。[配置・コピーと復元の手順](docs/ENVIRONMENT.md#内蔵ssdとnasの運用)、[移設の検証記録](docs/validation/storage-2026-10-02.md)を参照。
 
-## 次の到達点
+## 現在の改善実験
 
-初回候補は評価値の振幅が小さく、MAEは5局中4局で悪化した。次に検証する仮説は、ランダム初期化のabsolute CP回帰が3エポックでは十分に学習できていない可能性。保存済みcheckpointと隔離済み保留局面による固定weightの診断を準備し、追加学習の必要性を確かめる。訓練lossだけではモデルを採用せず、採用指標は正式MAEとTop3の二つを維持する。
+Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](https://github.com/phni3j9a/sekirei-weight2/pull/16)で、約8時間を目安にした手動改善実験を終えた。固定100万ノードの正式比較は4候補で完了した。**採用基準のMAE改善とTop3維持を同時に満たす候補はなく、最良モデルは駒得fallbackのまま**である。
+
+| モデル | 正式MAE | 正式Top3入り率 | 採用 |
+| --- | ---: | ---: | --- |
+| 駒得fallback | 1084.479 cp | 55.39% | 現行を維持 |
+| constant LR・epoch12 | 1201.084 cp | 29.90% | 不採用 |
+| 駒得初期化・epoch1 | 1011.750 cp | 48.19% | 保留 |
+| 同epoch1・最近傍丸め | 985.098 cp | 53.54% | 保留 |
+| 112,681局面・13駒価値学習 | 1068.398 cp | 53.91% | 保留 |
+
+両指標はdevelopment 5局の等重み平均。最近傍丸めは同じcheckpointの切り捨て版から両指標を改善したが、現行fallbackのTop3には達していない。13駒価値学習もMAEは改善したが、Top3維持条件を満たさなかった。[正式比較・手順・各グラフ](docs/WEIGHT_IMPROVEMENT.md)に採否と仮説を記録する。
+
+参考教師Suisho11Plusは、主教師βだけで確定した最良モデルについて17局面×3反復を完了した。[参考確認](docs/validation/weight-improvement-2026-10-03/plus-reference/reference.md)は型付き結果の安定性を示すが、正式な採用判断には使っていない。112,681局面のNNUE追加学習と静的診断も完了し、選択済みepoch3の最近傍丸め版は固定holdout MAE **644.599 cp**となった。この追加候補の正式比較は未実施のため採用せず、次回検証用に保持する。
+
+探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PRは未マージ。
 
 ## 文書
 

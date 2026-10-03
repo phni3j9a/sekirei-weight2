@@ -1,0 +1,1214 @@
+{
+  "adoption_decision_changed": false,
+  "error_denominator": "all teacher exact-cp positions in the stated game/third; missing model cp makes metric undefined",
+  "exact_only_lines": true,
+  "formal_headline_changed": false,
+  "game_count": 5,
+  "games": [
+    {
+      "error_distribution": {
+        "baseline": {
+          "absolute_error_quantiles_cp": {
+            "p50": 319.5,
+            "p90": 733.6999999999999,
+            "p95": 807.4499999999999,
+            "p99": 955.5199999999999
+          },
+          "defined": true,
+          "max_absolute_error_cp": 967,
+          "model_exact_numerator": 42,
+          "teacher_e_denominator": 42
+        },
+        "candidate": {
+          "absolute_error_quantiles_cp": {
+            "p50": 162.0,
+            "p90": 301.09999999999997,
+            "p95": 326.54999999999995,
+            "p99": 478.4999999999991
+          },
+          "defined": true,
+          "max_absolute_error_cp": 581,
+          "model_exact_numerator": 42,
+          "teacher_e_denominator": 42
+        }
+      },
+      "game": 1,
+      "plies": 86,
+      "thirds": [
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 52.5,
+                "p90": 115.0,
+                "p95": 125.5,
+                "p99": 133.9
+              },
+              "defined": true,
+              "mae_cp": 64.16666666666667,
+              "max_absolute_error_cp": 136,
+              "model_exact_numerator": 6,
+              "teacher_e_denominator": 6
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 75.5,
+                "p90": 136.0,
+                "p95": 142.5,
+                "p99": 147.7
+              },
+              "defined": true,
+              "mae_cp": 85.83333333333333,
+              "max_absolute_error_cp": 149,
+              "model_exact_numerator": 6,
+              "teacher_e_denominator": 6
+            }
+          },
+          "part": "first_third",
+          "ply_first": 1,
+          "ply_last": 29,
+          "positions": 29,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 29,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 29,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 23,
+              "exact_cp": 6,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 215.5,
+                "p90": 772.7,
+                "p95": 873.4999999999999,
+                "p99": 948.3000000000001
+              },
+              "defined": true,
+              "mae_cp": 323.0,
+              "max_absolute_error_cp": 967,
+              "model_exact_numerator": 12,
+              "teacher_e_denominator": 12
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 158.0,
+                "p90": 292.9,
+                "p95": 422.5999999999998,
+                "p99": 549.3200000000002
+              },
+              "defined": true,
+              "mae_cp": 186.25,
+              "max_absolute_error_cp": 581,
+              "model_exact_numerator": 12,
+              "teacher_e_denominator": 12
+            }
+          },
+          "part": "middle_third",
+          "ply_first": 30,
+          "ply_last": 58,
+          "positions": 29,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 29,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 29,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 17,
+              "exact_cp": 12,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 437.5,
+                "p90": 729.1,
+                "p95": 797.1999999999998,
+                "p99": 908.8699999999999
+              },
+              "defined": true,
+              "mae_cp": 465.4166666666667,
+              "max_absolute_error_cp": 939,
+              "model_exact_numerator": 24,
+              "teacher_e_denominator": 24
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 186.0,
+                "p90": 313.2,
+                "p95": 325.65,
+                "p99": 330.08
+              },
+              "defined": true,
+              "mae_cp": 180.5,
+              "max_absolute_error_cp": 331,
+              "model_exact_numerator": 24,
+              "teacher_e_denominator": 24
+            }
+          },
+          "part": "last_third",
+          "ply_first": 59,
+          "ply_last": 86,
+          "positions": 28,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 28,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 28,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 2,
+              "exact_cp": 24,
+              "mate": 2,
+              "no_score": 0
+            }
+          }
+        }
+      ],
+      "typed_counts": {
+        "baseline": {
+          "bound_cp": 0,
+          "exact_cp": 86,
+          "mate": 0,
+          "no_score": 0
+        },
+        "candidate": {
+          "bound_cp": 0,
+          "exact_cp": 86,
+          "mate": 0,
+          "no_score": 0
+        },
+        "teacher": {
+          "bound_cp": 42,
+          "exact_cp": 42,
+          "mate": 2,
+          "no_score": 0
+        }
+      }
+    },
+    {
+      "error_distribution": {
+        "baseline": {
+          "absolute_error_quantiles_cp": {
+            "p50": 1134.0,
+            "p90": 1658.5,
+            "p95": 1784.9500000000003,
+            "p99": 10550.410000000187
+          },
+          "defined": true,
+          "max_absolute_error_cp": 31871,
+          "model_exact_numerator": 72,
+          "teacher_e_denominator": 72
+        },
+        "candidate": {
+          "absolute_error_quantiles_cp": {
+            "p50": 989.5,
+            "p90": 1947.8,
+            "p95": 2075.8,
+            "p99": 11274.850000000197
+          },
+          "defined": true,
+          "max_absolute_error_cp": 33615,
+          "model_exact_numerator": 72,
+          "teacher_e_denominator": 72
+        }
+      },
+      "game": 2,
+      "plies": 126,
+      "thirds": [
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 968.5,
+                "p90": 1231.8,
+                "p95": 1306.75,
+                "p99": 1352.28
+              },
+              "defined": true,
+              "mae_cp": 896.1428571428571,
+              "max_absolute_error_cp": 1362,
+              "model_exact_numerator": 28,
+              "teacher_e_denominator": 28
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 806.0,
+                "p90": 1094.4,
+                "p95": 1135.8,
+                "p99": 1167.74
+              },
+              "defined": true,
+              "mae_cp": 766.1428571428571,
+              "max_absolute_error_cp": 1178,
+              "model_exact_numerator": 28,
+              "teacher_e_denominator": 28
+            }
+          },
+          "part": "first_third",
+          "ply_first": 1,
+          "ply_last": 42,
+          "positions": 42,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 14,
+              "exact_cp": 28,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 1146.5,
+                "p90": 1328.5,
+                "p95": 1374.1,
+                "p99": 1417.22
+              },
+              "defined": true,
+              "mae_cp": 988.3333333333334,
+              "max_absolute_error_cp": 1428,
+              "model_exact_numerator": 12,
+              "teacher_e_denominator": 12
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 601.0,
+                "p90": 1218.9,
+                "p95": 1286.1499999999999,
+                "p99": 1306.83
+              },
+              "defined": true,
+              "mae_cp": 641.0833333333334,
+              "max_absolute_error_cp": 1312,
+              "model_exact_numerator": 12,
+              "teacher_e_denominator": 12
+            }
+          },
+          "part": "middle_third",
+          "ply_first": 43,
+          "ply_last": 84,
+          "positions": 42,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 30,
+              "exact_cp": 12,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 1467.5,
+                "p90": 1816.9,
+                "p95": 1835.4,
+                "p99": 22562.01000000004
+              },
+              "defined": true,
+              "mae_cp": 2252.6875,
+              "max_absolute_error_cp": 31871,
+              "model_exact_numerator": 32,
+              "teacher_e_denominator": 32
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 1545.5,
+                "p90": 2077.6,
+                "p95": 2117.0,
+                "p99": 23860.85000000004
+              },
+              "defined": true,
+              "mae_cp": 2536.96875,
+              "max_absolute_error_cp": 33615,
+              "model_exact_numerator": 32,
+              "teacher_e_denominator": 32
+            }
+          },
+          "part": "last_third",
+          "ply_first": 85,
+          "ply_last": 126,
+          "positions": 42,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 10,
+              "exact_cp": 32,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        }
+      ],
+      "typed_counts": {
+        "baseline": {
+          "bound_cp": 0,
+          "exact_cp": 126,
+          "mate": 0,
+          "no_score": 0
+        },
+        "candidate": {
+          "bound_cp": 0,
+          "exact_cp": 126,
+          "mate": 0,
+          "no_score": 0
+        },
+        "teacher": {
+          "bound_cp": 54,
+          "exact_cp": 72,
+          "mate": 0,
+          "no_score": 0
+        }
+      }
+    },
+    {
+      "error_distribution": {
+        "baseline": {
+          "absolute_error_quantiles_cp": {
+            "p50": 1153.0,
+            "p90": 1818.5,
+            "p95": 1905.25,
+            "p99": 2085.45
+          },
+          "defined": true,
+          "max_absolute_error_cp": 2103,
+          "model_exact_numerator": 66,
+          "teacher_e_denominator": 66
+        },
+        "candidate": {
+          "absolute_error_quantiles_cp": {
+            "p50": 1399.5,
+            "p90": 2039.0,
+            "p95": 2326.0,
+            "p99": 2464.6499999999987
+          },
+          "defined": true,
+          "max_absolute_error_cp": 2594,
+          "model_exact_numerator": 66,
+          "teacher_e_denominator": 66
+        }
+      },
+      "game": 3,
+      "plies": 127,
+      "thirds": [
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 131.0,
+                "p90": 306.19999999999993,
+                "p95": 458.0999999999998,
+                "p99": 579.6199999999999
+              },
+              "defined": true,
+              "mae_cp": 184.0,
+              "max_absolute_error_cp": 610,
+              "model_exact_numerator": 8,
+              "teacher_e_denominator": 8
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 119.0,
+                "p90": 229.7,
+                "p95": 264.34999999999997,
+                "p99": 292.06999999999994
+              },
+              "defined": true,
+              "mae_cp": 128.0,
+              "max_absolute_error_cp": 299,
+              "model_exact_numerator": 8,
+              "teacher_e_denominator": 8
+            }
+          },
+          "part": "first_third",
+          "ply_first": 1,
+          "ply_last": 43,
+          "positions": 43,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 43,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 43,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 35,
+              "exact_cp": 8,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 1268.0,
+                "p90": 1933.8000000000002,
+                "p95": 2077.35,
+                "p99": 2097.87
+              },
+              "defined": true,
+              "mae_cp": 1259.15,
+              "max_absolute_error_cp": 2103,
+              "model_exact_numerator": 20,
+              "teacher_e_denominator": 20
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 812.5,
+                "p90": 1849.0,
+                "p95": 1860.1000000000001,
+                "p99": 1892.02
+              },
+              "defined": true,
+              "mae_cp": 933.05,
+              "max_absolute_error_cp": 1900,
+              "model_exact_numerator": 20,
+              "teacher_e_denominator": 20
+            }
+          },
+          "part": "middle_third",
+          "ply_first": 44,
+          "ply_last": 85,
+          "positions": 42,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 22,
+              "exact_cp": 20,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 1184.0,
+                "p90": 1654.0000000000005,
+                "p95": 1815.35,
+                "p99": 1935.7700000000004
+              },
+              "defined": true,
+              "mae_cp": 1173.1052631578948,
+              "max_absolute_error_cp": 2002,
+              "model_exact_numerator": 38,
+              "teacher_e_denominator": 38
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 1593.0,
+                "p90": 2268.4000000000005,
+                "p95": 2375.45,
+                "p99": 2520.3700000000003
+              },
+              "defined": true,
+              "mae_cp": 1680.2368421052631,
+              "max_absolute_error_cp": 2594,
+              "model_exact_numerator": 38,
+              "teacher_e_denominator": 38
+            }
+          },
+          "part": "last_third",
+          "ply_first": 86,
+          "ply_last": 127,
+          "positions": 42,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 42,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 0,
+              "exact_cp": 38,
+              "mate": 4,
+              "no_score": 0
+            }
+          }
+        }
+      ],
+      "typed_counts": {
+        "baseline": {
+          "bound_cp": 0,
+          "exact_cp": 127,
+          "mate": 0,
+          "no_score": 0
+        },
+        "candidate": {
+          "bound_cp": 0,
+          "exact_cp": 127,
+          "mate": 0,
+          "no_score": 0
+        },
+        "teacher": {
+          "bound_cp": 57,
+          "exact_cp": 66,
+          "mate": 4,
+          "no_score": 0
+        }
+      }
+    },
+    {
+      "error_distribution": {
+        "baseline": {
+          "absolute_error_quantiles_cp": {
+            "p50": 1062.5,
+            "p90": 2102.4,
+            "p95": 2152.3499999999995,
+            "p99": 2442.24
+          },
+          "defined": true,
+          "max_absolute_error_cp": 2514,
+          "model_exact_numerator": 40,
+          "teacher_e_denominator": 40
+        },
+        "candidate": {
+          "absolute_error_quantiles_cp": {
+            "p50": 611.5,
+            "p90": 1394.3,
+            "p95": 1479.3,
+            "p99": 1945.5499999999995
+          },
+          "defined": true,
+          "max_absolute_error_cp": 2240,
+          "model_exact_numerator": 40,
+          "teacher_e_denominator": 40
+        }
+      },
+      "game": 4,
+      "plies": 108,
+      "thirds": [
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 342.0,
+                "p90": 551.4000000000001,
+                "p95": 626.1999999999999,
+                "p99": 686.04
+              },
+              "defined": true,
+              "mae_cp": 313.1111111111111,
+              "max_absolute_error_cp": 701,
+              "model_exact_numerator": 9,
+              "teacher_e_denominator": 9
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 559.0,
+                "p90": 1397.6,
+                "p95": 1410.8,
+                "p99": 1421.36
+              },
+              "defined": true,
+              "mae_cp": 692.2222222222222,
+              "max_absolute_error_cp": 1424,
+              "model_exact_numerator": 9,
+              "teacher_e_denominator": 9
+            }
+          },
+          "part": "first_third",
+          "ply_first": 1,
+          "ply_last": 36,
+          "positions": 36,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 36,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 36,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 27,
+              "exact_cp": 9,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 924.0,
+                "p90": 1828.0,
+                "p95": 1890.9999999999998,
+                "p99": 1941.4
+              },
+              "defined": true,
+              "mae_cp": 1054.0,
+              "max_absolute_error_cp": 1954,
+              "model_exact_numerator": 10,
+              "teacher_e_denominator": 10
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 415.0,
+                "p90": 1113.5,
+                "p95": 1201.2499999999998,
+                "p99": 1271.45
+              },
+              "defined": true,
+              "mae_cp": 594.1,
+              "max_absolute_error_cp": 1289,
+              "model_exact_numerator": 10,
+              "teacher_e_denominator": 10
+            }
+          },
+          "part": "middle_third",
+          "ply_first": 37,
+          "ply_last": 72,
+          "positions": 36,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 36,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 36,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 26,
+              "exact_cp": 10,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 1964.0,
+                "p90": 2143.0,
+                "p95": 2330.0,
+                "p99": 2477.2000000000003
+              },
+              "defined": true,
+              "mae_cp": 1692.8095238095239,
+              "max_absolute_error_cp": 2514,
+              "model_exact_numerator": 21,
+              "teacher_e_denominator": 21
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 678.0,
+                "p90": 1479.0,
+                "p95": 1485.0,
+                "p99": 2089.0000000000005
+              },
+              "defined": true,
+              "mae_cp": 789.6190476190476,
+              "max_absolute_error_cp": 2240,
+              "model_exact_numerator": 21,
+              "teacher_e_denominator": 21
+            }
+          },
+          "part": "last_third",
+          "ply_first": 73,
+          "ply_last": 108,
+          "positions": 36,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 32,
+              "mate": 4,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 32,
+              "mate": 4,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 9,
+              "exact_cp": 21,
+              "mate": 6,
+              "no_score": 0
+            }
+          }
+        }
+      ],
+      "typed_counts": {
+        "baseline": {
+          "bound_cp": 0,
+          "exact_cp": 104,
+          "mate": 4,
+          "no_score": 0
+        },
+        "candidate": {
+          "bound_cp": 0,
+          "exact_cp": 104,
+          "mate": 4,
+          "no_score": 0
+        },
+        "teacher": {
+          "bound_cp": 62,
+          "exact_cp": 40,
+          "mate": 6,
+          "no_score": 0
+        }
+      }
+    },
+    {
+      "error_distribution": {
+        "baseline": {
+          "absolute_error_quantiles_cp": {
+            "p50": 526.0,
+            "p90": 968.5,
+            "p95": 1002.0,
+            "p99": 18636.39999999991
+          },
+          "defined": true,
+          "max_absolute_error_cp": 32941,
+          "model_exact_numerator": 46,
+          "teacher_e_denominator": 46
+        },
+        "candidate": {
+          "absolute_error_quantiles_cp": {
+            "p50": 582.0,
+            "p90": 1388.5,
+            "p95": 1637.75,
+            "p99": 19325.24999999991
+          },
+          "defined": true,
+          "max_absolute_error_cp": 33669,
+          "model_exact_numerator": 46,
+          "teacher_e_denominator": 46
+        }
+      },
+      "game": 5,
+      "plies": 123,
+      "thirds": [
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 425.0,
+                "p90": 886.2,
+                "p95": 924.3999999999999,
+                "p99": 960.8799999999999
+              },
+              "defined": true,
+              "mae_cp": 475.61538461538464,
+              "max_absolute_error_cp": 970,
+              "model_exact_numerator": 13,
+              "teacher_e_denominator": 13
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 532.0,
+                "p90": 695.4000000000001,
+                "p95": 754.7999999999998,
+                "p99": 808.56
+              },
+              "defined": true,
+              "mae_cp": 441.15384615384613,
+              "max_absolute_error_cp": 822,
+              "model_exact_numerator": 13,
+              "teacher_e_denominator": 13
+            }
+          },
+          "part": "first_third",
+          "ply_first": 1,
+          "ply_last": 41,
+          "positions": 41,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 41,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 41,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 28,
+              "exact_cp": 13,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 360.0,
+                "p90": 765.6,
+                "p95": 812.5999999999999,
+                "p99": 926.52
+              },
+              "defined": true,
+              "mae_cp": 483.8235294117647,
+              "max_absolute_error_cp": 955,
+              "model_exact_numerator": 17,
+              "teacher_e_denominator": 17
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 496.0,
+                "p90": 817.0,
+                "p95": 846.8,
+                "p99": 865.36
+              },
+              "defined": true,
+              "mae_cp": 544.3529411764706,
+              "max_absolute_error_cp": 870,
+              "model_exact_numerator": 17,
+              "teacher_e_denominator": 17
+            }
+          },
+          "part": "middle_third",
+          "ply_first": 42,
+          "ply_last": 82,
+          "positions": 41,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 41,
+              "mate": 0,
+              "no_score": 0
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 41,
+              "mate": 0,
+              "no_score": 0
+            },
+            "teacher": {
+              "bound_cp": 24,
+              "exact_cp": 17,
+              "mate": 0,
+              "no_score": 0
+            }
+          }
+        },
+        {
+          "models": {
+            "baseline": {
+              "absolute_error_quantiles_cp": {
+                "p50": 664.0,
+                "p90": 1079.0,
+                "p95": 9100.0,
+                "p99": 28172.79999999999
+              },
+              "defined": true,
+              "mae_cp": 2660.5,
+              "max_absolute_error_cp": 32941,
+              "model_exact_numerator": 16,
+              "teacher_e_denominator": 16
+            },
+            "candidate": {
+              "absolute_error_quantiles_cp": {
+                "p50": 1099.0,
+                "p90": 1716.0,
+                "p95": 9762.75,
+                "p99": 28887.74999999999
+              },
+              "defined": true,
+              "mae_cp": 3011.4375,
+              "max_absolute_error_cp": 33669,
+              "model_exact_numerator": 16,
+              "teacher_e_denominator": 16
+            }
+          },
+          "part": "last_third",
+          "ply_first": 83,
+          "ply_last": 123,
+          "positions": 41,
+          "typed_counts": {
+            "baseline": {
+              "bound_cp": 0,
+              "exact_cp": 33,
+              "mate": 7,
+              "no_score": 1
+            },
+            "candidate": {
+              "bound_cp": 0,
+              "exact_cp": 31,
+              "mate": 9,
+              "no_score": 1
+            },
+            "teacher": {
+              "bound_cp": 6,
+              "exact_cp": 16,
+              "mate": 19,
+              "no_score": 0
+            }
+          }
+        }
+      ],
+      "typed_counts": {
+        "baseline": {
+          "bound_cp": 0,
+          "exact_cp": 115,
+          "mate": 7,
+          "no_score": 1
+        },
+        "candidate": {
+          "bound_cp": 0,
+          "exact_cp": 113,
+          "mate": 9,
+          "no_score": 1
+        },
+        "teacher": {
+          "bound_cp": 58,
+          "exact_cp": 46,
+          "mate": 19,
+          "no_score": 0
+        }
+      }
+    }
+  ],
+  "gaps_are_not_connected": true,
+  "phase_definition": "index=min(2,floor(3*(ply-1)/N)); ply=1..N in each game; mathematical thirds, not shogi phases",
+  "pooled_absolute_error_diagnostic": {
+    "baseline": {
+      "absolute_error_quantiles_cp": {
+        "p50": 883.5,
+        "p90": 1814.0,
+        "p95": 1993.0,
+        "p99": 2394.400000000004
+      },
+      "defined": true,
+      "max_absolute_error_cp": 32941,
+      "model_exact_numerator": 266,
+      "teacher_e_denominator": 266
+    },
+    "candidate": {
+      "absolute_error_quantiles_cp": {
+        "p50": 756.0,
+        "p90": 1828.5,
+        "p95": 2048.0,
+        "p99": 2464.6500000000046
+      },
+      "defined": true,
+      "max_absolute_error_cp": 33669,
+      "model_exact_numerator": 266,
+      "teacher_e_denominator": 266
+    }
+  },
+  "pooled_thirds_micro_diagnostic": [
+    {
+      "models": {
+        "baseline": {
+          "absolute_error_quantiles_cp": {
+            "p50": 547.0,
+            "p90": 1141.7,
+            "p95": 1212.0,
+            "p99": 1339.32
+          },
+          "defined": true,
+          "mae_cp": 561.71875,
+          "max_absolute_error_cp": 1362,
+          "model_exact_numerator": 64,
+          "teacher_e_denominator": 64
+        },
+        "candidate": {
+          "absolute_error_quantiles_cp": {
+            "p50": 581.0,
+            "p90": 1065.9,
+            "p95": 1172.2999999999997,
+            "p99": 1403.2099999999998
+          },
+          "defined": true,
+          "mae_cp": 546.1875,
+          "max_absolute_error_cp": 1424,
+          "model_exact_numerator": 64,
+          "teacher_e_denominator": 64
+        }
+      },
+      "part": "first_third"
+    },
+    {
+      "models": {
+        "baseline": {
+          "absolute_error_quantiles_cp": {
+            "p50": 723.0,
+            "p90": 1785.0,
+            "p95": 1892.5,
+            "p99": 2084.1
+          },
+          "defined": true,
+          "mae_cp": 840.6197183098592,
+          "max_absolute_error_cp": 2103,
+          "model_exact_numerator": 71,
+          "teacher_e_denominator": 71
+        },
+        "candidate": {
+          "absolute_error_quantiles_cp": {
+            "p50": 496.0,
+            "p90": 1289.0,
+            "p95": 1476.5,
+            "p99": 1870.6
+          },
+          "defined": true,
+          "mae_cp": 616.6760563380282,
+          "max_absolute_error_cp": 1900,
+          "model_exact_numerator": 71,
+          "teacher_e_denominator": 71
+        }
+      },
+      "part": "middle_third"
+    },
+    {
+      "models": {
+        "baseline": {
+          "absolute_error_quantiles_cp": {
+            "p50": 1023.0,
+            "p90": 1964.0,
+            "p95": 2100.5,
+            "p99": 23063.899999999667
+          },
+          "defined": true,
+          "mae_cp": 1572.145038167939,
+          "max_absolute_error_cp": 32941,
+          "model_exact_numerator": 131,
+          "teacher_e_denominator": 131
+        },
+        "candidate": {
+          "absolute_error_quantiles_cp": {
+            "p50": 1295.0,
+            "p90": 2050.0,
+            "p95": 2235.0,
+            "p99": 24308.699999999648
+          },
+          "defined": true,
+          "mae_cp": 1634.5725190839694,
+          "max_absolute_error_cp": 33669,
+          "model_exact_numerator": 131,
+          "teacher_e_denominator": 131
+        }
+      },
+      "part": "last_third"
+    }
+  ],
+  "quantile_definition": "absolute cp error; sorted values; linear interpolation at (n-1)*p; no position IDs",
+  "schema": "sekirei.public-three-series-supplement.v1",
+  "score_axis": "raw_sente_cp",
+  "series": [
+    "teacher",
+    "baseline",
+    "candidate"
+  ],
+  "shared_y_limits_cp": [
+    -40000,
+    40000
+  ]
+}

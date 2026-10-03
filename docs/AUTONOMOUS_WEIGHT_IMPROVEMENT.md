@@ -56,7 +56,7 @@ ridge=1の結果待ちに、`scripts/functional_anchor.py`を準備した。元�
 
 これはbyte入力を受け取る純粋moduleで、実データadapterや学習・診断wrapperを持たない。recipeの`real_generation_ready`は常にfalseで、source/initializer実体と全train core一致、holdout証拠のbinding、private output/lockなどのpreflightを別に要求する。元教師holdoutは元identityのまま保持し、既存診断器のguardも変更しない。14件の公開synthetic fixtureで、丸め・不正cache・hash/identity改変・既存split guardとの境界を確認した。ridge=1の有効な採用未達後、以下の固定学習案を事前登録した。実データの派生target生成・probe・学習・診断は未実施で、実体preflightを通してから進める。
 
-## 実行状態
+## 最初の候補の正式結果
 
 最初の候補は2026-10-03 04:12:16〜05:22:25 UTC、4,208.758秒（約70.1分）で全段階を完了した。MAE pilotは102/102・両engine17/17局面×3反復安定、正式MAEは1,140/1,140・Teacher-E 266/266、Top3 pilotは36/36・安定、正式Top3は551/551。全1,829 attemptで技術失敗0、期限内終了、supervisor/cleanup成功を確認した。最大報告1,001,086 nodesは規定上限1,010,000以内だった。
 
@@ -152,11 +152,11 @@ native/nearest両重みを既存core probeへ渡し、元train112,681・holdout5
 
 ## 条件付きbounded-material案の純粋検証
 
-functional-anchorの有効な正式比較で採用未達という開始条件を満たしたため、次は固定material seed42からFT全体と駒得経路を固定し、補助28ユニットだけを元教師Oへ直接学習する案を準備している。補助FTには駒の位置・種類・所有者・玉・持駒の固定random特徴を含み、駒得だけの入力ではない。fresh Adam・seed/shuffle42・3epoch/epoch3・LR0.0001・step-half3を候補条件とし、補助出力係数の実数上界99 cpを一つだけ固定する。100 cpの整数差に1 cpの丸め余裕を見込む仮説であり、探索Top3維持や全coreでの整数差上限を確認した段階ではない。条件案SHAは`70d86307d5a23319d70dd6fa8cedb472954f178c3663d4265a7c982a85befd5e`。この条件はformal終了前に保存し、当時の未完了結果やfinalから選んでいない。
+functional-anchorの有効な正式比較で採用未達という開始条件を満たしたため、次は固定material seed42からFT全体と駒得経路を固定し、補助28ユニットだけを元教師Oへ直接学習する案を事前登録した。補助FTには駒の位置・種類・所有者・玉・持駒の固定random特徴を含み、駒得だけの入力ではない。fresh Adam・seed/shuffle42・3epoch/epoch3・LR0.0001・step-half3を候補条件とし、補助出力係数の実数上界99 cpを一つだけ固定する。100 cpの整数差に1 cpの丸め余裕を見込む仮説であり、探索Top3維持や全coreでの整数差上限を確認した段階ではない。条件案SHAは`70d86307d5a23319d70dd6fa8cedb472954f178c3663d4265a7c982a85befd5e`。この条件はformal終了前に保存し、当時の未完了結果やfinalから選んでいない。
 
 `scripts/bounded_material.py`はbyte入力だけを扱い、固定FT/FT bias、駒得L2の全512行×4列、駒得bias/out、出力biasと材入力から補助へのpositive-zeroを検証する。補助outの実binary32値をexact Fractionで集計し、`127/64 * Σabs <= 99`を判定する。13件の合成fixtureで座標改変・非有限値・サイズ/magic・符号付きzero・隣接f32予算境界などを確認した。固定referenceのFT `/64→×64`復元は純粋な算術確認であり、実Adamのfloat FT固定や実エンジン検証ではない。recipeのtrainer・optimizer・学習・実core整数差・採用の各フラグは未検証のまま保持する。moduleはファイル保存・学習・engine起動を行わない。
 
-専用trainerの更新maskはparameterとAdam m/vの呼出しをskipし、補助outを各Adam更新後に一様縮小して保存f32の予算を再検査する設計とする。実装、専用source/build、metadata/source binding、保存後のnative/Adam再構成、全局面core・incremental/undo、候補自身の正式比較はまだ必要。既存prepare/exportの固定source guardは変更せず、専用経路で新patchを束縛する。次案の実学習・実probeは開始していない。
+専用trainerの更新maskはparameterとAdam m/vの呼出しをskipし、補助outを各Adam更新後に一様縮小して保存f32の予算を再検査する設計とする。実装、専用source/build、metadata/source binding、保存後のnative/Adam再構成、全局面core・incremental/undo、候補自身の正式比較はまだ必要。既存prepare/exportの固定source guardは変更せず、専用経路で新patchを束縛する。この準備段階では実学習・実probeは開始していなかった。
 
 pure contractのcommit `be7e0da`はCI217公開fixture tests成功（118.346秒）。型検査前の専用trainer追加patchもprivate stagingに準備したが、rustfmt parse/dry-applyを通した段階であり、8件のRust testや実build・学習の成功へ読み替えない。
 
@@ -188,4 +188,24 @@ metadataパスの修正版v3は、二つの正確なsuffixを確認して実`*.b
 
 元O holdout5,895局面の独立診断はcomplete/exit0、native再export・raw/native予測一致・整数駒得差最大99・finite bridge最大0.999970cp・全入力前後一致/cleanup成功。静的core MAEは799.814758cp、駒得809.796268cpで、正式探索の改善とは扱わない。学習metadataの補助28unitはepoch2/3で飽和率1.0・L2更新0となり、全正outの予算が約98.999908cpへ寄った。診断の駒得差も平均98.999861cp・標準偏差0.000099cpで、局面別の残差を学んだ証拠ではなく、ほぼ一定の正のSTM補正で説明できる。base LR表示と実StepHalfを区別し、LR単独が原因とは断定しない。独立静的reviewの16入力hashは前後一致し、正式結果/finalは使っていない。
 
-固定coreで元train112,681・holdout5,895・公開fixture15の計118,591局面を照合し、native/nearest整数・float32 bitsが全一致、全float/core bridge<1.001cp、駒得列と固定Python Mが一致、整数駒得差<=100、FT refresh prefixがi16範囲内となった。holdoutは元O診断の全行と一致し、全checkpoint/Adam/metadata・617 fixed reference files・v3 source/buildを前後hashで束縛した。core receipt SHAは`8cc3768cef852b3f3f13b853b4a99cbe1f0e2786e7b89dca6e56bad4532b3449`。同じ候補の15 fixtures・16 walks・8 search move API walk計8,185観測もrefresh/incremental・parent/null/undo一致、finite intermediates、駒得差最大99で成功した。有限集合の証拠であり、普遍的整数上限や全探索経路・棋力・採用の証明にはしない。次に同じE3のown pilotsと固定100万ノード正式比較へ進む。
+固定coreで元train112,681・holdout5,895・公開fixture15の計118,591局面を照合し、native/nearest整数・float32 bitsが全一致、全float/core bridge<1.001cp、駒得列と固定Python Mが一致、整数駒得差<=100、FT refresh prefixがi16範囲内となった。holdoutは元O診断の全行と一致し、全checkpoint/Adam/metadata・617 fixed reference files・v3 source/buildを前後hashで束縛した。core receipt SHAは`8cc3768cef852b3f3f13b853b4a99cbe1f0e2786e7b89dca6e56bad4532b3449`。同じ候補の15 fixtures・16 walks・8 search move API walk計8,185観測もrefresh/incremental・parent/null/undo一致、finite intermediates、駒得差最大99で成功した。有限集合の証拠であり、普遍的整数上限や全探索経路・棋力・採用の証明にはしない。その後、同じE3のown pilotsと固定100万ノード正式比較を実施した。結果は次節に示す。
+
+## bounded-material固定E3の正式結果
+
+候補自身のMAE pilot 17局面×3反復×2エンジン（102 attempt）、正式MAE 570局面×2エンジン（1,140）、Top3 pilot 12局面×3反復（36）、正式Top3 551を完了した。2026-10-03 11:18:01–12:23:54 UTC、約65.9分。評価器の外側検証では1,204事前入力とworker/事前登録/起動前証拠のunion 1,205ファイルが前後一致し、専用v3 source/build・E3も不変だった。最初のlaunch preflightはuniverseのdictに`len`を使った局面数誤認で評価開始前に停止し、全5局のoccurrences合計570を検証する正しい経路へ修正した。設定・重み・対象を変えず、失敗と修正をprivate erratumへ記録した。
+
+正式比較は有効だが**不採用**。MAEは`165665231/151800 = 1091.338808 cp`、Top3は`8344907/15455265 = 53.993943%`。固定fallbackのMAE1084.478601 cp / Top3 55.388757%に対し、MAEが6.860207 cp悪化しTop3が1.394814ポイント低下した。5局のTop3 hitは46/84・83/122・51/127・52/104・65/114。教師E 266点、Top3 551点、教師評価・bestmove・PV・合法手集合・モデル以外の実行条件の8 identityを固定した厳密有理数比較で判定し、許容差を追加していない。[公開結果とグラフ](validation/autonomous-weight-2026-10-03/bounded-material-residual-100cp-e3/comparison.md)を参照。
+
+独立監査は候補・基準それぞれ1,829 attemptのraw SHA、USI options・型付き結果・deadline・supervisor/runner終了・明示weight読込・ノードgrammarを検証し、Top3を生ログから再count、MAEを整数cp誤差から再集計した。9,578入力と8run inventoryは前後一致し、technical failure/timeoutは0。観測最大nodesは教師1,001,086、候補1,000,004で固定上限1,010,000以内。MAE pilotのterminal bare-resign 3件は既存のno-score例外のまま扱った。独立監査SHAは`2a52e6929e51ffab326b8561a53aa7215dc19ba9b0c00628b5be40fefb013a66`。全協調lockの排他取得・全raw cleanup証拠・launcher exit0/reap・関連processの2回の不存在確認を別receiptへ残し、次の重い処理の開始条件を満たした。
+
+静的O holdoutの約10cpの改善と、ほぼ一定の+99cp STM残差は正式探索での改善を示さなかった。探索実装や比較条件を変える理由とは扱わず、最良は駒得fallbackを維持する。finalは未使用、Plusは非採用候補の選択に使わない。
+
+完成E1/E2/E3の全native/Adam/metadata、失敗v2のepoch1とその正確な旧source/helper、元Oの復元入力、静的・core・incremental証拠、evaluation/4run、凍結completionを既存NASへ保存した。15 source roots・3,899 files・71 directories・0 symlinks・428,614,972 bytesで、コピー前後と保存先のファイル集合・size・SHA-256、directory/symlink集合が一致した。SSD原本と旧runの参照パスは保持し、build/venvはコピーしない。[公開保存集計](validation/autonomous-weight-2026-10-03/bounded-material-residual-100cp-e3/archive.json)を参照。最初の保存呼出しはbuild lock名が既存helperの許容範囲外のためNAS作成前に停止した。helperのguardを変えず、build lockを外側で保持し、training/prepare/benchmark lockをhelperが保持する経路で保存を完了した。失敗と再試行・source snapshotもarchive-supportへ保持した。
+
+## 次の固定案：補助L2更新のFanIn509正規化
+
+現在候補の正式成績を見る前に、補助28unitのepoch2/3飽和・L2更新0という静的診断から次案を一つだけ固定した。可変補助L2 weightとbiasのAdam実効LRを`f32(epoch_lr)/f32(509)`とする。分母は508個の非material入力+1biasで、outのLR・勾配・moment計算・99cp縮小・保護maskを維持する。勾配だけの正規化はAdamで相殺されるため、更新幅を直接正規化する仮説である。分母・cap・epochのgridは試さない。plan SHAは`359cf9daa1a5e57be6c7a2d56b2ecfef5c9e24cfc7648e45f7930544b264ae6e`、記録時刻11:30:04 UTCは現在候補の正式終了より前。
+
+元O train112,681/holdout5,895・original absolute teacher・material seed42/fresh Adam・seed/shuffle42・LR0.0001/step-half3・固定3epoch/E3・実数残差予算99cpを維持する。開始条件は前候補の有効な正式非採用・独立監査成功・全group停止で、actual receiptのpath/SHA/型・相互参照を新build/preregから検証する。別mode `bounded-material-fanin509-v1` と専用schema/source/metadataを使い、旧guardや`SOURCE_HASHES`を変更しない。
+
+sourceだけの準備・独立レビューではL2/biasの2つのAdam LR operand以外の学習数学と旧10fixture本体を保持した。新6件を加えた16 Rust fixturesは宣言済みで、公開fixture上のPython検証・構文確認も進めているが、この記録時点では新modeの実build/Rust tests/学習/probeは未実施。初期bias4では小さなdeltaがf32丸めで保存値に現れない可能性もある。飽和や一定STM補正を防ぐ保証、学習改善・普遍的整数100cp上限・採用の証明とは扱わず、実保存bytes・全epoch・全元局面core/undo・own pilots・固定100万ノード正式比較で確認する。

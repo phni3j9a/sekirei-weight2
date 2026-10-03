@@ -64,6 +64,9 @@ Issue #17の次候補preflightでは、元SSDのdata-400-frozen-holdout/train.la
 
 Issue #17のfunctional-anchor halfも有効な正式比較でMAE改善・Top3維持未達となった。全生成・3epoch・診断・export・core証拠・4run・凍結snapshotを `archives/2026-10-03/issue-17-functional-anchor-half-e3-nearest-v1` へ保管し、3,831 files・43 directories・0 symlinks・415,829,630 bytesの集合・size・SHA-256等がコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-functional-anchor-half-e3-nearest-v1`、[公開集計](validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/archive.json)を参照。SSD原本・参照パスを保持し、元入力と固定環境等の既存依存も記録した。
 
+Issue #17のbounded-material E3は有効な正式比較でMAE・Top3とも悪化し、不採用とした。成功v3の全3epoch/native/Adam/metadata、metadata名誤りで停止したv2の実epoch1と旧source/helper、元O復元入力・全証拠・4run・凍結completionを `archives/2026-10-03/issue-17-bounded-material-residual-100cp-e3-v1` へ保存し、3,899 files・71 directories・0 symlinks・428,614,972 bytesのsource前後/保存先一致を確認した。private receiptは `receipts/issue17-bounded-material-residual-100cp-e3-v1`、[公開集計](validation/autonomous-weight-2026-10-03/bounded-material-residual-100cp-e3/archive.json)を残す。SSD原本と参照パスを保持し、専用build/venvはSSDに残す。保存helperが許容しないbuild lockを外側で保持した再試行も記録し、partial NAS copyの再利用やguardの緩和はしていない。
+
+
 ## 固定ソフト
 
 完全な commit とハッシュは [toolchain.lock.json](../config/toolchain.lock.json) にある。

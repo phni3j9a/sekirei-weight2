@@ -1,0 +1,97 @@
+{
+  "actual_added_bytes": 320663672,
+  "actual_fit_started": false,
+  "actual_formal_started": false,
+  "actual_usi_core_fingerprint_verified": true,
+  "architecture": {
+    "compile_feature": "nnue_white_view_aux_tied",
+    "core_features": [
+      "nnue_white_view_aux_tied"
+    ],
+    "dimensions": {
+      "input": 2420,
+      "l1": 256,
+      "l2": 32
+    },
+    "feature_schema": "flat_white_view_aux_tied_v1",
+    "hand_aux_donor": {
+      "0=3": 0,
+      "1=2": 1
+    },
+    "king_relative_b_small": false,
+    "native_magic": "SEKIRW03",
+    "old_magic_loader_guards_preserved": true,
+    "search_board_eval_usi_main_sources_unchanged": true,
+    "usi_features": [
+      "nnue_white_view_aux_tied"
+    ]
+  },
+  "base_source_unchanged": true,
+  "best_model_updated": false,
+  "build_identity_sha256": "4d14a53eaea25913af586ef6ded0c26c84497e129da8844d0fa15348fe2c3e10",
+  "build_jobs": 2,
+  "build_manifest_sha256": "acdf54127ecea9d6d3317490f1547a13c43f65db749a48115c055ebc7d9e5c30",
+  "candidate_model_adoption_verified": false,
+  "changed_source_paths": [
+    "crates/sekirei-core/src/nnue.rs",
+    "crates/sekirei-core/Cargo.toml",
+    "crates/sekirei-usi/Cargo.toml"
+  ],
+  "compiler": {
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "target": "x86_64-unknown-linux-gnu"
+  },
+  "dependency_files": 8,
+  "executor_exit_code": 0,
+  "executor_reaped": true,
+  "final_used": false,
+  "mutually_exclusive_features_returncode": 101,
+  "new_release_membership_measured_independently": true,
+  "patch_sha256": "38bbf3e47e7a38a25cbd45a2a1cf2dbee602e09ad9fdc518017ee64661baf729",
+  "patched_source_identities": {
+    "crates/sekirei-core/Cargo.toml": {
+      "bytes": 581,
+      "sha256": "c6c0d7a2e60b988e2975c5bc5b7dff620fe74b4426ff1ffc69474a0fa5cc2fc8"
+    },
+    "crates/sekirei-core/src/nnue.rs": {
+      "bytes": 52355,
+      "sha256": "083c99ed681108d1643fa897aa2a4c3f452a170a73219fa3dc2cf16cdf68de50"
+    },
+    "crates/sekirei-usi/Cargo.toml": {
+      "bytes": 500,
+      "sha256": "f0f9689226fc59c10b7d1adc10a101f9f31914bc6a3e342b29b68917ef73ffea"
+    }
+  },
+  "plan_sha256": "1f274b187a96b16674814c51f77cb402ca8a80e6a7e5d738a5caf9354127e836",
+  "probe_binaries_compiled": 3,
+  "probe_execution_started": false,
+  "producer_commit": "0786c70afc27396fe5e821b93e77fe276a40917b",
+  "release_dependency_files": 63,
+  "runtime_inputs_unchanged": 1161,
+  "rust_tests": {
+    "b_small": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 9
+    },
+    "default": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 9
+    },
+    "white_view": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 16
+    }
+  },
+  "rustflags": "-C target-cpu=x86-64-v3",
+  "schema": "sekirei.public-white-view-runtime-build.v1",
+  "source_files": 526,
+  "status": "verified-built-not-model-tested",
+  "teacher_copy_method": "regular-byte-copy",
+  "teacher_rebuilt": false,
+  "teacher_source_and_copies_equal": true,
+  "upstream_commit": "f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9"
+}

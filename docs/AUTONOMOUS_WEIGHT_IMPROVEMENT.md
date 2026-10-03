@@ -116,4 +116,21 @@ v1の事前登録を保持し、実行補助のsource SHAだけを更新したv2
 
 generation adapterのcommit `97fe087`はCI 204テスト成功（124.048秒）。外側wrapper・source検証codeとそのhash、source/core/生成/学習のprivate receiptsを保存し、完了した次候補のNAS snapshotへ含める。
 
+
+## functional-anchor epoch3の診断・exportと正式比較開始
+
+固定3epoch学習は900.934秒、出力258,432,475 bytes、最大RSS約609 MiBで有効に完了した。全3epochの112,681 cache hits/misses=0・D/absolute/Adam metadataと入力/source前後一致を確認し、trainer process groupの停止も確認した。固定epoch3 native SHAは`2e1328ebd7cbab463d571a9f60e3071bf92bfa92b42b9da4457faf7396f71d18`。3つのcheckpointと最終重みを保持し、静的診断から別epochを選んでいない。
+
+D checkpointを元教師Oの固定holdout 5,895局面へ診断し、約41.405秒でcleanup/input不変・native全byte再exportと全件出力を検証した。native静的MAEは659.883 cp、raw floatは659.548 cp、元materialは809.796 cp。これらは正式探索後の指標ではない。
+
+既存nearest-even方式でFTとFT biasだけをexportし、native全byte再構成・非FT byte保持・D/FNV/absolute sidecarを照合した。nearest SHAは`54e388057db60cab61f7d4110565cf2456564aa28dea11af0456cf0c4fa6d111`、metadata SHAは`a4e4877d8a4ea058a11006f13dbcd5b1c73e7a1b4c77ba89b361ab7044b21128`。nearestの静的O holdout MAEは658.952 cp。export recipeの`engine_verified=false`は維持し、実core証拠を別receiptへ記録した。
+
+native/nearest両重みを既存core probeへ渡し、元train112,681・holdout5,895と公開fixture15の計118,591局面を検証した。両NNUEのfinite-f32/core差は全件1.001 cp未満、FT全refresh prefixはi16範囲内、material列は固定Python駒得と一致した。holdoutのnative core・float32 bits・materialは完成O診断と全件一致し、native/Adam/metadataを同じ診断/export入力SHAへ束縛した。約11.639秒、exit0・cleanup成功・source/input前後不変。candidate core receipt SHAは`cc5467e63d9313f665061933fca5c27a9c302327f0368d0c5891e708143cc2fc`。全incremental探索経路の新規証明とは区別する。
+
+2026-10-03 08:24:33 UTCに候補自身のMAE pilotを開始した。run prefixは`development-17-anchor-half-e3-v1`。続く正式MAE/Top3は固定development5局・100万ノードで、既定設定・採用条件を維持する。
+
+開始前の記録生成で設定名を`benchmark.json`と誤認し、記録保存がFileNotFoundErrorで失敗した後もshellが続いたためpilotが開始された。この経緯をprivate erratumへ保持した。実測は既存helperが正しい既定`development-benchmark.json`を読んでおり、pilot中に実candidate configが既定とmodel/own pilot evidence以外完全一致すること、570局面・100万ノード・固定weight/source・事前登録不変を再確認した。訂正記録v2はpilot開始後の検証として明示し、事前記録へ読み替えない。measurementのpilot/formal gateは変更せず、再起動や既存runの上書きは行わない。以降の複数段階shellは`set -e`で途中失敗時に停止する。
+
+正式比較・厳密採否・保存は進行中。最良はfallback、goalは継続中。
+
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

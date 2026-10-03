@@ -58,6 +58,10 @@ Issue #17の112k epoch3・FT最近傍候補は、有効な正式比較でMAE改�
 
 この配置は保管容量を補うもので、mergerfs自体による複製を意味しない。資料原本を移設した後、SSDの互換リンクは別コピーとして数えない。今回のファイル数・容量・照合結果とSSDの空き容量変化は[移設の検証記録](validation/storage-2026-10-02.md)に残す。
 
+Issue #17のridge=1は正式比較でMAE改善・Top3低下のため採用しない。完了evaluation・4run・model/metadata・凍結snapshotを`archives/2026-10-03/issue-17-material-ridge1-112k-v1`へ保存し、3,737 files / 33 directories / 0 symlinks / 34,969,726 bytesのsource前後と保存先のsize/SHA・集合一致を確認した。private receiptは`receipts/issue17-material-ridge1-112k-v1`、[公開集計](validation/autonomous-weight-2026-10-03/material-ridge1-112k/archive.json)を残す。SSD原本は保持した。
+
+Issue #17の次候補preflightでは、元SSDのdata-400-frozen-holdout/train.labelsだけが固定manifestとhash不一致で停止した。検証済みIssue #15 NAS copyとの差分は1行のteacher identityのみ、cp・SFEN集合・順序は同じ。原因は未特定。元SSDを上書きせず、`campaign-17-autonomous-v1/source-input-recovery-v1/dataset`へmanifestと4ファイル（5 files / 64,444,603 bytes）を新規copyし、元NAS・copy先・manifestのsize/SHA一致、元SSDの前後不変を確認した。次候補ではこの復元inputを使う。詳細receiptと差分記録はprivateに保持し、[自律改善](AUTONOMOUS_WEIGHT_IMPROVEMENT.md#次候補の事前登録と入力復元)にhashと判断を残す。
+
 ## 固定ソフト
 
 完全な commit とハッシュは [toolchain.lock.json](../config/toolchain.lock.json) にある。

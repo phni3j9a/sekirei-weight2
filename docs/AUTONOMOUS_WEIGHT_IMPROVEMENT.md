@@ -54,7 +54,7 @@ python scripts/publish_comparison.py --comparison "$CAMPAIGN/comparison.json" \
 
 ridge=1の結果待ちに、`scripts/functional_anchor.py`を準備した。元教師のcpと固定fallbackの駒得cpを1/2ずつ混ぜ、符号付き整数のnearest-evenで丸める候補案に対応する。元manifestと4ファイルのhash・size・count・source metadata、全SFEN/cache、train/holdoutの盤面・ゲーム分離を検証し、入力だけからcanonical specと派生target identityを導出する。train labelsは元行順・追加metadataを保ち、train positionsとholdout 2ファイルはbyte一致で保持する。
 
-これはbyte入力を受け取る純粋moduleで、実データadapterや学習・診断wrapperを持たない。recipeの`real_generation_ready`は常にfalseで、source/initializer実体と全train core一致、holdout証拠のbinding、private output/lockなどのpreflightを別に要求する。元教師holdoutは元identityのまま保持し、既存診断器のguardも変更しない。14件の公開synthetic fixtureで、丸め・不正cache・hash/identity改変・既存split guardとの境界を確認した。実データの生成・学習・正式候補の事前登録は未実施で、ridge=1が有効な採用未達になった場合に必要性を判断する。
+これはbyte入力を受け取る純粋moduleで、実データadapterや学習・診断wrapperを持たない。recipeの`real_generation_ready`は常にfalseで、source/initializer実体と全train core一致、holdout証拠のbinding、private output/lockなどのpreflightを別に要求する。元教師holdoutは元identityのまま保持し、既存診断器のguardも変更しない。14件の公開synthetic fixtureで、丸め・不正cache・hash/identity改変・既存split guardとの境界を確認した。ridge=1の有効な採用未達後、以下の固定学習案を事前登録した。実データの派生target生成・probe・学習・診断は未実施で、実体preflightを通してから進める。
 
 ## 実行状態
 
@@ -71,6 +71,25 @@ ridge=1の結果待ちに、`scripts/functional_anchor.py`を準備した。元�
 
 完了候補のevaluation・4run・モデル/metadata・凍結したsource/receipt/publication snapshotを既存NASへ保存し、source-before/source-after/destinationの集合・サイズ・SHA-256、directory集合を照合した。3,726 files・30 directories・0 symlinks・33,657,398 bytesで一致し、SSD原本は保持した。[保存集計](validation/autonomous-weight-2026-10-03/expanded-e3-nearest/archive.json)だけを公開する。このコピーは固定runtime・audit venv・fallback比較・前回の学習archiveへの依存を持ち、単独で全環境を復元できるものではない。
 
-ridge=1は重み・absolute sidecar・事前登録した3補助のSHA一致、固定runtimeとdevelopment 570局面のhash、SSD空き約26.5 GiBを確認し、2026-10-03 05:36:27 UTCに候補自身のMAE pilotを開始した。102/102 attempt・両engine17/17局面×3反復安定・最大1,001,086 nodesを検証し、05:40:19 UTCから正式MAEを測定中。pilot fingerprintは`2ad7b90124295ab38456a5d3c25c9e2027394cc97a65bc51e0d6b1a0330e0806`。最初の採用未達候補は保存済みで、重い探索はこの一つだけを動かす。次候補の採否は未確定。
+ridge=1は候補自身のMAE pilotを2026-10-03 05:36:27 UTCに開始し、05:40:19に正式MAE、06:29:58にTop3 pilot、06:31:03に正式Top3へ進み、06:46:56に全段階を完了した。4,229.379秒（約70.5分）。MAE pilot 102/102・両engine17局面×3反復安定、正式MAE 1,140/1,140・Teacher-E 266/266、Top3 pilot 36/36・12局面×3反復安定、正式Top3 551/551。全1,829 attemptのraw SHA・lifecycle・options・cleanup・timeoutを独立監査し、技術失敗0、正式の最大報告はSekirei 1,000,004 / teacher 1,001,086 nodesで規定内だった。MAE pilot fingerprintは`2ad7b90124295ab38456a5d3c25c9e2027394cc97a65bc51e0d6b1a0330e0806`。
+
+| 採用指標（5局等重み） | 現行fallback | 112k 13駒価値ridge=1 |
+| --- | ---: | ---: |
+| MAE | 1084.478601 cp | 993.941540 cp |
+| Top3入り率 | 55.388757% | 53.970998% |
+
+8項目のidentity一致と7,365入力fileのhash・directory集合不変を確認した。各局から独立に再集計した有理数はMAE `3168486841/3187800`、Top3 `433750763/803673780`。MAEは約90.537 cp改善したが、Top3は約1.418ポイント低下し、採用しない。正則化だけを強める案はTop3保持に届かず、このlambdaの追加gridは行わない。[正式比較とグラフ](validation/autonomous-weight-2026-10-03/material-ridge1-112k/comparison.md)を公開し、最良fallbackを維持する。formal・学習の実行プロセスは終了し、goalは継続中。
+
+完了ridge=1のevaluation・4run・model/metadata・凍結snapshotをNASへ保管し、3,737 files / 33 directories / 0 symlinks / 34,969,726 bytesの集合・size・SHA-256をsource-before/source-after/destinationで照合した。SSD原本を保持し、[保存集計](validation/autonomous-weight-2026-10-03/material-ridge1-112k/archive.json)のみ公開する。snapshotには入力不一致・復元receiptと次候補の未実行事前登録も記録し、固定runtime/venv/前回archiveへの依存を明示した。
+
+## 次候補の事前登録と入力復元
+
+次は同じ112,681局面で、元teacherの手番側cp Tと固定material fallback cp Mをnearest-evenで`(T+M)/2`へ加工する。位置の特徴を学ぶNNUEの学習目標に固定駒得の保持を加える仮説で、探索Top3の改善はまだ証明していない。比率1/2は一つだけ、固定material init・fresh Adam・seed/shuffle 42・LR 0.0001・step-half 3epoch・epoch3固定・FT nearest-even exportを事前登録した。元holdout 5,895局面はbyteとteacher identityを保持し、学習target Dのcheckpointを元teacher Oへ診断する専用wrapperを準備する。既存guardは変更しない。
+
+canonical spec SHAは`378072a024a17d64719eb9b7519b6679d98d1c0a8f1c7e04917ae6270f59ae30`、private事前登録SHAは`9c8c3b74a4474bfb906cdefd2db08d757c30e5e73b1af19f41b684b7755d2792`。元manifestと4入力・source provenanceをbyte入力moduleで検証し、specからDを導出した。全trainのnative-core material一致、source/exclusion receipts、実adapter・wrapperの検証とhash凍結はまだ必要。派生labels、学習モデル、正式測定はまだ生成していない。前回full学習907.622秒を参考にwall上限1,200秒、追加SSD 2 GiB以内を見積り、使用前に容量を再確認する。
+
+このspecの初回検査では、元SSDのtrain.labels SHAがmanifestの`aae8d2858f54129c52447e0df665bff0260604020cecc81a0dc84903f050aec4`に対し`a088d3ae7bec4194d7f616109e503d43907b48d624088f522d667181d4bdfe42`だったため、出力作成前に停止した。NASのIssue #15保管copyは固定SHAと一致した。差分は1行のteacher identityのみで、112,681行の順序・SFEN集合・cpは同じだった。変更原因は未特定で、元SSD・過去runは変更しない。
+
+検証済みNASからmanifestと4ファイルを新private inputへ復元し、5 files / 64,444,603 bytesの集合・size・SHA、NASコピー前後、manifestとの一致を確認した。元SSDの全5hashは前後不変。復元receipt SHAは`8b9e42f4e5880af6cddef9373d61f09165be9426cedd36b4f1c8dc1c72c093b8`。新候補はこの復元copyを入力にし、元の不一致をmanifestの書換えや行除外で通さない。完了した正式比較のweight・runtime・attempt証拠は別に有効性を確認済みで、この入力復元をモデル採用の成功とは扱わない。
 
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

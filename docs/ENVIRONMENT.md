@@ -44,6 +44,8 @@ Issue #15も同じ教師packと `suisho11beta-v1/venv/bin/python`（cshogi 1.0.4
 
 Issue #15のcampaign・専用trainer・完了比較16 runは `archives/2026-10-03/issue-15-eight-hour-v1` へ保管した。source-before/source-after/destinationのファイル集合・サイズ・SHA-256、directory集合、symlink文字列を全照合し、20,765 files・757 directories・4 symlinks・2,417,083,627 bytesで一致した。非公開receiptは `receipts/issue15-eight-hour-v1`、[公開集計](validation/weight-improvement-2026-10-03/archive.json)には集約値とhashだけを置く。SSD原本は削除していない。比較バイナリ・旧データ等の既存依存は従来のruntimeと保管記録を併用し、このコピー単体で全環境を独立復元できるとは扱わない。
 
+Issue #17の112k epoch3・FT最近傍候補は、有効な正式比較でMAE改善・Top3低下のため採用未達となった。完了evaluation・4run・モデル/metadata・凍結snapshotを `archives/2026-10-03/issue-17-expanded-e3-nearest-v1` へ保管し、3,726 files・30 directories・0 symlinks・33,657,398 bytesがコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-expanded-e3-nearest-v1`、[公開保存集計](validation/autonomous-weight-2026-10-03/expanded-e3-nearest/archive.json)は集約値とhashのみ。SSD原本を保持し、固定runtime・audit venv・fallback証拠・Issue #15学習archiveへの依存をsnapshotに残した。採用モデルの更新や独立した全環境backupの成功とは扱わない。
+
 コピーと復元は次の手順で手動実行する。
 
 1. `findmnt --target /mnt/storage` と `df -h` でマウントと両保存先の空きを確認する。マウントがない、書き込めない、容量不足の場合は停止し、内蔵SSD側に同名の保管先を作らない。

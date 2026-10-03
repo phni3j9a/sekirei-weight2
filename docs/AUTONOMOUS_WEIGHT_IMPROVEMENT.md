@@ -52,6 +52,17 @@ python scripts/publish_comparison.py --comparison "$CAMPAIGN/comparison.json" \
 
 ## 実行状態
 
-最初の候補の入力hashとabsolute metadata、固定runtime、cshogiによるdevelopment全570局面・46,668合法手の分類一致を確認した。2026-10-03 04:12:16 UTCに開始した候補自身のMAE pilotは102/102 attempt、技術失敗0、両エンジン17/17局面で3反復安定、最大報告1,001,086 nodes（規定上限1,010,000以下）を確認した。同candidateのpilotを凍結し、04:16:24 UTCに正式MAEへ進んだ。採用判断は保留で、最良モデルはfallbackを維持する。
+最初の候補は2026-10-03 04:12:16〜05:22:25 UTC、4,208.758秒（約70.1分）で全段階を完了した。MAE pilotは102/102・両engine17/17局面×3反復安定、正式MAEは1,140/1,140・Teacher-E 266/266、Top3 pilotは36/36・安定、正式Top3は551/551。全1,829 attemptで技術失敗0、期限内終了、supervisor/cleanup成功を確認した。最大報告1,001,086 nodesは規定上限1,010,000以内だった。
+
+| 採用指標（5局等重み） | 現行fallback | 112k epoch3・FT最近傍 |
+| --- | ---: | ---: |
+| MAE | 1084.478601 cp | 949.416682 cp |
+| Top3入り率 | 55.388757% | 54.067494% |
+
+厳密比較は8項目のidentity一致、入力hash不変、developmentのみ使用を確認し、有効に完了した。MAEは約135.062 cp改善したが、Top3は約1.321ポイント低下した。採用条件は満たさず、最良モデルはfallbackを維持する。独立監査でも各局の保存値から有理数を再集計し、同じ採否を確認した。[正式比較・identity](validation/autonomous-weight-2026-10-03/expanded-e3-nearest/comparison.md)と[候補グラフ](validation/autonomous-weight-2026-10-03/expanded-e3-nearest/mae/validation.md)を公開した。これはdevelopmentでの比較であり、final評価や一般的な棋力改善を示さない。
+
+有効な採用未達という事前分岐条件を満たしたため、次は上記のridge=1候補を評価する。今回の結果を見てlambdaを選び直すことはしない。完了候補のNAS保存と次候補の容量・identity確認を済ませてから、候補自身のpilotを開始する。goalは継続中。
+
+完了候補のevaluation・4run・モデル/metadata・凍結したsource/receipt/publication snapshotを既存NASへ保存し、source-before/source-after/destinationの集合・サイズ・SHA-256、directory集合を照合した。3,726 files・30 directories・0 symlinks・33,657,398 bytesで一致し、SSD原本は保持した。[保存集計](validation/autonomous-weight-2026-10-03/expanded-e3-nearest/archive.json)だけを公開する。このコピーは固定runtime・audit venv・fallback比較・前回の学習archiveへの依存を持ち、単独で全環境を復元できるものではない。
 
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

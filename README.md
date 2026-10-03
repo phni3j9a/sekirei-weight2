@@ -8,6 +8,8 @@
 
 ## 現在の段階
 
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の自律改善では、112k epoch3・FT最近傍候補の正式比較が完了した。MAEは1084.479→949.417 cpへ改善したが、Top3入り率は55.39%→54.07%へ低下したため採用しない。最良は駒得fallbackを維持し、事前登録したridge=1候補へ進む。[今回の正式結果](docs/validation/autonomous-weight-2026-10-03/expanded-e3-nearest/comparison.md)と[実行方針](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。PR #18は下書き・未マージで、goalは継続中。
+
 Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) / [PR #14](https://github.com/phni3j9a/sekirei-weight2/pull/14) で、配布packから最初の学習済みweightを生成し、固定v0.3.39で比較した。採用指標は **評価値MAE** と **水匠の最善手がSekireiのTop3に入る割合** の二つ。
 
 初回は55,404局面・3エポックをCPUで学習し、445.376秒、最大RSS約327 MiBで完了した。ゲーム単位で分離した保留5,895局面は学習に使わず、取得済み独立1,000局の全盤面を学習・保留から機械的に除外した。学習器の専用checkoutだけに外部ラベル入力とFTZ/DAZ設定を追加し、探索エンジンは固定版を維持している。
@@ -116,7 +118,7 @@ Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](ht
 
 探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PR #16はマージ済みで、モデル採用は未達のまま。
 
-Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を開始した。最初に保存済み112,681局面・epoch3・最近傍丸め版を候補自身のpilot・正式MAE・Top3で検証する。現行の二指標と100万ノード条件を維持し、実測から次の仮説を選ぶ。[目標・候補・資源・実行状態](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を継続する。保存済み112,681局面・epoch3・最近傍丸め版の正式比較は有効に完了したが、Top3維持条件を満たさなかった。現行の二指標と100万ノード条件を維持し、事前規則どおりridge=1を次に評価する。[目標・候補・資源・実行状態](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
 
 ## 文書
 

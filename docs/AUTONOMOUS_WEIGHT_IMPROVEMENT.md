@@ -30,6 +30,6 @@ Issue #15 / PR #16の実装と実験記録はマージ済みで、今回の専�
 
 ## 実行状態
 
-最初の候補の入力hashとabsolute metadataを確認し、専用worktreeとprivate campaignを準備した。正式比較は実行前で、採用判断は保留。最良モデルはfallbackを維持する。
+最初の候補の入力hashとabsolute metadata、固定runtime、cshogiによるdevelopment全570局面・46,668合法手の分類一致を確認した。2026-10-03 04:12:16 UTCに候補自身のMAE pilotを開始し、有効なpilotから正式MAE・Top3へ直列で進む。採用判断は保留で、最良モデルはfallbackを維持する。
 
-関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。
+関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

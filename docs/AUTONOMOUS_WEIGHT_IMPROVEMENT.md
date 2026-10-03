@@ -181,3 +181,11 @@ Pythonの新規fixtureはactual full-shape AdamのFT 1ULP改変（native/nearest
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。
 
 metadataパスの修正版v3は、二つの正確なsuffixを確認して実`*.bin`を参照し、不正な名を拒否する。公開synthetic NNUEを実serializerで保存して`save_checkpoint_meta`全経路を通す回帰testを追加し、複数ドット・親dirのsuffix・FNV・教師identity・非zero補助予算・native bytes保持を確認した。新専用source/buildのRust 10 testsとrelease buildが成功した。追加patch SHAは`ee819bd80c41301ee78a0d3ce29efd976c3d762c1ddf07bf6cc259703d38933b`、binary SHAは`86a17aa6fd75ddf76f4679b05d072ca0d930662aa7fb6b9dadd2647e79ab7ee3`。v2のtrainer数学はbyte一致で保持し、元の失敗source/helper/事前登録も別snapshotへ凍結した。旧失敗runの再開や採用判定には使わず、新事前登録とfresh Adamで同じ3epoch/E3を再実行する。
+
+## bounded-material修正版の固定E3と技術検証
+
+修正版commit `c191670`のCIは242 tests（141.323秒）が成功した。新事前登録v2は元plan・O入力・教師・init・全hyperparametersを維持し、v3 buildと13 helpersのhashだけを新しい実体へ束縛した。初期material/fresh Adamから3epochを有効に完了した。trainer 88.014秒、外側の全source検証を含め101.792秒、出力203,715,187 bytes。全3epochのstep=112681/225362/338043、FT/biasの実binary32固定、保護したm/vのpositive-zero、native全byte再構成、nearest全byte一致、厳密99cp予算を検証し、group停止/cleanupと入力/source前後不変を確認した。選択は事前固定E3だけで、weight SHAは`edd072bc04f1f018245d90d563576f1a9df77884c5e0370277b3e498f111927a`。
+
+元O holdout5,895局面の独立診断はcomplete/exit0、native再export・raw/native予測一致・整数駒得差最大99・finite bridge最大0.999970cp・全入力前後一致/cleanup成功。静的core MAEは799.814758cp、駒得809.796268cpで、正式探索の改善とは扱わない。学習metadataの補助28unitはepoch2/3で飽和率1.0・L2更新0となり、全正outの予算が約98.999908cpへ寄った。診断の駒得差も平均98.999861cp・標準偏差0.000099cpで、局面別の残差を学んだ証拠ではなく、ほぼ一定の正のSTM補正で説明できる。base LR表示と実StepHalfを区別し、LR単独が原因とは断定しない。独立静的reviewの16入力hashは前後一致し、正式結果/finalは使っていない。
+
+固定coreで元train112,681・holdout5,895・公開fixture15の計118,591局面を照合し、native/nearest整数・float32 bitsが全一致、全float/core bridge<1.001cp、駒得列と固定Python Mが一致、整数駒得差<=100、FT refresh prefixがi16範囲内となった。holdoutは元O診断の全行と一致し、全checkpoint/Adam/metadata・617 fixed reference files・v3 source/buildを前後hashで束縛した。core receipt SHAは`8cc3768cef852b3f3f13b853b4a99cbe1f0e2786e7b89dca6e56bad4532b3449`。同じ候補の15 fixtures・16 walks・8 search move API walk計8,185観測もrefresh/incremental・parent/null/undo一致、finite intermediates、駒得差最大99で成功した。有限集合の証拠であり、普遍的整数上限や全探索経路・棋力・採用の証明にはしない。次に同じE3のown pilotsと固定100万ノード正式比較へ進む。

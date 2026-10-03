@@ -118,7 +118,7 @@ Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](ht
 
 探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PR #16はマージ済みで、モデル採用は未達のまま。
 
-Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を継続する。3候補の正式比較が有効に完了したが、MAE改善とTop3維持を同時に満たすモデルは未達である。次候補はFT・駒得経路を固定する専用学習器のbuild・10件のRust fixtureと、初期駒得NNUEのincremental/undo技術probeを完了した。元O入力の全hashを確認した実学習はepoch1 metadataの参照パス不備で停止したため、失敗runを保持し、metadataパスを修正した新source/buildと実保存の回帰fixtureまで成功した。同じ条件でfresh3epochを再実行する。学習後候補のprobe・正式採用はまだ未完了。[目標・候補・資源・実行状態](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を継続する。3候補の正式比較が有効に完了したが、MAE改善とTop3維持を同時に満たすモデルは未達である。次候補はFT・駒得経路を固定する専用学習器のbuild・10件のRust fixtureと、初期駒得NNUEのincremental/undo技術probeを完了した。最初の実学習はepoch1 metadataの参照パス不備で停止したため失敗runを保持した。修正版で同じ条件のfresh3epochが完了し、全Adam/保存byte、元O診断、118,591局面のcoreとincremental/undo技術probeが成功した。補助経路がほぼ定数+99 STM cpへ飽和したことも記録しており、次は候補自身の100万ノード正式比較で判定する。採用可能なモデルはまだ未達。[目標・候補・資源・実行状態](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
 
 ## 文書
 

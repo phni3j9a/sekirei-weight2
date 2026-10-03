@@ -283,3 +283,7 @@ numeric監査の最初の起動は外部SHA指定の誤りで入力読取前に�
 準備した[特徴量パッチ](../patches/sekirei-white-view-aux-tied-v1.patch)は原典v0.3.39の`nnue.rs`とcore/USIのCargo feature宣言だけを変える。compile featureは`nnue_white_view_aux_tied`、native magicは`SEKIRW03`、dimensionsはINPUT2420/L1256/L232を維持する。新loader/saveは持駒bank0=3・1=2を全256 i16チャネルで検証し、旧01/02とは別に扱う。[純粋な重み・design契約](../scripts/white_view_paired_linear.py)は固定stock seed42を変換入力とし、盤上FT・bias・保護駒得を保持してaux持駒だけをdonorからコピーする。新03を旧01に戻して旧loaderのguardを通す経路は設けない。
 
 公開合成24 testsがwhite feature対応・旧loader拒否・native全byte・教師join・整数designのoriginを検証する。源コードだけの10 tests、Rust構文確認と3ファイルへのpatch dry-runも完了した。Rustの型検査・新旧feature build・03の実ロード・full-row/incremental・新fallback bridgeは後工程で、準備の成功を実機検証やモデル採用とは扱わない。学習条件は元O train112,681/holdout5,895、254係数、ridge=1、L1半径`161791/4096`、保存f32 cap39.5、FISTA最大20,000反復/1,200秒を維持する。
+
+[専用build契約](../scripts/white_view_build_contract.py)と[準備worker](../scripts/prepare_white_view_runtime.py)は、原典tracked526ファイル・依存8ファイルのうち上記3 source/Cargo2本だけの変更を許可し、専用のrelease USIが新coreを使うことをCargo artifactとfingerprintで確認する。教師は旧固定runtimeから通常の別inodeファイルへコピーし、宣言パス・実解決先・コピー前後のsize/SHAを照合する。新release/depsの全membershipを固定し、旧training15の63ファイルという数は新buildに流用しない。[serialization probeのsource](../scripts/white_view_serialization_probe.rs)を含む3 probeは新coreへリンクするが、build完了だけではモデルの実ロードや全row証明を示さない。
+
+公開workerの実入口は無効のままで、実入力を外部SHAで固定したRootが別versionを有効化して使う。容量は追加最大8GiB・残り最低2GiB、jobs=2、各childのwait/reap/group停止と前後input一致を要求する。公開合成15 testsと独立source peerで契約・legacy教師manifest・取消/cleanup・容量判定を検証した。実Cargo/Rust testsとbuildの結果は実行後に別途記録する。

@@ -50,6 +50,12 @@ python scripts/publish_comparison.py --comparison "$CAMPAIGN/comparison.json" \
 
 測定コマンドは新しい出力先を要求し、採用は行わない。比較コマンドのexit 0は比較の有効性で、採用には`adopt=true`が必要。公開化はこのevaluation-directory経路に対応する。既定の比較基準は今回のfallback正式runであり、最良モデルが更新された後に追加比較する場合は`--baseline-evaluation`を明示し、公開化にも`--baseline-label`を渡す。途中再開は`benchmark.py resume`または`top3.py --resume`を使い、全体補助を同じ出力先へ再実行しない。
 
+## 次の学習案の入力検証
+
+ridge=1の結果待ちに、`scripts/functional_anchor.py`を準備した。元教師のcpと固定fallbackの駒得cpを1/2ずつ混ぜ、符号付き整数のnearest-evenで丸める候補案に対応する。元manifestと4ファイルのhash・size・count・source metadata、全SFEN/cache、train/holdoutの盤面・ゲーム分離を検証し、入力だけからcanonical specと派生target identityを導出する。train labelsは元行順・追加metadataを保ち、train positionsとholdout 2ファイルはbyte一致で保持する。
+
+これはbyte入力を受け取る純粋moduleで、実データadapterや学習・診断wrapperを持たない。recipeの`real_generation_ready`は常にfalseで、source/initializer実体と全train core一致、holdout証拠のbinding、private output/lockなどのpreflightを別に要求する。元教師holdoutは元identityのまま保持し、既存診断器のguardも変更しない。14件の公開synthetic fixtureで、丸め・不正cache・hash/identity改変・既存split guardとの境界を確認した。実データの生成・学習・正式候補の事前登録は未実施で、ridge=1が有効な採用未達になった場合に必要性を判断する。
+
 ## 実行状態
 
 最初の候補は2026-10-03 04:12:16〜05:22:25 UTC、4,208.758秒（約70.1分）で全段階を完了した。MAE pilotは102/102・両engine17/17局面×3反復安定、正式MAEは1,140/1,140・Teacher-E 266/266、Top3 pilotは36/36・安定、正式Top3は551/551。全1,829 attemptで技術失敗0、期限内終了、supervisor/cleanup成功を確認した。最大報告1,001,086 nodesは規定上限1,010,000以内だった。

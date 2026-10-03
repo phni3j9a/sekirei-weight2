@@ -1,2 +1,3 @@
 # Unified patch context uses a single space for an empty source line.
 patches/sekirei-train-bounded-material-fanin509-v1.patch whitespace=-blank-at-eol
+patches/sekirei-white-view-aux-tied-v1.patch whitespace=-blank-at-eol

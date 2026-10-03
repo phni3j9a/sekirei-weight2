@@ -279,3 +279,7 @@ numeric監査の最初の起動は外部SHA指定の誤りで入力読取前に�
 固定の凸目的に対するexact gap=0が確認されたため、同じ目的の反復やepochを増やす案は選ばない。次はflat特徴の白視点を`80−square`へ回転し、持駒aux bankを`0=3 / 1=2`へ共有する評価特徴の一案を準備する。源コードだけの独立検証では盤面4,536通り・持駒threshold152通りの対応が一致した。静的forwardの対応を目指す変更であり、100万ノード探索のPVやscoreの物理対称性は保証しない。
 
 探索・合法手・盤面・USIの源コードと100万ノード条件を維持し、評価特徴だけを専用compile featureと別native magicで扱う。旧stock loader/metadata/comparatorのguardは保持する。新binaryのfallbackをown pilotを含む全四段階で新規測定し、基準の不変性を確認してから同じbinaryの候補と比較する。専用build・新モデルfit・formalは未実施。現在のMac mini CPUと既存ストレージの範囲でgoalを継続する。
+
+準備した[特徴量パッチ](../patches/sekirei-white-view-aux-tied-v1.patch)は原典v0.3.39の`nnue.rs`とcore/USIのCargo feature宣言だけを変える。compile featureは`nnue_white_view_aux_tied`、native magicは`SEKIRW03`、dimensionsはINPUT2420/L1256/L232を維持する。新loader/saveは持駒bank0=3・1=2を全256 i16チャネルで検証し、旧01/02とは別に扱う。[純粋な重み・design契約](../scripts/white_view_paired_linear.py)は固定stock seed42を変換入力とし、盤上FT・bias・保護駒得を保持してaux持駒だけをdonorからコピーする。新03を旧01に戻して旧loaderのguardを通す経路は設けない。
+
+公開合成24 testsがwhite feature対応・旧loader拒否・native全byte・教師join・整数designのoriginを検証する。源コードだけの10 tests、Rust構文確認と3ファイルへのpatch dry-runも完了した。Rustの型検査・新旧feature build・03の実ロード・full-row/incremental・新fallback bridgeは後工程で、準備の成功を実機検証やモデル採用とは扱わない。学習条件は元O train112,681/holdout5,895、254係数、ridge=1、L1半径`161791/4096`、保存f32 cap39.5、FISTA最大20,000反復/1,200秒を維持する。

@@ -243,4 +243,8 @@ sourceだけの準備・独立レビューではL2/biasの2つのAdam LR operand
 
 実数残差の条件付き上界は98.75cpで、既存の観測integer-core駒得差100cp guardを維持する。従来の補助out L1契約は新しい固定out(+64,−64)には適用できないため、旧guardを変更せず専用の機能的契約を検証する。元inputの合法性・source・除外、保存bytes、全局面core、incremental/undo、候補自身のpilotと固定100万ノード比較を通すまで採用しない。最終5局は使わない。
 
-条件案SHAは`dabad54e419237335fd1f370063a0c6e82ac7b58ac27f0d20fd91ca21d9dd900`で、第五候補の正式成績参照前に固定した。旧generic solverの有理数PSD検査は254次元で計算予算を圧迫し得るため、固定整数designから唯一のproducerが`G=ZᵀZ`を生成したことをsource・digest・originで束縛し、`vᵀGv=Σ(Zv)²>=0`による専用検証を準備している。旧任意GramのPSD guardは保持する。新構造の実学習・core・正式測定は未実施で、good modelの達成と扱わない。goalは継続中。
+条件案SHAは`dabad54e419237335fd1f370063a0c6e82ac7b58ac27f0d20fd91ca21d9dd900`で、第五候補の正式成績参照前に固定した。旧generic solverの有理数PSD検査は254次元で計算予算を圧迫し得るため、固定整数designから唯一のproducerが`G=ZᵀZ`を生成したことをsource・digest・originで束縛し、`vᵀGv=Σ(Zv)²>=0`による専用検証を準備した。旧任意GramのPSD guardは保持する。新構造の実学習・core・正式測定は未実施で、good modelの達成と扱わない。goalは継続中。
+
+専用の`paired_linear.py`は254個の保存f32からnative全bytesを再構成し、FT/駒得、sign-bit、zero、exact L1を検査する。`fit_paired_linear.py`は元TRAINの位置順を保ってSFENで教師ラベルを結合し、整数designから唯一のGram producerと固定FISTAへ渡す。design・target・Gram・右辺・f64/f32係数・exact dyadic certificateを個別artifactとして保存する。実OpenBLASのsetter/getterとlibrary SHAで1threadを確認し、全fit1,200秒は外process supervisorでも制限する。子processは終了証明を主張せず、親がwait/reap・group停止・入力/sourceの再hashを確認した後にrunとabsolute sidecarを作る。
+
+既存を含む288 testsが成功（標準環境では数値13件をskip）。固定NumPyで数値13件とnative/activation16件、追加fit-driver13件も成功した。第五候補の有効な不採用・独立監査・停止を46個の現在inputと照合し、次案へのactivationを確認した。これらは準備の検証であり、新しいモデルの学習・core観測・正式比較はまだ行っていない。

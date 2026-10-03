@@ -160,4 +160,16 @@ functional-anchorの有効な正式比較で採用未達という開始条件を
 
 pure contractのcommit `be7e0da`はCI217公開fixture tests成功（118.346秒）。型検査前の専用trainer追加patchもprivate stagingに準備したが、rustfmt parse/dry-applyを通した段階であり、8件のRust testや実build・学習の成功へ読み替えない。
 
+## bounded-material専用経路の検証
+
+`prepare_bounded.py` / `train_bounded.py` / `diagnose_bounded.py`とtrainer専用追加patchを準備した。既存external patch、上流commit、main/trainerだけの変更、全526 source files、8 workspace依存ファイル、Rust/Cargo実体、固定flagsとbinaryを新build manifestへ束縛する。既存prepare/export/diagnosticのsource guardは変更しない。専用source/buildで9件のRust fixturesとrelease buildが成功し、metadata・saveの失敗は非zeroになること、固定parameter/m/vはAdam更新をskipし補助部分が学習することを確認した。追加patch SHAは`6602c12ea83b602cb1a93fa7f16624d1c67e4f23a05aa7bd4d253b21426d48c8`、実trainer binary SHAは`71ab7126629cb2fa242b5290d3c11a0ea89eb272866d7d91146ab1ec1a15006b`。
+
+最初の専用buildは、compilerのbefore/after辞書比較が不一致となりsource clone前に停止した。比較値を保存していなかったため原因は未特定で、現在の再照合は一致する。失敗runtimeを保持し、両値を不一致時に表示する診断を追加して、同じ厳密guardの新runtimeでbuildを完了した。原本・旧学習器・比較engineを上書きしていない。
+
+元Oデータはmanifest SHA、全cache/position集合、depth0・全cp絶対値30000未満、112,681/5,895分離を再検証した。過去の全1000局legal replay/除外証拠を、全raw集合と1,042 source入力の前後hash一致で再利用し、final splitは開いていない。新build/sourceも照合したpreflight receipt SHAは`1540bdf1991a174bab774b99ee32c52ceee0eb1d6004557705917f477063dcdd`。
+
+固定coreにリンクした技術probeはmaterial initializerで公開15fixture・16固定walk（うち8は探索用move API）を実行し、8,185観測・capture632・promotion186・drop577・undo3,837・null undo240でincremental/refresh accumulatorと評価値、undo後のSFEN/hash/手番/ply/acc復元、観測したf32中間値のfiniteを確認した。material差最大0 cp、FTZ/DAZ制御も維持、cleanupとsource/input前後不変だった。これは限定された技術観測であり、学習後のNNUE、全局面/全探索経路の100cp保証、採用の証明とは扱わない。
+
+Pythonの新規fixtureはactual full-shape AdamのFT 1ULP改変（native/nearest byteが同じでも拒否）、固定moments、variance/step、全byte reexport、厳密な99cp予算・metadata型、異なる教師/epoch/cap、final sidecar形式、cleanup失敗receipt等を確認した。既存byte契約を含む37 testsが22.329秒で成功。共有supervisorの取消・reapを再利用し、その前後に外側termination guardとgroup停止確認を追加した。追加の隔離process fixtureも成功し、supervisorのhandler復元直後のSIGTERMで外側guardが両lockを保持して再cleanup・cancelled receiptまで到達することを確認した。今後の実学習は事前登録した3epoch/E3だけを採点し、lossからepoch・cap・LRを選び直さない。
+
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

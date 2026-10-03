@@ -208,4 +208,6 @@ metadataパスの修正版v3は、二つの正確なsuffixを確認して実`*.b
 
 元O train112,681/holdout5,895・original absolute teacher・material seed42/fresh Adam・seed/shuffle42・LR0.0001/step-half3・固定3epoch/E3・実数残差予算99cpを維持する。開始条件は前候補の有効な正式非採用・独立監査成功・全group停止で、actual receiptのpath/SHA/型・相互参照を新build/preregから検証する。別mode `bounded-material-fanin509-v1` と専用schema/source/metadataを使い、旧guardや`SOURCE_HASHES`を変更しない。
 
-sourceだけの準備・独立レビューではL2/biasの2つのAdam LR operand以外の学習数学と旧10fixture本体を保持した。新6件を加えた16 Rust fixturesは宣言済みで、公開fixture上のPython検証・構文確認も進めているが、この記録時点では新modeの実build/Rust tests/学習/probeは未実施。初期bias4では小さなdeltaがf32丸めで保存値に現れない可能性もある。飽和や一定STM補正を防ぐ保証、学習改善・普遍的整数100cp上限・採用の証明とは扱わず、実保存bytes・全epoch・全元局面core/undo・own pilots・固定100万ノード正式比較で確認する。
+sourceだけの準備・独立レビューではL2/biasの2つのAdam LR operand以外の学習数学と旧10fixture本体を保持した。新6件を加えた16 Rust fixturesを宣言し、4つの専用Python helper・activation検証・17件の公開synthetic fixturesを追加した。前候補の正式非採用・独立監査・停止のreceipt chainと実weight/metadataを検証してから実行経路を有効化した。新buildは専用checkoutで上流・patch・source・compiler・全16テストを照合し、学習と診断は新schemaと17helperのSHAを固定する。この記録時点では新modeの実build/Rust tests/学習/probeは未実施。
+
+初期bias4では小さなdeltaがf32丸めで保存値に現れない可能性もある。飽和や一定STM補正を防ぐ保証、学習改善・普遍的整数100cp上限・採用の証明とは扱わず、実保存bytes・全epoch・全元局面core/undo・own pilots・固定100万ノード正式比較で確認する。

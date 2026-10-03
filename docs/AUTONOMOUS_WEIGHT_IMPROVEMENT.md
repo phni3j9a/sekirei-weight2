@@ -208,6 +208,39 @@ metadataパスの修正版v3は、二つの正確なsuffixを確認して実`*.b
 
 元O train112,681/holdout5,895・original absolute teacher・material seed42/fresh Adam・seed/shuffle42・LR0.0001/step-half3・固定3epoch/E3・実数残差予算99cpを維持する。開始条件は前候補の有効な正式非採用・独立監査成功・全group停止で、actual receiptのpath/SHA/型・相互参照を新build/preregから検証する。別mode `bounded-material-fanin509-v1` と専用schema/source/metadataを使い、旧guardや`SOURCE_HASHES`を変更しない。
 
-sourceだけの準備・独立レビューではL2/biasの2つのAdam LR operand以外の学習数学と旧10fixture本体を保持した。新6件を加えた16 Rust fixturesを宣言し、4つの専用Python helper・activation検証・17件の公開synthetic fixturesを追加した。前候補の正式非採用・独立監査・停止のreceipt chainと実weight/metadataを検証してから実行経路を有効化した。新buildは専用checkoutで上流・patch・source・compiler・全16テストを照合し、学習と診断は新schemaと17helperのSHAを固定する。この記録時点では新modeの実build/Rust tests/学習/probeは未実施。
+sourceだけの準備・独立レビューではL2/biasの2つのAdam LR operand以外の学習数学と旧10fixture本体を保持した。新6件を加えた16 Rust fixturesを宣言し、4つの専用Python helper・activation検証・17件の公開synthetic fixturesを追加した。前候補の正式非採用・独立監査・停止のreceipt chainと実weight/metadataを検証してから実行経路を有効化した。新buildは専用checkoutで上流・patch・source・compiler・全16テストを照合し、学習と診断は新schemaと17helperのSHAを固定する。この実装準備時点では新modeの実build/Rust tests/学習/probeは未実施だった。実行結果は次節に示す。
 
 初期bias4では小さなdeltaがf32丸めで保存値に現れない可能性もある。飽和や一定STM補正を防ぐ保証、学習改善・普遍的整数100cp上限・採用の証明とは扱わず、実保存bytes・全epoch・全元局面core/undo・own pilots・固定100万ノード正式比較で確認する。
+
+## FanIn509候補の正式結果と復旧
+
+専用buildで16件のRust fixturesが成功し、事前固定の元O・seed42・fresh Adam・3epoch/E3で実学習を90.720秒で完了した。FT/駒得の固定、全3epochのAdam・保存bytes、99cpの補助出力予算を確認した。選択したE3の重みSHAは`2ec2eacb5f3cb9f72921efd75478f024614a3f944c3ee9a528df9898d6d93164`。元holdoutの整数core MAEは808.623070cp（駒得809.796268cp）。補助L2の飽和ログは3epochとも0だったが、補助float評価は平均5.894539cp・標準偏差0.011699cpで、ほぼ一定の正のSTM補正が残った。元train/holdout/公開fixtureの計118,591局面、8,185のincremental/refresh/undo観測も成功した。これらは静的・有限集合の技術検証で、正式採用の代替ではない。
+
+初回評価は2026-10-03 14:16:55–15:09:50 UTCにMAE pilot102と正式MAE1,140を完了した後、rootがsystem Pythonで起動したため、Top3のcshogi読込前にexit1で停止した。Top3ディレクトリやattemptはまだ作成されていなかった。失敗状態・18ファイルのevaluation snapshot・元ログ・正常終了済みMAEを保持し、全process停止、元1,221入力・source/build・設定・重みの不変を確認した。これはモデル品質の否定結果へ読み替えていない。
+
+4,206復旧入力を凍結し、正しいcshogi1.0.4/NumPy1.26.4のvenvから同じモデル・設定・run IDでTop3 pilot36と正式551だけを実行した。15:40:34–15:55:51 UTC、916.746秒、exit0で全段階を完了した。MAEは再実行せず、旧失敗logは保持し、新しい復旧logへ保存した。evaluationの元作成時刻・評価source SHAを維持し、失敗segmentと復旧segmentを別々に記録した。実行時間合計は4,091.287秒で、復旧準備待ちを含む壁時計の経過時間とは区別する。
+
+| 採用指標（5局等重み） | 現行fallback | FanIn509 E3 |
+| --- | ---: | ---: |
+| MAE | 1084.478601 cp | 1084.349896 cp |
+| Top3入り率 | 55.388757% | 55.010955% |
+
+正式比較は有効だが**不採用**。MAEは`1728345299/1593900`で0.128705cp改善した一方、Top3は`884217247/1607347560`で0.377802ポイント低下した。既定の厳密な共同採用条件を維持し、最良モデルはfallbackのままとした。[比較集計とグラフ](validation/autonomous-weight-2026-10-03/bounded-material-fanin509-100cp-e3/comparison.md)を参照。
+
+独立監査では候補・基準各1,829 attemptをrawから再解析し、USI lifecycle・明示weight読込・node grammar・deadline・supervisor/cleanup・8identity・厳密有理数採否を確認した。10,082入力の前後hashが一致し、技術失敗/timeoutは0、最大nodesは教師1,001,086/候補1,000,004で規定内。旧system-Python失敗と新venv成功、18ファイルの失敗snapshot、4,207復旧入力の別map、実interpreter・dependencyまで照合した。独立監査SHAは`44239bf763de9cf9cf7e2c65b5fd85e42ed875477054d700cf3290b41c1c3c26`。全協調lockを排他取得した停止receiptではlauncher exit0/reap、全raw終了証拠、関連processの2回の不存在を確認し、次の重い処理の開始条件を満たした。
+
+集計の最初の呼出しではrootがディレクトリ引数へevaluation.jsonを渡したため起動前に停止した。無効receiptを別名で保持し、正しいディレクトリで新しい出力を作成した。入力・探索・採否条件は変えていない。独立監査sourceの暫定準備通知後の追加照合はrootのSHA guardで検出し、通知済みbytes・追加後bytesを双方保存して、新しく固定したv3 sourceで実監査・停止確認を行った。過去の失敗・準備版を成功版に書き換えない。
+
+全3epochのnative/Adam/metadata、元Oの復元入力、静的/core/incremental証拠、evaluation/4run、失敗した初回起動と18ファイルのsnapshot、復旧と監査のsource/receiptをNASへ保存した。14 source roots・3,965 files・77 directories・0 symlinks・355,207,871 bytesで、コピー前後と保存先の集合・size・SHA-256を照合した。SSD原本・参照パスを保持し、build/venvは除外した。[公開保存集計](validation/autonomous-weight-2026-10-03/bounded-material-fanin509-100cp-e3/archive.json)を参照。
+
+## 次の固定案：対になった線形補助出力
+
+第五候補の正式成績を見る前に、元train112,681局面だけで残差`d=T−M`を診断した。残差の平均は244.461116cp、中央値122cp、標準偏差1339.422567cpで、絶対値198cp超は81,456局面（72.289028%）だった。残差が大きい例は少数の外れ値だけではない。Huber幅99cpの単一STM定数に対する微分は補正99cpでも負であり、lossだけの置換で正の定数補正を防げるとは判断しなかった。これはonline勾配やAdamの因果の実測ではない。
+
+次はseed42のFT全bytesと駒得の4unitを維持し、補助unit4/5へ固定bias64/64・out+64/−64を置く。非material FTの254チャネルについて、同じ保存f32係数を(+u,−u,−u,+u)のsign-bit一致で両手番へ結ぶ。unused補助座標はpositive-zero、出力biasもpositive-zeroとする。理想実数の補助評価は`2u·(acc_us−acc_them)/64`で、共有のSTM定数を除く。ただしempirical平均0、物理的な盤面の回転対称性、nativeのbit単位反対称性はこの構造だけでは保証しない。位置・駒種・玉・持駒thresholdの固定random特徴を線形に投影する容量に限られ、駒間の相互作用や利きの新特徴は追加しない。
+
+元trainの整数cpを加工せず使用し、固定特徴`Z=(acc_us−acc_them)/2`（整数、各座標±40以内）から`X=Z/16`を作る。目的は未正規化の半二乗誤差和と`1/2||u||²`（ridge=1）、L1制約は`rho=39.5−2^-12`の一案だけ。zero初期値・固定Gershgorin step bound・目的増加時の固定restart付きprojected FISTA、最大20,000反復/全fit1,200秒を事前固定した。exact dyadicな実行可能性とFrank–Wolfe gap/N<=1e-6を要求し、保存f32はexact L1<=39.5とzero/materialに対するexact目的差<=0を確認する。失敗時にlambda・loss・solver・半径を選び直すfallbackは設けない。
+
+実数残差の条件付き上界は98.75cpで、既存の観測integer-core駒得差100cp guardを維持する。従来の補助out L1契約は新しい固定out(+64,−64)には適用できないため、旧guardを変更せず専用の機能的契約を検証する。元inputの合法性・source・除外、保存bytes、全局面core、incremental/undo、候補自身のpilotと固定100万ノード比較を通すまで採用しない。最終5局は使わない。
+
+条件案SHAは`dabad54e419237335fd1f370063a0c6e82ac7b58ac27f0d20fd91ca21d9dd900`で、第五候補の正式成績参照前に固定した。旧generic solverの有理数PSD検査は254次元で計算予算を圧迫し得るため、固定整数designから唯一のproducerが`G=ZᵀZ`を生成したことをsource・digest・originで束縛し、`vᵀGv=Σ(Zv)²>=0`による専用検証を準備している。旧任意GramのPSD guardは保持する。新構造の実学習・core・正式測定は未実施で、good modelの達成と扱わない。goalは継続中。

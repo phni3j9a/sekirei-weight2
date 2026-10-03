@@ -8,7 +8,7 @@
 
 ## 現在の段階
 
-Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の自律改善では、112k epoch3・FT最近傍、13駒価値ridge=1、functional-anchor half、駒得経路固定・補助残差99cpの4候補を固定100万ノードで正式比較した。4候補とも採用条件を満たさず、最良は駒得fallbackを維持する。最新の補助残差候補はMAE1091.338808 cp / Top3 53.993943%で、基準に対しMAEが6.860207 cp悪化、Top3が1.394814ポイント低下した。静的診断の改善は正式探索の改善へつながらず、補助層のほぼ一定のSTM補正も確認した。次は元入力・初期値・epoch3・99cp上限を保ち、補助L2/biasのAdam実効LRだけを入力数509で正規化する一案を事前固定して準備中。入力hash不一致では原本を保持し検証済みNASから新copyを復元したが、原因は未特定。[epoch3](docs/validation/autonomous-weight-2026-10-03/expanded-e3-nearest/comparison.md)、[ridge=1](docs/validation/autonomous-weight-2026-10-03/material-ridge1-112k/comparison.md)、[half](docs/validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/comparison.md)、[補助残差](docs/validation/autonomous-weight-2026-10-03/bounded-material-residual-100cp-e3/comparison.md)と[実行方針・入力復元](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。PR #18は下書き・未マージ、goalは継続中。
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の自律改善では、112k epoch3・FT最近傍、13駒価値ridge=1、functional-anchor half、駒得経路固定・補助残差99cp、補助L2の実効LRを入力数509で正規化した候補の5件を固定100万ノードで正式比較した。5候補とも採用条件を満たさず、最良は駒得fallbackを維持する。最新候補はMAE1084.349896 cp / Top3 55.010955%で、MAEは0.128705 cp改善したがTop3が0.377802ポイント低下した。層の飽和は解消した一方、静的な補助評価はほぼ一定の正の手番補正だった。次は固定FT・駒得を保持し、正負を対にした線形補助出力を制約付きridge=1で学ぶ一案を事前固定して準備中。[最新の正式比較](docs/validation/autonomous-weight-2026-10-03/bounded-material-fanin509-100cp-e3/comparison.md)と[全候補・入力復元・次案](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。PR #18は下書き・未マージ、goalは継続中。
 
 Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) / [PR #14](https://github.com/phni3j9a/sekirei-weight2/pull/14) で、配布packから最初の学習済みweightを生成し、固定v0.3.39で比較した。採用指標は **評価値MAE** と **水匠の最善手がSekireiのTop3に入る割合** の二つ。
 
@@ -118,7 +118,7 @@ Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](ht
 
 探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PR #16はマージ済みで、モデル採用は未達のまま。
 
-Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を継続する。3候補の正式比較が有効に完了したが、MAE改善とTop3維持を同時に満たすモデルは未達である。次候補はFT・駒得経路を固定する専用学習器のbuild・10件のRust fixtureと、初期駒得NNUEのincremental/undo技術probeを完了した。最初の実学習はepoch1 metadataの参照パス不備で停止したため失敗runを保持した。修正版で同じ条件のfresh3epochが完了し、全Adam/保存byte、元O診断、118,591局面のcoreとincremental/undo技術probeが成功した。補助経路がほぼ定数+99 STM cpへ飽和したことも記録しており、次は候補自身の100万ノード正式比較で判定する。採用可能なモデルはまだ未達。[目標・候補・資源・実行状態](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を継続する。5候補の正式比較・独立監査が有効に完了したが、MAE改善とTop3維持を同時に満たすモデルは未達である。最新候補の初回評価は誤ったPython環境でTop3開始前に止まったため、完了済みMAEと失敗snapshotを保持し、固定venvで残りTop3だけを実行した。候補・基準各1,829 attempt、10,082入力の前後照合、別々の失敗・復旧履歴、全関連processの停止まで確認した。次のモデルの学習・正式比較は未実施。[目標・条件・結果・資源](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
 
 ## 文書
 

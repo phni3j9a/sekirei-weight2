@@ -65,4 +65,6 @@ python scripts/publish_comparison.py --comparison "$CAMPAIGN/comparison.json" \
 
 完了候補のevaluation・4run・モデル/metadata・凍結したsource/receipt/publication snapshotを既存NASへ保存し、source-before/source-after/destinationの集合・サイズ・SHA-256、directory集合を照合した。3,726 files・30 directories・0 symlinks・33,657,398 bytesで一致し、SSD原本は保持した。[保存集計](validation/autonomous-weight-2026-10-03/expanded-e3-nearest/archive.json)だけを公開する。このコピーは固定runtime・audit venv・fallback比較・前回の学習archiveへの依存を持ち、単独で全環境を復元できるものではない。
 
+ridge=1は重み・absolute sidecar・事前登録した3補助のSHA一致、固定runtimeとdevelopment 570局面のhash、SSD空き約26.5 GiBを確認し、2026-10-03 05:36:27 UTCに候補自身のMAE pilotを開始した。102/102 attempt・両engine17/17局面×3反復安定・最大1,001,086 nodesを検証し、05:40:19 UTCから正式MAEを測定中。pilot fingerprintは`2ad7b90124295ab38456a5d3c25c9e2027394cc97a65bc51e0d6b1a0330e0806`。最初の採用未達候補は保存済みで、重い探索はこの一つだけを動かす。次候補の採否は未確定。
+
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

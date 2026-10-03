@@ -88,6 +88,10 @@ ridge=1は候補自身のMAE pilotを2026-10-03 05:36:27 UTCに開始し、05:40
 
 canonical spec SHAは`378072a024a17d64719eb9b7519b6679d98d1c0a8f1c7e04917ae6270f59ae30`、private事前登録SHAは`9c8c3b74a4474bfb906cdefd2db08d757c30e5e73b1af19f41b684b7755d2792`。元manifestと4入力・source provenanceをbyte入力moduleで検証し、specからDを導出した。全trainのnative-core material一致、source/exclusion receipts、実adapter・wrapperの検証とhash凍結はまだ必要。派生labels、学習モデル、正式測定はまだ生成していない。前回full学習907.622秒を参考にwall上限1,200秒、追加SSD 2 GiB以内を見積り、使用前に容量を再確認する。
 
+学習・診断のPython実行処理は、取消時の子handle取得とcleanup/reapまでの実trainer lock保持を補強した。`train_cpu.py`は学習argv・環境・計算を維持し、PID/PGIDとcleanup状態を保存する。`scripts/diagnose_anchor.py`は元4入力とpure view/recipe、D/O、preregistered source、全3epochのmetadata/Adam/native、epoch3と最終weightを照合してから元teacher holdoutへ診断する。既存`diagnose_weights.py`のguardは変更しない。28件の診断fixtureと8件の新lifecycle fixture（既存初期化を含むtargeted 13件）が成功した。実データでのprobe・学習・診断はまだ未実施。cleanupの終了確認に失敗した場合は、記録したtrainer PID/PGIDが停止したことを確認するまで次の重い処理を開始しない。
+
+v1の事前登録を保持し、実行補助のsource SHAだけを更新したv2を生成前に凍結した。v2 SHAは`febf8a220f0ad84b107a7aeaec6189b5fa93a5fa67cee256eef4e7009bbb4380`、`train_cpu.py` SHAは`e1e21e3c6ad251098c864345bd45af84d013144a403c7296af6f87c6780fdc07`。入力/spec/D・比率・init・学習argv・epoch3・export・正式採用条件はv1と同じで、旧登録や過去runを書き換えない。診断CLIは`--preregistration`と`--expected-preregistration-sha256`に最新v2を指定し、`--recipe`にはpure moduleのrecipeを追加改変せず渡す。実core/source/exclusion証拠は別のgeneration receiptへ記録する。
+
 このspecの初回検査では、元SSDのtrain.labels SHAがmanifestの`aae8d2858f54129c52447e0df665bff0260604020cecc81a0dc84903f050aec4`に対し`a088d3ae7bec4194d7f616109e503d43907b48d624088f522d667181d4bdfe42`だったため、出力作成前に停止した。NASのIssue #15保管copyは固定SHAと一致した。差分は1行のteacher identityのみで、112,681行の順序・SFEN集合・cpは同じだった。変更原因は未特定で、元SSD・過去runは変更しない。
 
 検証済みNASからmanifestと4ファイルを新private inputへ復元し、5 files / 64,444,603 bytesの集合・size・SHA、NASコピー前後、manifestとの一致を確認した。元SSDの全5hashは前後不変。復元receipt SHAは`8b9e42f4e5880af6cddef9373d61f09165be9426cedd36b4f1c8dc1c72c093b8`。新候補はこの復元copyを入力にし、元の不一致をmanifestの書換えや行除外で通さない。完了した正式比較のweight・runtime・attempt証拠は別に有効性を確認済みで、この入力復元をモデル採用の成功とは扱わない。

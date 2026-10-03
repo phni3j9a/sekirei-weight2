@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run bounded CPU training using verified external labels, with provenance."""
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import math
@@ -22,6 +23,82 @@ from prepare import REPO, sha256
 # dimension header, so exact length binds the standard architecture here.
 NNUE_FLOAT_OFFSET = 8 + 2420 * 256 * 2 + 256 * 2
 NNUE_WEIGHT_BYTES = NNUE_FLOAT_OFFSET + (2 * 256 * 32 + 32 + 32 + 1) * 4
+
+
+class TrainingCancelled(BaseException):
+    """Cancellation must reap the trainer before its shared lock is released."""
+
+
+@contextmanager
+def termination_guard():
+    signals = (signal.SIGTERM, signal.SIGINT)
+    previous = {sig: signal.getsignal(sig) for sig in signals}
+    state = {"spawning": False, "cleaning": False, "signal": None}
+
+    def cancel(sig, _frame):
+        state["signal"] = sig
+        # Do not raise between creating a child and storing its handle, or
+        # interrupt cleanup. Do not block signals inherited by the trainer.
+        if not state["spawning"] and not state["cleaning"]:
+            raise TrainingCancelled(f"training cancelled by signal {sig}")
+
+    try:
+        for sig in signals:
+            signal.signal(sig, cancel)
+        yield state
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+def supervised_training(command, output, log, seconds, record=None):
+    """Wait/terminate/reap the child while the caller holds its trainer lock."""
+    process, reaped = None, False
+    with termination_guard() as state:
+        try:
+            state["spawning"] = True
+            try:
+                process = subprocess.Popen(command, cwd=output, stdout=log, stderr=subprocess.STDOUT,
+                                           env=dict(os.environ, RAYON_NUM_THREADS="1", OMP_NUM_THREADS="1",
+                                                    SEKIREI_TRAIN_FTZ_DAZ="1"), start_new_session=True)
+                if record is not None:
+                    record.update(trainer_pid=process.pid, trainer_pgid=process.pid,
+                                  cleanup_status="pending")
+                    atomic_write_json(output / "run.json", record)
+            finally:
+                state["spawning"] = False
+            if state["signal"] is not None:
+                raise TrainingCancelled(f"training cancelled by signal {state['signal']}")
+            try:
+                returncode = process.wait(timeout=seconds)
+                reaped = True
+                result = {"returncode": returncode, "status": "finished", "cleanup_status": "ok"}
+            except subprocess.TimeoutExpired:
+                result = {"status": "timeout", "cleanup_status": "pending"}
+        finally:
+            state["cleaning"] = True
+            if process is not None and not reaped:
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait(timeout=5)
+                reaped = True
+            if record is not None:
+                record["cleanup_status"] = "ok" if process is not None else "not-started"
+            state["cleaning"] = False
+        if state["signal"] is not None:
+            raise TrainingCancelled(f"training cancelled by signal {state['signal']}")
+        if result["status"] == "timeout":
+            result.update(returncode=process.returncode, cleanup_status="ok")
+        return result
 
 
 def verify_initial_weights(path):
@@ -138,23 +215,19 @@ def train(args):
                          + "; no WDL; no internal teacher search")}
     atomic_write_json(output / "run.json", record)
     started = time.monotonic()
-    with nonblocking_lock(build_root / ".training.lock", exclusive=True):
-        with (output / "train.log").open("w") as log:
-            process = subprocess.Popen(command, cwd=output, stdout=log, stderr=subprocess.STDOUT,
-                                       env=dict(os.environ, RAYON_NUM_THREADS="1", OMP_NUM_THREADS="1",
-                                                SEKIREI_TRAIN_FTZ_DAZ="1"),
-                                       start_new_session=True)
-            try:
-                returncode = process.wait(timeout=args.seconds)
-            except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGTERM)
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                    process.wait()
-                returncode = process.returncode
-                record["status"] = "timeout"
+    try:
+        with nonblocking_lock(build_root / ".training.lock", exclusive=True):
+            with (output / "train.log").open("w") as log:
+                outcome = supervised_training(command, output, log, args.seconds, record)
+                returncode = outcome["returncode"]
+                record["cleanup_status"] = outcome["cleanup_status"]
+                if outcome["status"] == "timeout":
+                    record["status"] = "timeout"
+    except BaseException as error:
+        record.update(status="cancelled" if isinstance(error, TrainingCancelled) else "failed",
+                      error=f"{type(error).__name__}: {error}", wall_seconds=time.monotonic() - started)
+        atomic_write_json(output / "run.json", record)
+        raise
     usage = resource.getrusage(resource.RUSAGE_CHILDREN)
     record.update(returncode=returncode, wall_seconds=time.monotonic() - started,
                   cpu_seconds=usage.ru_utime + usage.ru_stime, max_rss_kib=usage.ru_maxrss)

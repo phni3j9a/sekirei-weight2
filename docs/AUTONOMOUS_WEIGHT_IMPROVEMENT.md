@@ -88,12 +88,23 @@ ridge=1は候補自身のMAE pilotを2026-10-03 05:36:27 UTCに開始し、05:40
 
 canonical spec SHAは`378072a024a17d64719eb9b7519b6679d98d1c0a8f1c7e04917ae6270f59ae30`、private事前登録SHAは`9c8c3b74a4474bfb906cdefd2db08d757c30e5e73b1af19f41b684b7755d2792`。元manifestと4入力・source provenanceをbyte入力moduleで検証し、specからDを導出した。全trainのnative-core material一致、source/exclusion receipts、実adapter・wrapperの検証とhash凍結はまだ必要。派生labels、学習モデル、正式測定はまだ生成していない。前回full学習907.622秒を参考にwall上限1,200秒、追加SSD 2 GiB以内を見積り、使用前に容量を再確認する。
 
-学習・診断のPython実行処理は、取消時の子handle取得とcleanup/reapまでの実trainer lock保持を補強した。`train_cpu.py`は学習argv・環境・計算を維持し、PID/PGIDとcleanup状態を保存する。`scripts/diagnose_anchor.py`は元4入力とpure view/recipe、D/O、preregistered source、全3epochのmetadata/Adam/native、epoch3と最終weightを照合してから元teacher holdoutへ診断する。既存`diagnose_weights.py`のguardは変更しない。28件の診断fixtureと8件の新lifecycle fixture（既存初期化を含むtargeted 13件）が成功した。実データでのprobe・学習・診断はまだ未実施。cleanupの終了確認に失敗した場合は、記録したtrainer PID/PGIDが停止したことを確認するまで次の重い処理を開始しない。
+学習・診断のPython実行処理は、取消時の子handle取得とcleanup/reapまでの実trainer lock保持を補強した。`train_cpu.py`は学習argv・環境・計算を維持し、PID/PGIDとcleanup状態を保存する。`scripts/diagnose_anchor.py`は元4入力とpure view/recipe、D/O、preregistered source、全3epochのmetadata/Adam/native、epoch3と最終weightを照合してから元teacher holdoutへ診断する。既存`diagnose_weights.py`のguardは変更しない。28件の診断fixtureと8件の新lifecycle fixture（既存初期化を含むtargeted 13件）が成功した。この補助の実装時点では実データのprobe・学習・診断は未実施だった。現在の実検証状況は下記を参照。cleanupの終了確認に失敗した場合は、記録したtrainer PID/PGIDが停止したことを確認するまで次の重い処理を開始しない。
 
 v1の事前登録を保持し、実行補助のsource SHAだけを更新したv2を生成前に凍結した。v2 SHAは`febf8a220f0ad84b107a7aeaec6189b5fa93a5fa67cee256eef4e7009bbb4380`、`train_cpu.py` SHAは`e1e21e3c6ad251098c864345bd45af84d013144a403c7296af6f87c6780fdc07`。入力/spec/D・比率・init・学習argv・epoch3・export・正式採用条件はv1と同じで、旧登録や過去runを書き換えない。診断CLIは`--preregistration`と`--expected-preregistration-sha256`に最新v2を指定し、`--recipe`にはpure moduleのrecipeを追加改変せず渡す。実core/source/exclusion証拠は別のgeneration receiptへ記録する。
 
 このspecの初回検査では、元SSDのtrain.labels SHAがmanifestの`aae8d2858f54129c52447e0df665bff0260604020cecc81a0dc84903f050aec4`に対し`a088d3ae7bec4194d7f616109e503d43907b48d624088f522d667181d4bdfe42`だったため、出力作成前に停止した。NASのIssue #15保管copyは固定SHAと一致した。差分は1行のteacher identityのみで、112,681行の順序・SFEN集合・cpは同じだった。変更原因は未特定で、元SSD・過去runは変更しない。
 
 検証済みNASからmanifestと4ファイルを新private inputへ復元し、5 files / 64,444,603 bytesの集合・size・SHA、NASコピー前後、manifestとの一致を確認した。元SSDの全5hashは前後不変。復元receipt SHAは`8b9e42f4e5880af6cddef9373d61f09165be9426cedd36b4f1c8dc1c72c093b8`。新候補はこの復元copyを入力にし、元の不一致をmanifestの書換えや行除外で通さない。完了した正式比較のweight・runtime・attempt証拠は別に有効性を確認済みで、この入力復元をモデル採用の成功とは扱わない。
+
+
+## functional-anchorの実生成前検証
+
+固定audit Pythonで元データ、13 teacher pack、200局holdoutと400局stagingからの導出、全1000局の合法replayによる除外集合を再検証した。除外局面88,187を再現し、学習・検証局面との交差は0。入力1,056ファイル、固定source 526ファイル、build dependencies 63ファイルの集合とSHAは検証前後で一致した。source preflightのcanonical SHAは`59090622239769afe1f3a4eeba6b74cbd4f86cccd9eba24358cce416c7287e9e`。final splitと正式成績はこの検証で開いていない。
+
+固定material initializerを両weight引数へ明示し、全train 112,681局面とholdout 5,895局面で既存native-core probeを新規実行した。全件でnative・nearest・material・量子化floatがPythonの固定駒得に一致し、FTの全加算prefixがi16範囲内だった。約11.872秒、exit 0、timeoutなし、process group cleanup済み。元の行順とstdin/raw SHA、MXCSR、固定core・build・入力617ファイルの検証前後の一致を記録した。core receipt SHAは`e2db237b0e37a018661753a81b8cbf8bd31c70cf282eae28204dc0f923ef7bd1`。これは静的forwardとrefreshの証拠で、探索中の全incremental経路を新たに検証した証拠とは区別する。
+
+`scripts/prepare_anchor.py`はsource/coreのreceiptと両split全rawを再検証し、別の新規private出力へmanifest・4入力・pure recipe・generation receiptを保存する。元holdoutとtrain positionsのbytesは保持する。pure recipeの`real_generation_ready=False`はそのままにし、実出力の検証完了だけを別のgeneration receiptへ記録する。8件の合成fixtureで失敗の拒否、出力byte、0700/0600とpure recipe保持を確認した。実行するwrapperは入力読込から最終再照合まで共有lockを保持し、固定source/core snapshotとpack・除外raw・導出入力の現状を再照合する。比率・D・init・3epoch/epoch3固定・export・採用条件はv2事前登録から変更しない。実target生成・学習・診断・次候補の正式比較は、この段階では未実施。
+
+取消・D/O診断のcommit `b63dc66`はCI 196テスト成功（125.218秒）。generation adapterはその後の追加8テストで検証した。fixtureの成功と、実データ生成・モデル採用の成功を分けて記録する。
 
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

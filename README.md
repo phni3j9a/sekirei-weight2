@@ -8,7 +8,7 @@
 
 ## 現在の段階
 
-Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の自律改善では、112k epoch3・FT最近傍と13駒価値ridge=1の正式比較が有効に完了した。MAEはそれぞれ949.417 / 993.942 cpへ改善したが、Top3入り率は54.07% / 53.97%で基準55.39%を下回るため採用しない。最良は駒得fallbackを維持する。次は元教師と固定駒得を1/2ずつ混ぜるNNUE学習を事前登録し、実データ・core・学習/診断経路を準備している。学習入力のhash不一致を検出して止め、原本を上書きせず検証済みNASから新しい入力copyを復元した。[epoch3候補](docs/validation/autonomous-weight-2026-10-03/expanded-e3-nearest/comparison.md)、[ridge=1](docs/validation/autonomous-weight-2026-10-03/material-ridge1-112k/comparison.md)と[実行方針・入力復元](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。PR #18は下書き・未マージで、goalは継続中。
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の自律改善では、112k epoch3・FT最近傍と13駒価値ridge=1の正式比較が有効に完了した。MAEはそれぞれ949.417 / 993.942 cpへ改善したが、Top3入り率は54.07% / 53.97%で基準55.39%を下回るため採用しない。最良は駒得fallbackを維持する。次は元教師と固定駒得を1/2ずつ混ぜるNNUE学習を事前登録し、全train/holdoutで固定coreと駒得の一致、全1000局の除外集合、入力の由来を検証し、学習データの生成へ進めている。学習入力のhash不一致を検出して止め、原本を上書きせず検証済みNASから新しい入力copyを復元した。[epoch3候補](docs/validation/autonomous-weight-2026-10-03/expanded-e3-nearest/comparison.md)、[ridge=1](docs/validation/autonomous-weight-2026-10-03/material-ridge1-112k/comparison.md)と[実行方針・入力復元](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。PR #18は下書き・未マージで、goalは継続中。
 
 Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) / [PR #14](https://github.com/phni3j9a/sekirei-weight2/pull/14) で、配布packから最初の学習済みweightを生成し、固定v0.3.39で比較した。採用指標は **評価値MAE** と **水匠の最善手がSekireiのTop3に入る割合** の二つ。
 
@@ -114,7 +114,7 @@ Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](ht
 
 両指標はdevelopment 5局の等重み平均。最近傍丸めは同じcheckpointの切り捨て版から両指標を改善したが、現行fallbackのTop3には達していない。13駒価値学習もMAEは改善したが、Top3維持条件を満たさなかった。[正式比較・手順・各グラフ](docs/WEIGHT_IMPROVEMENT.md)に採否と仮説を記録する。
 
-参考教師Suisho11Plusは、主教師βだけで確定した最良モデルについて17局面×3反復を完了した。[参考確認](docs/validation/weight-improvement-2026-10-03/plus-reference/reference.md)は型付き結果の安定性を示すが、正式な採用判断には使っていない。112,681局面のNNUE追加学習と静的診断も完了し、選択済みepoch3の最近傍丸め版は固定holdout MAE **644.599 cp**となった。この追加候補の正式比較は未実施のため採用せず、次回検証用に保持する。
+参考教師Suisho11Plusは、主教師βだけで確定した最良モデルについて17局面×3反復を完了した。[参考確認](docs/validation/weight-improvement-2026-10-03/plus-reference/reference.md)は型付き結果の安定性を示すが、正式な採用判断には使っていない。112,681局面のNNUE追加学習と静的診断も完了し、選択済みepoch3の最近傍丸め版は固定holdout MAE **644.599 cp**となった。Issue #15終了時は正式比較前のため未採用で保持した。現在はIssue #17で正式比較を完了し、MAE改善とTop3低下を確認して不採用としている。
 
 探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PR #16はマージ済みで、モデル採用は未達のまま。
 

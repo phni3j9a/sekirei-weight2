@@ -103,8 +103,17 @@ v1の事前登録を保持し、実行補助のsource SHAだけを更新したv2
 
 固定material initializerを両weight引数へ明示し、全train 112,681局面とholdout 5,895局面で既存native-core probeを新規実行した。全件でnative・nearest・material・量子化floatがPythonの固定駒得に一致し、FTの全加算prefixがi16範囲内だった。約11.872秒、exit 0、timeoutなし、process group cleanup済み。元の行順とstdin/raw SHA、MXCSR、固定core・build・入力617ファイルの検証前後の一致を記録した。core receipt SHAは`e2db237b0e37a018661753a81b8cbf8bd31c70cf282eae28204dc0f923ef7bd1`。これは静的forwardとrefreshの証拠で、探索中の全incremental経路を新たに検証した証拠とは区別する。
 
-`scripts/prepare_anchor.py`はsource/coreのreceiptと両split全rawを再検証し、別の新規private出力へmanifest・4入力・pure recipe・generation receiptを保存する。元holdoutとtrain positionsのbytesは保持する。pure recipeの`real_generation_ready=False`はそのままにし、実出力の検証完了だけを別のgeneration receiptへ記録する。8件の合成fixtureで失敗の拒否、出力byte、0700/0600とpure recipe保持を確認した。実行するwrapperは入力読込から最終再照合まで共有lockを保持し、固定source/core snapshotとpack・除外raw・導出入力の現状を再照合する。比率・D・init・3epoch/epoch3固定・export・採用条件はv2事前登録から変更しない。実target生成・学習・診断・次候補の正式比較は、この段階では未実施。
+`scripts/prepare_anchor.py`はsource/coreのreceiptと両split全rawを再検証し、別の新規private出力へmanifest・4入力・pure recipe・generation receiptを保存する。元holdoutとtrain positionsのbytesは保持する。pure recipeの`real_generation_ready=False`はそのままにし、実出力の検証完了だけを別のgeneration receiptへ記録する。8件の合成fixtureで失敗の拒否、出力byte、0700/0600とpure recipe保持を確認した。実行するwrapperは入力読込から最終再照合まで共有lockを保持し、固定source/core snapshotとpack・除外raw・導出入力の現状を再照合する。比率・D・init・3epoch/epoch3固定・export・採用条件はv2事前登録から変更しない。実target生成はこの補助の実装時点では未実施だった。現在の実生成・学習状況は下記を参照。
 
 取消・D/O診断のcommit `b63dc66`はCI 196テスト成功（125.218秒）。generation adapterはその後の追加8テストで検証した。fixtureの成功と、実データ生成・モデル採用の成功を分けて記録する。
+
+
+## 派生データ生成と学習開始
+
+新private outputへ学習用half-target viewを実生成し、generationと外側のoperational verificationがともにcompleteになった。source/coreの固定receipt、両splitの全raw、pure view再生成、保存後のbytes/SHA、source pack・除外raw・導出入力1,042ファイルの前後一致を共有lock内で確認した。6出力（manifest・4データファイル・pure recipe）は64,345,017 bytes、generation receipt SHAは`f85ab76abf50ae530f9618d25d35eda66565c79507d0d34b24fc924daf255c9a`。train positionsと元holdout2ファイルはbyte一致で保持し、train labelsのcpとteacher identityだけを変更した。49,115行がhalf-integerで、丸め誤差は各行最大0.5 cp、符号付き誤差の合計は-0.5 cpだった。pure recipeの未検証フラグを変更せず、実生成の証拠を別receiptに残した。
+
+3epoch・selected epoch3・material init・fresh Adam・seed/shuffle42・LR0.0001・step-half horizon3・min-lr0・wall上限1,200秒の学習を新runで開始した。起動logで112,681 positionsと112,681 cache entries、全件cache-only保持、D target、absolute初期値とFTZ/DAZを確認した。開始時SSD空き約26.29 GiB。元teacher Oのholdout診断、fixed epoch3 nearest-even export、core bridgeと正式100万ノード比較、採否・保存はまだ残る。学習中のlossやこの疎通を採用成功と扱わず、最良fallbackを維持する。
+
+generation adapterのcommit `97fe087`はCI 204テスト成功（124.048秒）。外側wrapper・source検証codeとそのhash、source/core/生成/学習のprivate receiptsを保存し、完了した次候補のNAS snapshotへ含める。
 
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

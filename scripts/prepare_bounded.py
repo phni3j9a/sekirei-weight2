@@ -2,7 +2,7 @@
 """Build and verify a dedicated, pinned bounded-material trainer.
 
 Fresh private runtime only. Old preparation/export/diagnosis guards stay intact.
-The v2 patch identity document must be frozen externally before launch.
+The v3 patch identity document must be frozen externally before launch.
 No data/model loading, training, engine probe, search, or adoption is performed.
 """
 import argparse
@@ -27,8 +27,8 @@ UPSTREAM = 'f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9'
 LOCK_SHA = '4343a043250cf300e4b029f3dc9f953f1ec047bd6bcb4024efeda0a3e9b5bca5'
 EXTERNAL_PATCH_SHA = 'd41878e8f50a89a415e1c2dba05c09f0449d20a6e55aa9e8388b1709df7b12cf'
 EXTERNAL_MAIN_SHA = '1a56e29f3111cd502aa0a5c7b2078b47f96725970f95492e491b1e5f80b82d0a'
-BOUNDED_PATCH_SHA = '6602c12ea83b602cb1a93fa7f16624d1c67e4f23a05aa7bd4d253b21426d48c8'
-BOUNDED_MAIN_SHA = '16b6728cdda9bc4f0bd7cd3294028fe3e110edc6b17f5cc034519674b8b04db4'
+BOUNDED_PATCH_SHA = 'ee819bd80c41301ee78a0d3ce29efd976c3d762c1ddf07bf6cc259703d38933b'
+BOUNDED_MAIN_SHA = '1e4f89471713c4954de8100179f1fe797793471cf5fc355a047b2752dc2692df'
 BOUNDED_TRAINER_SHA = 'b6447b10b0afbe7be4d0f275f5cbe6ab2b97384f8da5170966d2b6f71ff28a43'
 TRAIN_CPU_SHA = 'e1e21e3c6ad251098c864345bd45af84d013144a403c7296af6f87c6780fdc07'
 BENCHMARK_SHA = '108b3f8b973c843210cd058009667415f1140436b7743484af268c1cf26b7e98'
@@ -50,6 +50,7 @@ REQUIRED_TESTS = {
     'tests::bounded_cli_rejects_all_alternate_update_and_resume_flags',
     'tests::bounded_recipe_fingerprint_separates_normal_mode',
     'tests::bounded_loaded_initial_bytes_are_bound_to_actual_core_serialization',
+    'tests::bounded_checkpoint_metadata_reads_saved_native_and_rejects_malformed_paths',
     'trainer::tests::bounded_adam_skips_protected_params_and_nonzero_moments',
     'trainer::tests::bounded_auxiliary_output_then_l2_receives_gradient',
     'trainer::tests::bounded_ft_native_roundtrip_and_saved_f32_values_are_exact',
@@ -202,8 +203,8 @@ def load_identity(path, expected_sha256):
     tests = value['rust_tests']
     require(type(tests) is list and all(type(name) is str and
             re.fullmatch(r'(?:tests|trainer::tests)::bounded_[a-z0-9_]+', name) for name in tests)
-            and len(tests) == len(set(tests)) == 9 and set(tests) == REQUIRED_TESTS,
-            'exactly the nine final v2 meaningful bounded tests must be declared')
+            and len(tests) == len(set(tests)) == 10 and set(tests) == REQUIRED_TESTS,
+            'exactly the ten final v3 meaningful bounded tests must be declared')
     return value
 
 
@@ -393,7 +394,7 @@ def prepare(runtime, identity_path, expected_identity_sha256):
         files, deps = source_identity(source, patched=True)
         require(files[MAIN]['sha256'] == identity['expected_source_main_sha256'] and
                 files[TRAINER]['sha256'] == identity['expected_source_trainer_sha256'],
-                'post-patch source differs from frozen v2 identity')
+                'post-patch source differs from frozen v3 identity')
         require(deps == deps_before and all(files[name] == baseline[name] for name in files if name not in CHANGED),
                 'bounded patch changed a dependency or unrelated tracked source')
         test_command = ['cargo', 'test', '--release', '--locked', '-j', '2', '-p',

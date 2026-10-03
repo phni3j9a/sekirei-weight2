@@ -57,12 +57,12 @@ class BoundedBuilderTests(unittest.TestCase):
     def test_actual_harness_completion_requires_every_named_pass(self):
         names = sorted(prepare.REQUIRED_TESTS)
         log = "\n".join(f"test {name} ... ok" for name in names)
-        log += "\ntest result: ok. 9 passed; 0 failed; 0 ignored; 100 filtered out; finished in 0.01s\n"
+        log += "\ntest result: ok. 10 passed; 0 failed; 0 ignored; 100 filtered out; finished in 0.01s\n"
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "tests.log"; path.write_text(log)
             self.assertEqual(prepare.parse_tests(path, names)["passed"], names)
             for broken in (log.replace(" ... ok", " ... ignored", 1),
-                           log.replace("9 passed", "8 passed"),
+                           log.replace("10 passed", "9 passed"),
                            log + f"test {names[0]} ... ok\n"):
                 path.write_text(broken)
                 with self.assertRaises(ValueError):

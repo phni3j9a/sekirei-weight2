@@ -37,8 +37,8 @@ PREREGISTRATION_SCHEMA = "sekirei.bounded-material-preregistration.v1"
 MODE = "bounded-material-v1"
 PLAN_SHA256 = "70d86307d5a23319d70dd6fa8cedb472954f178c3663d4265a7c982a85befd5e"
 DATASET_SHA256 = "ecc419da180b86b046e1af507e6de0e218d271a5d9eaa9bff07f19ec072719a6"
-BOUNDED_PATCH_SHA256 = "6602c12ea83b602cb1a93fa7f16624d1c67e4f23a05aa7bd4d253b21426d48c8"
-SOURCE_MAIN_SHA256 = "16b6728cdda9bc4f0bd7cd3294028fe3e110edc6b17f5cc034519674b8b04db4"
+BOUNDED_PATCH_SHA256 = "ee819bd80c41301ee78a0d3ce29efd976c3d762c1ddf07bf6cc259703d38933b"
+SOURCE_MAIN_SHA256 = "1e4f89471713c4954de8100179f1fe797793471cf5fc355a047b2752dc2692df"
 SOURCE_TRAINER_SHA256 = "b6447b10b0afbe7be4d0f275f5cbe6ab2b97384f8da5170966d2b6f71ff28a43"
 COUNTS = {"train": 112681, "holdout": 5895}
 TEACHER = "external:suisho11beta-1m-pack:376d4ef6e503d2ebe687f99e873103845b6eddc0c04d0d08e9b9c785ea061b8d"
@@ -319,7 +319,7 @@ def _diagnose(args, holder, resources):
     require(build.get("bounded_patch_sha256") == BOUNDED_PATCH_SHA256
             and build.get("source_main_sha256") == SOURCE_MAIN_SHA256
             and build.get("source_trainer_sha256") == SOURCE_TRAINER_SHA256,
-            "actual build differs from the independently reviewed v2 patch/source")
+            "actual build differs from the independently reviewed v3 patch/source")
     read(Path(build["identity_document_path"]))
     for name in build.get("logs", {}):
         read(paths["trainer"] / name)

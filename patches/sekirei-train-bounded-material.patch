@@ -1,4 +1,3 @@
-diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
 --- a/crates/sekirei-train/src/main.rs
 +++ b/crates/sekirei-train/src/main.rs
 @@ -97,6 +97,7 @@
@@ -213,7 +212,7 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
      format!("{:016x}", positions::sfen_hash(&recipe, 0))
  }
  
-@@ -1921,6 +2069,42 @@
+@@ -1921,6 +2069,61 @@
  }
  
  #[allow(clippy::too_many_arguments)]
@@ -253,10 +252,29 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
 +    )
 +}
 +
++fn bounded_checkpoint_native_path(metadata_path: &Path) -> io::Result<PathBuf> {
++    // Epoch metadata has two extensions; replacing only "json" would read
++    // weights.epoch1.meta.bin instead of the saved weights.epoch1.bin.
++    // Check each exact suffix and preserve parent directories/non-UTF names.
++    let without_json = metadata_path.with_extension("");
++    if metadata_path.extension() != Some(std::ffi::OsStr::new("json"))
++        || without_json.extension() != Some(std::ffi::OsStr::new("meta"))
++        || without_json
++            .file_stem()
++            .map_or(true, |stem| stem.is_empty())
++    {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidInput,
++            "bounded checkpoint metadata path must name *.meta.json",
++        ));
++    }
++    Ok(without_json.with_extension("bin"))
++}
++
  fn save_checkpoint_meta(
      path: &Path,
      args: &Args,
-@@ -1998,7 +2182,7 @@
+@@ -1998,7 +2201,7 @@
          }
          None => (None, None, None, None, None, None, None, None),
      };
@@ -265,18 +283,18 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
          "epoch": epoch,
          "positions": args.positions_path,
          "games_dir": args.games_dir,
-@@ -2219,6 +2403,10 @@
+@@ -2219,6 +2422,10 @@
          "valid_output_max": valid_output_max,
          "valid_output_range": valid_output_range,
      });
 +    if args.bounded_material_v1 {
-+        meta["bounded_material_v1"] =
-+            bounded_material_metadata(&path.with_extension("bin"), teacher_identity)?;
++        let native_path = bounded_checkpoint_native_path(path)?;
++        meta["bounded_material_v1"] = bounded_material_metadata(&native_path, teacher_identity)?;
 +    }
      let json = serde_json::to_vec_pretty(&meta)
          .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
      write_atomic(path, &json)
-@@ -2260,6 +2448,9 @@
+@@ -2260,6 +2467,9 @@
  }
  
  fn print_usage() {
@@ -286,7 +304,7 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
      eprintln!("  --external-teacher-id <external:id>  Strict complete precomputed labels; requires positions, cache-only and external game split");
      eprintln!(
          "Usage: train (--games <dir> | --positions <jsonl>) [--output weights.bin] [--epochs 3] [--sample 4]"
-@@ -2992,6 +3183,9 @@
+@@ -2992,6 +3202,9 @@
          trainer.diagnostic_rate_matched_mask_count = args.diagnostic_rate_matched_mask_count;
          trainer.diagnostic_rate_matched_mask_total = args.diagnostic_rate_matched_mask_total;
          trainer.diagnostic_rate_matched_mask_seed = args.diagnostic_rate_matched_mask_seed;
@@ -296,7 +314,7 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
          let mut prev_snapshot: Option<Vec<f32>> = None;
          let mut best_valid_loss = f64::MAX;
          let mut best_valid_checkpoint: Option<PathBuf> = None;
-@@ -3216,22 +3410,38 @@
+@@ -3216,22 +3429,38 @@
              }
  
              let checkpoint = checkpoint_dir.join(format!("{output_stem}.epoch{epoch}.bin"));
@@ -337,7 +355,7 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
                  eprintln!("  Adam checkpoint → {:?}", adam_checkpoint);
              }
              let resume_checkpoint = checkpoint.with_extension("resume.json");
-@@ -3243,6 +3453,9 @@
+@@ -3243,6 +3472,9 @@
                  &combined_cache,
              ) {
                  eprintln!("  resume checkpoint save failed: {e}");
@@ -347,7 +365,7 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
              } else {
                  eprintln!("  resume checkpoint → {:?}", resume_checkpoint);
              }
-@@ -3292,6 +3505,9 @@
+@@ -3292,6 +3524,9 @@
                  Some(&valid_stats), // positions path has CP-only validation statistics
              ) {
                  eprintln!("  metadata save failed: {e}");
@@ -357,7 +375,7 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
              } else {
                  eprintln!("  metadata  → {:?}", meta_path);
              }
-@@ -3347,12 +3563,22 @@
+@@ -3347,12 +3582,22 @@
              }
          }
  
@@ -380,7 +398,7 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
                  }
                  eprintln!("Final weights saved → {:?}", args.output)
              }
-@@ -4362,4 +4588,112 @@
+@@ -4362,4 +4607,226 @@
          assert!(!train.is_empty());
          assert!(!valid.is_empty());
      }
@@ -493,8 +511,121 @@ diff --git a/crates/sekirei-train/src/main.rs b/crates/sekirei-train/src/main.rs
 +        );
 +        assert!(!output.exists());
 +    }
++
++    #[test]
++    fn bounded_checkpoint_metadata_reads_saved_native_and_rejects_malformed_paths() {
++        use sekirei_core::nnue::{INPUT, L1, L2, NnueWeights};
++
++        let directory = tempfile::tempdir().unwrap();
++        let parent = directory.path().join("checkpoint.parent.meta.json");
++        fs::create_dir(&parent).unwrap();
++        for (metadata, native) in [
++            ("weights.epoch1.meta.json", "weights.epoch1.bin"),
++            (
++                "candidate.v3.weights.epoch1.meta.json",
++                "candidate.v3.weights.epoch1.bin",
++            ),
++            ("weights.meta.meta.json", "weights.meta.bin"),
++        ] {
++            assert_eq!(
++                bounded_checkpoint_native_path(&parent.join(metadata)).unwrap(),
++                parent.join(native)
++            );
++        }
++        for malformed in [
++            ".meta.json",
++            "weights.epoch1.json",
++            "weights.epoch1.meta.bin",
++            "weights.epoch1.metadata.json",
++            "weights.epoch1.meta.JSON",
++            "weights.epoch1.meta.json.tmp",
++        ] {
++            let error = bounded_checkpoint_native_path(&parent.join(malformed)).unwrap_err();
++            assert_eq!(
++                error.kind(),
++                io::ErrorKind::InvalidInput,
++                "accepted {malformed}"
++            );
++        }
++
++        // This exercises the actual failing save path without private weights,
++        // teacher data, a training update, or an engine search.
++        let native = parent.join("candidate.v3.weights.epoch1.bin");
++        let metadata = native.with_extension("meta.json");
++        let wrong_native = metadata.with_extension("bin");
++        let mut weights = NnueWeights {
++            ft: vec![[0; L1]; INPUT],
++            ft_bias: [0; L1],
++            l2: vec![[0.0; L2]; 2 * L1],
++            l2_bias: [0.0; L2],
++            out: [0.0; L2],
++            out_bias: 0.0,
++        };
++        weights.out[4] = 0.25;
++        weights.out[5] = -0.125;
++        sekirei_core::nnue::save_weights(&weights, &native).unwrap();
++        let saved_native = fs::read(&native).unwrap();
++        let fingerprint = checkpoint_hash(&saved_native);
++        let mut synthetic_trainer = Trainer::new(7, 0.5);
++        synthetic_trainer.weights = trainer::TrainWeights::from_nnue_weights(&weights);
++        let diag = build_diag(&synthetic_trainer, &weights, None);
++        let args = parse_args_from(bounded_test_args()).unwrap();
++        let teacher = args.external_teacher_id.as_deref().unwrap();
++        let save = |path: &Path| {
++            save_checkpoint_meta(
++                path,
++                &args,
++                teacher,
++                1,
++                1,
++                0,
++                None,
++                None,
++                0,
++                &diag,
++                None,
++                0,
++                fingerprint,
++                Some(1),
++                Some(0),
++                None,
++                None,
++            )
++        };
++        assert!(!wrong_native.exists());
++        save(&metadata).unwrap();
++        let value: serde_json::Value = serde_json::from_slice(&fs::read(&metadata).unwrap()).unwrap();
++        assert_eq!(value["epoch"], 1);
++        assert_eq!(value["teacher_identity"], teacher);
++        assert_eq!(value["checkpoint_hash"], format!("{fingerprint:016x}"));
++        let bounded = &value["bounded_material_v1"];
++        assert_eq!(bounded["mode"], "bounded-material-v1");
++        assert_eq!(bounded["teacher_identity"], teacher);
++        assert_eq!(bounded["mask_version"], 1);
++        assert_eq!(
++            bounded["saved_f32_l1_upper"].as_f64().unwrap(),
++            trainer::bounded_material_aux_l1_upper(&weights.out)
++        );
++        let cp_upper = bounded["saved_f32_budget_cp_upper"].as_f64().unwrap();
++        assert_eq!(
++            cp_upper,
++            trainer::bounded_material_aux_cp_upper(&weights.out)
++        );
++        assert!(cp_upper > 0.0 && cp_upper <= 99.0);
++        assert_eq!(fs::read(&native).unwrap(), saved_native);
++        assert!(
++            !wrong_native.exists(),
++            "metadata must never synthesize the wrong native path"
++        );
++
++        let malformed = parent.join("candidate.v3.weights.epoch1.json");
++        assert_eq!(
++            save(&malformed).unwrap_err().kind(),
++            io::ErrorKind::InvalidInput
++        );
++        assert!(!malformed.exists(), "malformed metadata path was written");
++    }
 +}
-diff --git a/crates/sekirei-train/src/trainer.rs b/crates/sekirei-train/src/trainer.rs
 --- a/crates/sekirei-train/src/trainer.rs
 +++ b/crates/sekirei-train/src/trainer.rs
 @@ -726,7 +726,13 @@

@@ -114,7 +114,9 @@ Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](ht
 
 参考教師Suisho11Plusは、主教師βだけで確定した最良モデルについて17局面×3反復を完了した。[参考確認](docs/validation/weight-improvement-2026-10-03/plus-reference/reference.md)は型付き結果の安定性を示すが、正式な採用判断には使っていない。112,681局面のNNUE追加学習と静的診断も完了し、選択済みepoch3の最近傍丸め版は固定holdout MAE **644.599 cp**となった。この追加候補の正式比較は未実施のため採用せず、次回検証用に保持する。
 
-探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PRは未マージ。
+探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PR #16はマージ済みで、モデル採用は未達のまま。
+
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を開始した。最初に保存済み112,681局面・epoch3・最近傍丸め版を候補自身のpilot・正式MAE・Top3で検証する。現行の二指標と100万ノード条件を維持し、実測から次の仮説を選ぶ。[目標・候補・資源・実行状態](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
 
 ## 文書
 

@@ -295,3 +295,11 @@ build後にstock01を全bytes検証して別のreference03を生成し、新core
 [新形式のfit driver](../scripts/fit_white_view_paired_linear.py)と[専用control/sidecar契約](../scripts/white_view_fit_contract.py)、[activation・source preflight・親launcherの準備source](../preparations/white-view-fit-operational-v2/README.md)を追加した。固定source inventory→ACT→PR→PF→親fitの順で非循環に束縛し、旧全pool replay・raw1000・原典526/依存63・core617のguardを継承する。新buildは別mapで検証し、6排他lockと2共有lockを終了まで保持する。子のdraftから親が保存済みGramによる3certとnearest castを再検算し、実wait/reap/group停止・入力不変を確認してからrunとsidecarを一方向に完成する。この親の検算を独立numeric監査とは扱わない。
 
 公開driverは外部SHAで固定したACT/PF/buildを必須とし、準備sourceのACT/PF/launcherは無効のままでRootが保存済み別copyを有効化する。実隣接build contractをSHAで固定し、同名の公開モジュールが既にimport済みでも専用validatorへ実隣接objectを渡し、元cacheを復元する。private sourceの合成43件、公開40件のうちNumPy4件を含む全件を固定audit環境で検証した。公開標準環境の全380 testsは成功（数値依存等30 skip）。既存solver bodyとNUMERIC_HASHESを保持し、source準備のみのprovenance比較3件はprivate監査へ残す。実fit・独立numeric・全row/差分更新・新fallback bridge・候補formalは未実施。
+
+[独立numeric監査](../scripts/white_view_independent_numeric_audit.py)は、保存された整数Gramと右辺、f64/f32係数から三つのexact certificate・gradient・目的差・Gershgorin boundを再計算する。native03とmetadata、別reference03も全bytesから再構成する。元の数値演算sourceを保持し、合成17件と公開用16件が成功した。実datasetからの再Gram生成やPSD・FISTA軌跡の再証明を行ったとは主張しない。
+
+[新core・差分更新・technical gateの準備source](../preparations/white-view-model-proof-v1/README.md)は、候補03と別reference03を新coreで比較し、元train/holdoutとfixtureの計118,591局面、および8,185差分更新観測を別証拠として要求する。gateはnumeric・core・incrementalのrawと全transitive入力を再検査する。合成13件と公開用12件が成功した。実入口は無効のままで、Rootが別copyを固定して実行する。runtime再検証がread-only compiler/git子processを呼び得るため、監査の「子processなし」と「engine/fitなし」を区別して記録する。準備testsやserialization成功を実forward・探索改善・採用とは扱わない。
+
+[新runtimeの正式比較監督source](../preparations/white-view-evaluation-runtime-v3/README.md)は、旧parserを保持して新fallbackと候補の四段階をそれぞれ新規実行する。旧fallbackとの橋では固定semantic projection・7共通identity・各局のexact整数集計を要求し、同じ新binaryの候補比較では8identityと共同採用条件を維持する。新fallbackのown pilotも省略しない。親の直接子が終了しても残るprocess groupをKILLし、最大5秒の別期限で消滅を確認する修正を、未使用のD2 sourceと分けてD3に保存した。正式technical gateの19外部参照・5proof・全起動入力集合への包含を接続し、私有合成42件と公開用41件が成功した。実四段階の成功・採用は未確認で、公開sourceは無効のまま保持する。
+
+これらの追加後、公開標準環境で全449 testsが成功（既存の数値依存等30 skip、204.638秒）。同一の公開source commitをACT・PR・PF・fit・proof・新fallback/候補formalまで保持し、終了後に実測と記録を追加する。

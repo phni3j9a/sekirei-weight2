@@ -144,7 +144,11 @@ native/nearest両重みを既存core probeへ渡し、元train112,681・holdout5
 | MAE | 1084.478601 cp | 995.803800 cp |
 | Top3入り率 | 55.388757% | 55.382847% |
 
-候補の厳密有理数はMAE `176356853/177100`、Top3 `59346323/107156504`。MAEは約88.674800 cp改善したが、Top3は約0.005910ポイント低下し、維持条件を満たさない。全551点のhit合計は両者304だが、採用に使う固定指標は各局を等重みとした平均であり、表示丸めや全局面の直接平均で採用へ読み替えない。[正式比較とグラフ](validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/comparison.md)を公開し、最良fallbackを維持する。formal launcherはexit0で終了し、goalは継続中。独立全run監査とNAS保存は残る。
+候補の厳密有理数はMAE `176356853/177100`、Top3 `59346323/107156504`。MAEは約88.674800 cp改善したが、Top3は約0.005910ポイント低下し、維持条件を満たさない。全551点のhit合計は両者304だが、採用に使う固定指標は各局を等重みとした平均であり、表示丸めや全局面の直接平均で採用へ読み替えない。[正式比較とグラフ](validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/comparison.md)を公開し、最良fallbackを維持する。formal launcherはexit0で終了し、goalは継続中。独立全run監査とNAS保存も完了した。
+
+独立監査は全4runの1,829 attempt、raw/lifecycle/node/options・明示的NNUE読込1,208/1,208、合法なTop3・Teacher-E266・8identityを再検証し、同じ厳密値とhold判定を得た。技術失敗・timeout・cleanup失敗は0、最大nodesは候補1,000,003 / 教師1,001,086。監査前後の7,379 input filesと8 inventoriesが一致し、finalは未使用。独立receipt SHAは`7656a6d08d340b3cd9627ceab73fe7fdeb699a7cb1b2a19beb4b42af00f986ea`。
+
+完了generation、3epochの全checkpoint/Adam/resume/metadata、O診断、native/nearest、二つの全row core証拠、evaluationと4run、凍結completion/codeをNASへ保管した。12 source roots、3,831 files・43 directories・0 symlinks・415,829,630 bytesで、コピー前後と保存先の集合・size・SHA-256等が全一致した。SSD原本は保持する。[公開保存集計](validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/archive.json)を参照。元O入力・固定runtime・audit venv・baseline等の既存依存が必要であり、単体の全環境復元とは扱わない。snapshot作成でmetadata名を誤認した最初の試行は保存前に停止し、正しい名前でbyte確認して完成した経緯もprivate erratumへ残した。
 
 ## 条件付きbounded-material案の純粋検証
 

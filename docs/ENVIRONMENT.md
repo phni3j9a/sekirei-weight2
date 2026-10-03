@@ -62,6 +62,8 @@ Issue #17のridge=1は正式比較でMAE改善・Top3低下のため採用しな
 
 Issue #17の次候補preflightでは、元SSDのdata-400-frozen-holdout/train.labelsだけが固定manifestとhash不一致で停止した。検証済みIssue #15 NAS copyとの差分は1行のteacher identityのみ、cp・SFEN集合・順序は同じ。原因は未特定。元SSDを上書きせず、`campaign-17-autonomous-v1/source-input-recovery-v1/dataset`へmanifestと4ファイル（5 files / 64,444,603 bytes）を新規copyし、元NAS・copy先・manifestのsize/SHA一致、元SSDの前後不変を確認した。次候補ではこの復元inputを使う。詳細receiptと差分記録はprivateに保持し、[自律改善](AUTONOMOUS_WEIGHT_IMPROVEMENT.md#次候補の事前登録と入力復元)にhashと判断を残す。
 
+Issue #17のfunctional-anchor halfも有効な正式比較でMAE改善・Top3維持未達となった。全生成・3epoch・診断・export・core証拠・4run・凍結snapshotを `archives/2026-10-03/issue-17-functional-anchor-half-e3-nearest-v1` へ保管し、3,831 files・43 directories・0 symlinks・415,829,630 bytesの集合・size・SHA-256等がコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-functional-anchor-half-e3-nearest-v1`、[公開集計](validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/archive.json)を参照。SSD原本・参照パスを保持し、元入力と固定環境等の既存依存も記録した。
+
 ## 固定ソフト
 
 完全な commit とハッシュは [toolchain.lock.json](../config/toolchain.lock.json) にある。

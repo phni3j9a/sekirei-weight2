@@ -1,0 +1,23 @@
+{
+  "archive_id": "issue-17-bounded-material-residual-100cp-e3-v1",
+  "archiver_sha256": "5520a647ed77f25e47cd7208fd13ee9b6ae10d619a836c8b36709d33308a2816",
+  "bytes": 428614972,
+  "candidate": "bounded-material-residual-100cp-e3-v1",
+  "directories": 71,
+  "directory_sets_symlink_strings_equal": true,
+  "files": 3899,
+  "final_used": false,
+  "independent_formal_review_sha256": "2a52e6929e51ffab326b8561a53aa7215dc19ba9b0c00628b5be40fefb013a66",
+  "mapping_sha256": "6bbf90167552224963553cc9dfff05274821346a53b0da9fe992aac79958c0a7",
+  "measurement_commit": "194760a6d8da30c85878e8a1d43803f5391fbb39",
+  "model_adopted": false,
+  "private_destination_inventory_sha256": "91b70889afcdd386a360c24d06c6358e3d7e40fa4cca28946332c168aee9c37a",
+  "private_status_receipt_sha256": "99ac71e2627a8f461e82cfa1cc9ff4f1d676205b735dfe41acbcc086fc37051d",
+  "schema": "sekirei.public-archive-summary.v1",
+  "scope": "all successful E1/E2/E3 native Adam metadata, failed technical v2 E1 and exact old source snapshots, original recovered dataset, static/core/incremental proofs, evaluation four runs, immutable completion and archive-support; dedicated build and venv excluded",
+  "source_before_after_destination_file_sets_sizes_sha256_equal": true,
+  "ssd_sources_preserved": true,
+  "standalone_environment_restore": false,
+  "status": "complete",
+  "symlinks": 0
+}

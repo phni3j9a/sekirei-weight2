@@ -1,0 +1,1459 @@
+--- a/crates/sekirei-train/src/main.rs
++++ b/crates/sekirei-train/src/main.rs
+@@ -97,6 +97,7 @@
+ }
+ 
+ struct Args {
++    bounded_material_v1: bool,
+     games_dir: Option<PathBuf>,
+     external_teacher_id: Option<String>, // precomputed labels only, never internal search
+     positions_path: Option<PathBuf>, // --positions: shogiesa positions.jsonl
+@@ -501,8 +502,53 @@
+         .map_err(|error| format!("{option} has invalid value {value:?}: {error}"))
+ }
+ 
++// Dedicated fresh-run mode: explicitly reject even inert diagnostic flags.
++fn validate_bounded_material_cli(argv: &[String]) -> Result<(), String> {
++    for arg in argv {
++        if arg.starts_with("--diagnostic-")
++            || arg.starts_with("--ranking-")
++            || matches!(
++                arg.as_str(),
++                "--games"
++                    | "--resume-adam"
++                    | "--resume-checkpoint"
++                    | "--resume-checkpoint-every-games"
++                    | "--stop-after-resume-checkpoint"
++                    | "--wdl-lambda"
++                    | "--wdl-target-scale"
++                    | "--cp-wdl-grad-trace"
++                    | "--eval-only"
++                    | "--grad-clip-norm"
++                    | "--ft-clip-norm"
++                    | "--l2-clip-norm"
++                    | "--out-clip-norm"
++                    | "--trace-positions"
++                    | "--trace-weights"
++                    | "--sample-grad-trace"
++                    | "--export"
++                    | "--build-book"
++                    | "--teacher-weights"
++                    | "--teacher-nnue-output"
++                    | "--exclude-mate-labels"
++                    | "--scored"
++                    | "--stability-weighted"
++                    | "--phase-weights"
++                    | "--side-balance"
++                    | "--best-every"
++            )
++        {
++            return Err(format!("bounded-material-v1 forbids {arg}"));
++        }
++    }
++    Ok(())
++}
++
+ fn parse_args() -> Result<Args, String> {
+-    let argv: Vec<String> = std::env::args().skip(1).collect();
++    parse_args_from(std::env::args().skip(1).collect())
++}
++
++fn parse_args_from(argv: Vec<String>) -> Result<Args, String> {
++    let mut bounded_material_v1 = false;
+     let mut games_dir = None;
+     let mut external_teacher_id: Option<String> = None;
+     let mut positions_path: Option<PathBuf> = None;
+@@ -596,6 +642,7 @@
+ 
+     while i < argv.len() {
+         match argv[i].as_str() {
++            "--bounded-material-v1" => bounded_material_v1 = true,
+             "--games" => {
+                 i += 1;
+                 games_dir = argv.get(i).map(PathBuf::from);
+@@ -1133,7 +1180,37 @@
+     let lr_schedule_epochs =
+         trainer::resolve_schedule_epochs(epochs_u32, lr_schedule_epochs, warmup_epochs)?;
+ 
++    if bounded_material_v1 {
++        validate_bounded_material_cli(&argv)?;
++        if positions_path.is_none()
++            || external_teacher_id.as_deref()
++                != Some(
++                    "external:suisho11beta-1m-pack:376d4ef6e503d2ebe687f99e873103845b6eddc0c04d0d08e9b9c785ea061b8d",
++                )
++            || !strict_positions
++            || !cache_only
++            || !reuse_teacher_cache
++            || teacher_cache_path.is_none()
++            || init_weights.is_none()
++            || init_seed.unwrap_or(seed) != 42
++            || epochs != 3
++            || label_depth != 0
++            || nnue_output != NnueOutput::Absolute
++            || teacher_score_cap != 30000.0
++            || search_target_weight != 1.0
++            || validation_ratio != 0.0
++            || source_cap != 0
++            || scored_path.is_some()
++            || !phase_weights.is_empty()
++            || side_balance
++            || stability_weighted
++        {
++            return Err("bounded-material-v1 requires fresh material seed42, three epochs, absolute original external labels, strict complete cache-only input, label-depth 0 and score-cap 30000".into());
++        }
++    }
++
+     Ok(Args {
++        bounded_material_v1,
+         games_dir,
+         external_teacher_id,
+         positions_path,
+@@ -1388,6 +1465,67 @@
+     Ok(())
+ }
+ 
++struct BoundedInitialTemp(PathBuf);
++
++impl Drop for BoundedInitialTemp {
++    fn drop(&mut self) {
++        let _ = fs::remove_dir_all(&self.0);
++    }
++}
++
++// The core exposes save_weights(path), not a public in-memory encoder.
++// Use that exact serializer in an owned private directory, then remove it.
++fn bounded_canonical_initial_bytes(
++    weights: &sekirei_core::nnue::NnueWeights,
++    output: &Path,
++) -> Result<Vec<u8>, String> {
++    let nonce = std::time::SystemTime::now()
++        .duration_since(std::time::UNIX_EPOCH)
++        .map_err(|error| format!("cannot name bounded initial check: {error}"))?
++        .as_nanos();
++    let parent = output
++        .parent()
++        .filter(|p| !p.as_os_str().is_empty())
++        .unwrap_or(Path::new("."));
++    let directory = parent.join(format!(
++        ".bounded-initial-check-{}-{nonce}",
++        std::process::id()
++    ));
++    let mut builder = fs::DirBuilder::new();
++    #[cfg(unix)]
++    {
++        std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
++    }
++    builder
++        .create(&directory)
++        .map_err(|error| format!("cannot create private initial check: {error}"))?;
++    let cleanup = BoundedInitialTemp(directory.clone());
++    let path = directory.join("loaded-canonical.bin");
++    let result = sekirei_core::nnue::save_weights(weights, &path)
++        .and_then(|()| fs::read(&path))
++        .map_err(|error| format!("cannot serialize actual loaded initial weights: {error}"));
++    let removed = fs::remove_dir_all(&directory)
++        .map_err(|error| format!("cannot clean bounded initial check: {error}"));
++    drop(cleanup);
++    let canonical = result?;
++    removed?;
++    Ok(canonical)
++}
++
++fn validate_bounded_initial_binding(
++    initial: &[u8],
++    canonical: &[u8],
++    expected_fnv: u64,
++) -> Result<(), String> {
++    if checkpoint_hash(initial) != expected_fnv
++        || checkpoint_hash(canonical) != expected_fnv
++        || canonical != initial
++    {
++        return Err("actual loaded material parameters differ from pinned initial bytes".into());
++    }
++    Ok(())
++}
++
+ /// Loads inference-only weights for a fresh fine-tuning run.  Optimizer
+ /// moments are intentionally not part of an NNUE binary, so converting it to
+ /// `TrainWeights` yields zeroed Adam state rather than pretending this is a
+@@ -1400,8 +1538,15 @@
+     let bytes = fs::read(path)
+         .map_err(|error| format!("cannot read initial NNUE weights {path:?}: {error}"))?;
+     validate_nnue_output_metadata(path, args.nnue_output, &bytes)?;
++    if args.bounded_material_v1 && checkpoint_hash(&bytes) != 0x5ae69099a8bbcdad {
++        return Err("bounded-material-v1 initial material byte identity mismatch".into());
++    }
+     let weights = sekirei_core::nnue::read_weights(path)
+         .map_err(|error| format!("cannot load initial NNUE weights {path:?}: {error}"))?;
++    if args.bounded_material_v1 {
++        let canonical = bounded_canonical_initial_bytes(&weights, &args.output)?;
++        validate_bounded_initial_binding(&bytes, &canonical, 0x5ae69099a8bbcdad)?;
++    }
+     let identity = format!(
+         "{}:{:016x}",
+         args.nnue_output.as_str(),
+@@ -1425,7 +1570,7 @@
+ ) -> String {
+     let mut phase_weights: Vec<_> = args.phase_weights.iter().collect();
+     phase_weights.sort_by(|a, b| a.0.cmp(b.0));
+-    let recipe = format!(
++    let mut recipe = format!(
+         "dataset={dataset};split={split};teacher={teacher_identity};initial_weights={initial_weights_identity:?};nnue_output={};sample={};quiet={};min_ply={};label_depth={};label_time_ms={:?};label_nodes={:?};teacher_score_cap={};exclude_mate_labels={};search_target_weight={};min_rate={};stability={};stability_weighted={};side_balance={};source_cap={};validation_ratio={:.9};init_seed={};split_seed={};shuffle_seed={:?};wdl_lambda={:?};wdl_target_scale={};lr={};schedule={:?};min_lr={};warmup={};schedule_epochs={};phase_weights={phase_weights:?}",
+         args.nnue_output.as_str(),
+         args.sample,
+@@ -1454,6 +1599,9 @@
+         args.warmup_epochs,
+         args.lr_schedule_epochs,
+     );
++    if args.bounded_material_v1 {
++        recipe.push_str(";mode=bounded-material-v1;mask=ft-all,l2-cols0..3-rows0,1,256,257,bias-out0..3,outbias;cap_cp=99;shrink=uniform-aux-out-f32-margin-2^-20-max8;optimizer=fresh-resume-forbidden;init_fnv=5ae69099a8bbcdad;loaded_initial_binding=core-save-weights-exact-bytes;label_depth=0;epochs=3");
++    }
+     format!("{:016x}", positions::sfen_hash(&recipe, 0))
+ }
+ 
+@@ -1921,6 +2069,61 @@
+ }
+ 
+ #[allow(clippy::too_many_arguments)]
++fn bounded_material_metadata(
++    weights_path: &Path,
++    teacher_identity: &str,
++) -> io::Result<serde_json::Value> {
++    let w = sekirei_core::nnue::read_weights(weights_path)?;
++    let l1_upper = trainer::bounded_material_aux_l1_upper(&w.out);
++    let cp_upper = trainer::bounded_material_aux_cp_upper(&w.out);
++    assert!(cp_upper <= 99.0, "saved f32 auxiliary budget exceeded");
++    Ok(serde_json::json!({
++        "mode": "bounded-material-v1", "mask_version": 1,
++        "fixed_ft": "all", "fixed_l2_columns": [0,1,2,3],
++        "fixed_l2_rows": [0,1,256,257], "fixed_bias_out": [0,1,2,3],
++        "fixed_out_bias": "+0", "auxiliary_units": 28,
++        "residual_budget_cp": 99, "saved_f32_l1_upper": l1_upper,
++        "saved_f32_budget_cp_upper": cp_upper,
++        "shrink": "uniform-aux-out-f32-margin-2^-20-max8",
++        "shrink_moments": false, "optimizer": "fresh-adam",
++        "resume_supported": false, "init_seed": 42,
++        "initial_weights_fnv": "5ae69099a8bbcdad",
++        "loaded_initial_binding": "core-save-weights-exact-bytes", "label_depth": 0,
++        "target": "original-absolute-external-cp", "teacher_identity": teacher_identity,
++        "integer_core_bound_proven": false
++    }))
++}
++
++fn save_bounded_output_metadata(output: &Path, teacher_identity: &str) -> io::Result<()> {
++    let path = output.with_extension("meta.json");
++    let mut meta: serde_json::Value =
++        serde_json::from_slice(&fs::read(&path)?).map_err(io::Error::other)?;
++    meta["bounded_material_v1"] = bounded_material_metadata(output, teacher_identity)?;
++    write_atomic(
++        &path,
++        &serde_json::to_vec_pretty(&meta).map_err(io::Error::other)?,
++    )
++}
++
++fn bounded_checkpoint_native_path(metadata_path: &Path) -> io::Result<PathBuf> {
++    // Epoch metadata has two extensions; replacing only "json" would read
++    // weights.epoch1.meta.bin instead of the saved weights.epoch1.bin.
++    // Check each exact suffix and preserve parent directories/non-UTF names.
++    let without_json = metadata_path.with_extension("");
++    if metadata_path.extension() != Some(std::ffi::OsStr::new("json"))
++        || without_json.extension() != Some(std::ffi::OsStr::new("meta"))
++        || without_json
++            .file_stem()
++            .map_or(true, |stem| stem.is_empty())
++    {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidInput,
++            "bounded checkpoint metadata path must name *.meta.json",
++        ));
++    }
++    Ok(without_json.with_extension("bin"))
++}
++
+ fn save_checkpoint_meta(
+     path: &Path,
+     args: &Args,
+@@ -1998,7 +2201,7 @@
+         }
+         None => (None, None, None, None, None, None, None, None),
+     };
+-    let meta = serde_json::json!({
++    let mut meta = serde_json::json!({
+         "epoch": epoch,
+         "positions": args.positions_path,
+         "games_dir": args.games_dir,
+@@ -2219,6 +2422,10 @@
+         "valid_output_max": valid_output_max,
+         "valid_output_range": valid_output_range,
+     });
++    if args.bounded_material_v1 {
++        let native_path = bounded_checkpoint_native_path(path)?;
++        meta["bounded_material_v1"] = bounded_material_metadata(&native_path, teacher_identity)?;
++    }
+     let json = serde_json::to_vec_pretty(&meta)
+         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+     write_atomic(path, &json)
+@@ -2260,6 +2467,9 @@
+ }
+ 
+ fn print_usage() {
++    eprintln!(
++        "  --bounded-material-v1  Fresh seed42 material + auxiliary28 Adam, saved f32 residual budget99cp; external labels/depth0 only; resume unsupported"
++    );
+     eprintln!("  --external-teacher-id <external:id>  Strict complete precomputed labels; requires positions, cache-only and external game split");
+     eprintln!(
+         "Usage: train (--games <dir> | --positions <jsonl>) [--output weights.bin] [--epochs 3] [--sample 4]"
+@@ -2992,6 +3202,9 @@
+         trainer.diagnostic_rate_matched_mask_count = args.diagnostic_rate_matched_mask_count;
+         trainer.diagnostic_rate_matched_mask_total = args.diagnostic_rate_matched_mask_total;
+         trainer.diagnostic_rate_matched_mask_seed = args.diagnostic_rate_matched_mask_seed;
++        if args.bounded_material_v1 {
++            trainer.enable_bounded_material_v1();
++        }
+         let mut prev_snapshot: Option<Vec<f32>> = None;
+         let mut best_valid_loss = f64::MAX;
+         let mut best_valid_checkpoint: Option<PathBuf> = None;
+@@ -3216,22 +3429,38 @@
+             }
+ 
+             let checkpoint = checkpoint_dir.join(format!("{output_stem}.epoch{epoch}.bin"));
++            trainer.assert_bounded_material_v1();
+             let w = trainer.weights.to_nnue_weights();
+             let mut ckpt_hash = 0u64;
+             match sekirei_core::nnue::save_weights(&w, &checkpoint) {
+                 Ok(_) => {
++                    trainer.verify_bounded_saved_weights(&checkpoint);
+                     eprintln!("  checkpoint → {:?}", checkpoint);
+                     match fs::read(&checkpoint) {
+                         Ok(bytes) => ckpt_hash = checkpoint_hash(&bytes),
+-                        Err(e) => eprintln!("  checkpoint hash read failed: {e}"),
++                        Err(e) => {
++                            eprintln!("  checkpoint hash read failed: {e}");
++                            if args.bounded_material_v1 {
++                                std::process::exit(1);
++                            }
++                        }
+                     }
+                 }
+-                Err(e) => eprintln!("  checkpoint save failed: {e}"),
++                Err(e) => {
++                    eprintln!("  checkpoint save failed: {e}");
++                    if args.bounded_material_v1 {
++                        std::process::exit(1);
++                    }
++                }
+             }
+             let adam_checkpoint = checkpoint.with_extension("adam.json");
+             if let Err(e) = trainer.weights.save_adam_checkpoint(&adam_checkpoint) {
+                 eprintln!("  Adam checkpoint save failed: {e}");
++                if args.bounded_material_v1 {
++                    std::process::exit(1);
++                }
+             } else {
++                trainer.verify_bounded_saved_adam(&adam_checkpoint);
+                 eprintln!("  Adam checkpoint → {:?}", adam_checkpoint);
+             }
+             let resume_checkpoint = checkpoint.with_extension("resume.json");
+@@ -3243,6 +3472,9 @@
+                 &combined_cache,
+             ) {
+                 eprintln!("  resume checkpoint save failed: {e}");
++                if args.bounded_material_v1 {
++                    std::process::exit(1);
++                }
+             } else {
+                 eprintln!("  resume checkpoint → {:?}", resume_checkpoint);
+             }
+@@ -3292,6 +3524,9 @@
+                 Some(&valid_stats), // positions path has CP-only validation statistics
+             ) {
+                 eprintln!("  metadata save failed: {e}");
++                if args.bounded_material_v1 {
++                    std::process::exit(1);
++                }
+             } else {
+                 eprintln!("  metadata  → {:?}", meta_path);
+             }
+@@ -3347,12 +3582,22 @@
+             }
+         }
+ 
++        trainer.assert_bounded_material_v1();
+         let w = trainer.weights.to_nnue_weights();
+         match sekirei_core::nnue::save_weights(&w, &args.output) {
+             Ok(_) => {
++                trainer.verify_bounded_saved_weights(&args.output);
+                 if let Err(error) = save_output_mode_sidecar(&args.output, args.nnue_output) {
+                     eprintln!("output metadata save failed: {error}");
+                     std::process::exit(1);
++                }
++                if args.bounded_material_v1 {
++                    if let Err(error) =
++                        save_bounded_output_metadata(&args.output, &teacher_identity)
++                    {
++                        eprintln!("bounded output metadata save failed: {error}");
++                        std::process::exit(1);
++                    }
+                 }
+                 eprintln!("Final weights saved → {:?}", args.output)
+             }
+@@ -4362,4 +4607,226 @@
+         assert!(!train.is_empty());
+         assert!(!valid.is_empty());
+     }
+-}
++
++    fn bounded_test_args() -> Vec<String> {
++        ["--bounded-material-v1", "--positions", "synthetic.jsonl",
++            "--external-teacher-id", "external:suisho11beta-1m-pack:376d4ef6e503d2ebe687f99e873103845b6eddc0c04d0d08e9b9c785ea061b8d", "--strict-positions",
++            "--cache-only", "--reuse-teacher-cache", "--teacher-cache", "synthetic-cache.jsonl",
++            "--init-weights", "synthetic-material.bin", "--init-seed", "42",
++            "--teacher-score-cap", "30000", "--label-depth", "0", "--epochs", "3"]
++            .iter().map(|s| s.to_string()).collect()
++    }
++
++    #[test]
++    fn bounded_cli_accepts_only_fresh_original_absolute_recipe() {
++        let args = parse_args_from(bounded_test_args()).unwrap();
++        assert!(args.bounded_material_v1);
++        assert!(configure_teacher(&args).unwrap().starts_with("external:"));
++        for (option, value) in [
++            ("--epochs", "4"),
++            ("--init-seed", "43"),
++            ("--teacher-score-cap", "600"),
++            ("--nnue-output", "residual-material"),
++            ("--validation-ratio", "0.1"),
++            ("--source-cap", "1"),
++            ("--search-target-weight", "0.5"),
++            ("--external-teacher-id", "external:wrong-D"),
++            ("--label-depth", "1"),
++        ] {
++            let mut argv = bounded_test_args();
++            argv.extend([option.to_owned(), value.to_owned()]);
++            assert!(parse_args_from(argv).is_err(), "accepted {option}={value}");
++        }
++    }
++
++    #[test]
++    fn bounded_cli_rejects_all_alternate_update_and_resume_flags() {
++        for flag in [
++            "--games",
++            "--ranking-pairs",
++            "--resume-adam",
++            "--resume-checkpoint",
++            "--diagnostic-freeze-layer",
++            "--diagnostic-ft-active-block",
++            "--diagnostic-conflict-mask",
++            "--diagnostic-replay-component",
++            "--diagnostic-shadow-trace-probe-set",
++            "--wdl-lambda",
++            "--cp-wdl-grad-trace",
++            "--grad-clip-norm",
++            "--out-clip-norm",
++            "--exclude-mate-labels",
++            "--scored",
++            "--side-balance",
++            "--trace-weights",
++            "--export",
++        ] {
++            assert!(
++                validate_bounded_material_cli(&[flag.into()]).is_err(),
++                "accepted {flag}"
++            );
++        }
++    }
++
++    #[test]
++    fn bounded_recipe_fingerprint_separates_normal_mode() {
++        let mut args = parse_args_from(bounded_test_args()).unwrap();
++        let bounded = resume_config_fingerprint(
++            &args,
++            1,
++            2,
++            "external:synthetic-O",
++            Some("absolute:5ae69099a8bbcdad"),
++        );
++        args.bounded_material_v1 = false;
++        let ordinary = resume_config_fingerprint(
++            &args,
++            1,
++            2,
++            "external:synthetic-O",
++            Some("absolute:5ae69099a8bbcdad"),
++        );
++        assert_ne!(bounded, ordinary);
++    }
++
++    #[test]
++    fn bounded_loaded_initial_bytes_are_bound_to_actual_core_serialization() {
++        let directory = tempfile::tempdir().unwrap();
++        let output = directory.path().join("future-output.bin");
++        let input = directory.path().join("synthetic-initial.bin");
++        let original = trainer::TrainWeights::new_seeded(7, 0.5).to_nnue_weights();
++        sekirei_core::nnue::save_weights(&original, &input).unwrap();
++        let first_read = fs::read(&input).unwrap();
++        let loaded = sekirei_core::nnue::read_weights(&input).unwrap();
++        let canonical = bounded_canonical_initial_bytes(&loaded, &output).unwrap();
++        let synthetic_fnv = checkpoint_hash(&first_read);
++        assert!(validate_bounded_initial_binding(&first_read, &canonical, synthetic_fnv).is_ok());
++        let mut changed = loaded;
++        changed.out[4] += 1.0;
++        let wrong = bounded_canonical_initial_bytes(&changed, &output).unwrap();
++        assert!(validate_bounded_initial_binding(&first_read, &wrong, synthetic_fnv).is_err());
++        assert!(
++            validate_bounded_initial_binding(&first_read, &canonical, synthetic_fnv ^ 1).is_err()
++        );
++        assert_eq!(
++            fs::read_dir(directory.path()).unwrap().count(),
++            1,
++            "owned check directory leaked"
++        );
++        assert!(!output.exists());
++    }
++
++    #[test]
++    fn bounded_checkpoint_metadata_reads_saved_native_and_rejects_malformed_paths() {
++        use sekirei_core::nnue::{INPUT, L1, L2, NnueWeights};
++
++        let directory = tempfile::tempdir().unwrap();
++        let parent = directory.path().join("checkpoint.parent.meta.json");
++        fs::create_dir(&parent).unwrap();
++        for (metadata, native) in [
++            ("weights.epoch1.meta.json", "weights.epoch1.bin"),
++            (
++                "candidate.v3.weights.epoch1.meta.json",
++                "candidate.v3.weights.epoch1.bin",
++            ),
++            ("weights.meta.meta.json", "weights.meta.bin"),
++        ] {
++            assert_eq!(
++                bounded_checkpoint_native_path(&parent.join(metadata)).unwrap(),
++                parent.join(native)
++            );
++        }
++        for malformed in [
++            ".meta.json",
++            "weights.epoch1.json",
++            "weights.epoch1.meta.bin",
++            "weights.epoch1.metadata.json",
++            "weights.epoch1.meta.JSON",
++            "weights.epoch1.meta.json.tmp",
++        ] {
++            let error = bounded_checkpoint_native_path(&parent.join(malformed)).unwrap_err();
++            assert_eq!(
++                error.kind(),
++                io::ErrorKind::InvalidInput,
++                "accepted {malformed}"
++            );
++        }
++
++        // This exercises the actual failing save path without private weights,
++        // teacher data, a training update, or an engine search.
++        let native = parent.join("candidate.v3.weights.epoch1.bin");
++        let metadata = native.with_extension("meta.json");
++        let wrong_native = metadata.with_extension("bin");
++        let mut weights = NnueWeights {
++            ft: vec![[0; L1]; INPUT],
++            ft_bias: [0; L1],
++            l2: vec![[0.0; L2]; 2 * L1],
++            l2_bias: [0.0; L2],
++            out: [0.0; L2],
++            out_bias: 0.0,
++        };
++        weights.out[4] = 0.25;
++        weights.out[5] = -0.125;
++        sekirei_core::nnue::save_weights(&weights, &native).unwrap();
++        let saved_native = fs::read(&native).unwrap();
++        let fingerprint = checkpoint_hash(&saved_native);
++        let mut synthetic_trainer = Trainer::new(7, 0.5);
++        synthetic_trainer.weights = trainer::TrainWeights::from_nnue_weights(&weights);
++        let diag = build_diag(&synthetic_trainer, &weights, None);
++        let args = parse_args_from(bounded_test_args()).unwrap();
++        let teacher = args.external_teacher_id.as_deref().unwrap();
++        let save = |path: &Path| {
++            save_checkpoint_meta(
++                path,
++                &args,
++                teacher,
++                1,
++                1,
++                0,
++                None,
++                None,
++                0,
++                &diag,
++                None,
++                0,
++                fingerprint,
++                Some(1),
++                Some(0),
++                None,
++                None,
++            )
++        };
++        assert!(!wrong_native.exists());
++        save(&metadata).unwrap();
++        let value: serde_json::Value = serde_json::from_slice(&fs::read(&metadata).unwrap()).unwrap();
++        assert_eq!(value["epoch"], 1);
++        assert_eq!(value["teacher_identity"], teacher);
++        assert_eq!(value["checkpoint_hash"], format!("{fingerprint:016x}"));
++        let bounded = &value["bounded_material_v1"];
++        assert_eq!(bounded["mode"], "bounded-material-v1");
++        assert_eq!(bounded["teacher_identity"], teacher);
++        assert_eq!(bounded["mask_version"], 1);
++        assert_eq!(
++            bounded["saved_f32_l1_upper"].as_f64().unwrap(),
++            trainer::bounded_material_aux_l1_upper(&weights.out)
++        );
++        let cp_upper = bounded["saved_f32_budget_cp_upper"].as_f64().unwrap();
++        assert_eq!(
++            cp_upper,
++            trainer::bounded_material_aux_cp_upper(&weights.out)
++        );
++        assert!(cp_upper > 0.0 && cp_upper <= 99.0);
++        assert_eq!(fs::read(&native).unwrap(), saved_native);
++        assert!(
++            !wrong_native.exists(),
++            "metadata must never synthesize the wrong native path"
++        );
++
++        let malformed = parent.join("candidate.v3.weights.epoch1.json");
++        assert_eq!(
++            save(&malformed).unwrap_err().kind(),
++            io::ErrorKind::InvalidInput
++        );
++        assert!(!malformed.exists(), "malformed metadata path was written");
++    }
++}
+--- a/crates/sekirei-train/src/trainer.rs
++++ b/crates/sekirei-train/src/trainer.rs
+@@ -726,7 +726,13 @@
+     }
+ }
+ 
++struct BoundedMaterialReference {
++    ft: Vec<f32>,
++    ft_bias: Vec<f32>,
++}
++
+ pub struct Trainer {
++    bounded_material_v1: Option<BoundedMaterialReference>,
+     pub weights: TrainWeights,
+     pub total_loss: f64,
+     pub total_count: u64,
+@@ -1263,9 +1269,280 @@
+ }
+ 
+ impl Trainer {
++    /// Fresh-only trainer contract. Seed42/full input SHA are additionally
++    /// bound by main and the external preregistered byte validator.
++    pub fn enable_bounded_material_v1(&mut self) {
++        assert!(self.bounded_material_v1.is_none());
++        assert_eq!((INPUT, L1, L2), (2420, 256, 32));
++        self.assert_bounded_configuration();
++        assert_eq!(self.weights.step, 0, "bounded material requires fresh Adam");
++        bounded_check_protected(&self.weights);
++        for value in self.weights.ft.iter().chain(&self.weights.ft_bias) {
++            let quantized = *value * 64.0;
++            assert!(
++                value.is_finite()
++                    && quantized.fract() == 0.0
++                    && (-32767.0..=32767.0).contains(&quantized),
++                "initial FT must exactly roundtrip"
++            );
++        }
++        for value in self
++            .weights
++            .l2
++            .iter()
++            .chain(&self.weights.l2_bias)
++            .chain(&self.weights.out)
++        {
++            assert!(value.is_finite(), "nonfinite initial weights");
++        }
++        for value in self
++            .weights
++            .ft_m
++            .iter()
++            .chain(&self.weights.ft_v)
++            .chain(&self.weights.bias_m)
++            .chain(&self.weights.bias_v)
++            .chain(&self.weights.l2_m)
++            .chain(&self.weights.l2_v)
++            .chain(&self.weights.l2bias_m)
++            .chain(&self.weights.l2bias_v)
++            .chain(&self.weights.out_m)
++            .chain(&self.weights.out_v)
++        {
++            assert_eq!(
++                value.to_bits(),
++                0,
++                "bounded material requires zero Adam moments"
++            );
++        }
++        assert_eq!(self.weights.obias_m.to_bits(), 0);
++        assert_eq!(self.weights.obias_v.to_bits(), 0);
++        for value in &self.weights.out[4..] {
++            assert_eq!(value.to_bits(), 0, "initial auxiliary output must be +0");
++        }
++        self.bounded_material_v1 = Some(BoundedMaterialReference {
++            ft: self.weights.ft.clone(),
++            ft_bias: self.weights.ft_bias.clone(),
++        });
++        self.assert_bounded_material_v1();
++    }
++
++    fn assert_bounded_configuration(&self) {
++        assert!(
++            !self.residual_material_target
++                && self.search_target_weight == 1.0
++                && self.teacher_score_cap == 30000.0
++                && !self.exclude_mate_labels
++                && self.grad_clip_norm.is_none()
++                && self.ft_clip_norm.is_none()
++                && self.l2_clip_norm.is_none()
++                && self.out_clip_norm.is_none()
++                && self.diagnostic_freeze_layer.is_none()
++                && self.diagnostic_replay_component.is_none()
++                && self.diagnostic_conflict_mask.is_none()
++                && self.diagnostic_rate_matched_mask_count == 0
++                && self.diagnostic_shadow_trace_probe_boards.is_empty()
++                && !self.cp_wdl_grad_trace
++                && self.trace_positions.is_empty()
++                && !self.weight_snapshot_trace
++                && self.sample_grad_trace_limit == 0,
++            "bounded-material-v1 cannot combine with other training modes"
++        );
++    }
++
++    /// Cheap per-step mask is structural; this complete reference check is
++    /// performed at enable and each save, rather than scanning FT each step.
++    pub fn assert_bounded_material_v1(&self) {
++        let Some(reference) = &self.bounded_material_v1 else {
++            return;
++        };
++        self.assert_bounded_configuration();
++        assert_eq!(self.weights.ft.len(), reference.ft.len());
++        assert_eq!(self.weights.ft_bias.len(), reference.ft_bias.len());
++        for (actual, initial) in self
++            .weights
++            .ft
++            .iter()
++            .chain(&self.weights.ft_bias)
++            .zip(reference.ft.iter().chain(&reference.ft_bias))
++        {
++            assert_eq!(actual.to_bits(), initial.to_bits(), "fixed FT changed");
++        }
++        bounded_check_protected(&self.weights);
++        for value in self
++            .weights
++            .l2
++            .iter()
++            .chain(&self.weights.l2_bias)
++            .chain(&self.weights.out)
++            .chain(&self.weights.l2_m)
++            .chain(&self.weights.l2_v)
++            .chain(&self.weights.l2bias_m)
++            .chain(&self.weights.l2bias_v)
++            .chain(&self.weights.out_m)
++            .chain(&self.weights.out_v)
++        {
++            assert!(
++                value.is_finite(),
++                "bounded checkpoint contains nonfinite values"
++            );
++        }
++        for value in self
++            .weights
++            .ft_m
++            .iter()
++            .chain(&self.weights.ft_v)
++            .chain(&self.weights.bias_m)
++            .chain(&self.weights.bias_v)
++        {
++            assert_eq!(value.to_bits(), 0, "fixed FT moments changed");
++        }
++        assert!(
++            bounded_material_aux_cp_upper(&self.weights.out) <= 99.0,
++            "bounded checkpoint output budget exceeded"
++        );
++    }
++
++    /// Confirm native saved values (including all f32 auxiliary coordinates)
++    /// reproduce the complete in-memory export. No integer-core bound claim.
++    pub fn verify_bounded_saved_weights(&self, path: &std::path::Path) {
++        if self.bounded_material_v1.is_none() {
++            return;
++        }
++        self.assert_bounded_material_v1();
++        let expected = self.weights.to_nnue_weights();
++        let actual =
++            sekirei_core::nnue::read_weights(path).expect("cannot reload bounded native weights");
++        assert!(actual.ft == expected.ft, "saved FT differs");
++        assert!(actual.ft_bias == expected.ft_bias, "saved FT bias differs");
++        for row in 0..2 * L1 {
++            for column in 0..L2 {
++                assert_eq!(
++                    actual.l2[row][column].to_bits(),
++                    expected.l2[row][column].to_bits()
++                );
++            }
++        }
++        for i in 0..L2 {
++            assert_eq!(actual.l2_bias[i].to_bits(), expected.l2_bias[i].to_bits());
++            assert_eq!(actual.out[i].to_bits(), expected.out[i].to_bits());
++        }
++        assert_eq!(actual.out_bias.to_bits(), expected.out_bias.to_bits());
++        assert!(bounded_material_aux_cp_upper(&actual.out) <= 99.0);
++    }
++
++    /// Raw Adam mode remains bound by external source/run metadata.
++    pub fn verify_bounded_saved_adam(&self, path: &std::path::Path) {
++        if self.bounded_material_v1.is_none() {
++            return;
++        }
++        self.assert_bounded_material_v1();
++        let actual = TrainWeights::load_adam_checkpoint(path).expect("cannot reload bounded Adam");
++        let expected = &self.weights;
++        assert_eq!(actual.step, expected.step);
++        let floats = |w: &TrainWeights| -> Vec<u32> {
++            w.ft.iter()
++                .chain(&w.ft_bias)
++                .chain(&w.l2)
++                .chain(&w.l2_bias)
++                .chain(&w.out)
++                .chain(&w.ft_m)
++                .chain(&w.ft_v)
++                .chain(&w.bias_m)
++                .chain(&w.bias_v)
++                .chain(&w.l2_m)
++                .chain(&w.l2_v)
++                .chain(&w.l2bias_m)
++                .chain(&w.l2bias_v)
++                .chain(&w.out_m)
++                .chain(&w.out_v)
++                .map(|value| value.to_bits())
++                .collect()
++        };
++        assert!(
++            floats(&actual) == floats(expected),
++            "saved Adam parameters or moments differ"
++        );
++        for (a, e) in [
++            (actual.out_bias, expected.out_bias),
++            (actual.obias_m, expected.obias_m),
++            (actual.obias_v, expected.obias_v),
++        ] {
++            assert_eq!(a.to_bits(), e.to_bits());
++        }
++    }
++
++    fn apply_bounded_material_adam(
++        &mut self,
++        d_l2: &mut [f32],
++        d_l2_bias: &mut [f32],
++        d_out: &mut [f32],
++        lr: f32,
++        t: u64,
++    ) -> (f64, f64, f64) {
++        self.assert_bounded_configuration();
++        assert!(lr.is_finite() && lr > 0.0);
++        let w = &mut self.weights;
++        let mut l2_sq = 0.0;
++        for row in 0..2 * L1 {
++            for column in 0..L2 {
++                let i = row * L2 + column;
++                if bounded_l2_mutable(row, column) {
++                    let delta = bounded_adam_scalar(
++                        &mut w.l2[i],
++                        &mut w.l2_m[i],
++                        &mut w.l2_v[i],
++                        d_l2[i],
++                        lr,
++                        t,
++                    );
++                    d_l2[i] = delta;
++                    l2_sq += (delta as f64).powi(2);
++                } else {
++                    d_l2[i] = 0.0;
++                }
++            }
++        }
++        let mut bias_sq = 0.0;
++        let before_out = w.out.clone();
++        for i in 0..L2 {
++            if i >= 4 {
++                let delta = bounded_adam_scalar(
++                    &mut w.l2_bias[i],
++                    &mut w.l2bias_m[i],
++                    &mut w.l2bias_v[i],
++                    d_l2_bias[i],
++                    lr,
++                    t,
++                );
++                d_l2_bias[i] = delta;
++                bias_sq += (delta as f64).powi(2);
++                bounded_adam_scalar(
++                    &mut w.out[i],
++                    &mut w.out_m[i],
++                    &mut w.out_v[i],
++                    d_out[i],
++                    lr,
++                    t,
++                );
++            } else {
++                d_l2_bias[i] = 0.0;
++                d_out[i] = 0.0;
++            }
++        }
++        bounded_shrink_aux_out(&mut w.out);
++        let mut out_sq = 0.0;
++        for i in 4..L2 {
++            d_out[i] = w.out[i] - before_out[i];
++            out_sq += (d_out[i] as f64).powi(2);
++        }
++        (l2_sq, bias_sq, out_sq)
++    }
++
+     pub fn new(seed: u64, l2_bias_init: f32) -> Self {
+         let tt = Tt::new(4); // Tt::new returns Arc<Tt>
+         Trainer {
++            bounded_material_v1: None,
+             weights: TrainWeights::new_seeded(seed, l2_bias_init),
+             total_loss: 0.0,
+             total_count: 0,
+@@ -1512,6 +1789,10 @@
+             let score_cp = if let Some(&cp) = teacher_cache.get(&sfen) {
+                 cp
+             } else {
++                assert!(
++                    self.bounded_material_v1.is_none(),
++                    "bounded material cache miss"
++                );
+                 let config = SearchConfig {
+                     max_depth: label_depth,
+                     time_limit: self.teacher_time_limit,
+@@ -1535,6 +1816,12 @@
+             if self.excludes_mate_label(score_cp) {
+                 self.dropped_mate_labels += 1;
+                 continue;
++            }
++            if self.bounded_material_v1.is_some() {
++                assert!(
++                    score_cp.unsigned_abs() < 30000,
++                    "original CP target outside uncapped range"
++                );
+             }
+             let absolute_teacher = self.capped_teacher_score(score_cp);
+             let teacher = self.target_from_search_teacher(&sample.board, absolute_teacher);
+@@ -1582,6 +1869,10 @@
+             let teacher_cp = if let Some(&cp) = teacher_cache.get(&sfen) {
+                 cp
+             } else {
++                assert!(
++                    self.bounded_material_v1.is_none(),
++                    "bounded material cache miss"
++                );
+                 let config = SearchConfig {
+                     max_depth: label_depth,
+                     time_limit: self.teacher_time_limit,
+@@ -1774,6 +2065,10 @@
+         wdl_target_scale: f32,
+         cache: &mut HashMap<String, i32>,
+     ) {
++        assert!(
++            self.bounded_material_v1.is_none(),
++            "bounded material forbids CSA training"
++        );
+         let mut board = game.initial_board.clone();
+ 
+         for (ply, &mv) in game.moves.iter().enumerate() {
+@@ -1991,6 +2286,10 @@
+     /// gradients within each pair while avoiding a dense `INPUT × L1` Adam
+     /// scan for every individual pair.
+     pub fn train_ranking_batch(&mut self, pairs: &[(Board, Move, Move)]) -> f32 {
++        assert!(
++            self.bounded_material_v1.is_none(),
++            "bounded material forbids ranking"
++        );
+         assert!(!pairs.is_empty(), "ranking batch must not be empty");
+         let mut gradient = FullGradient::zero();
+         let mut total_loss = 0.0;
+@@ -2149,6 +2448,17 @@
+         game_id: u64,
+         game_result: GameResult,
+     ) {
++        if self.bounded_material_v1.is_some() {
++            self.assert_bounded_configuration();
++            assert!(
++                teacher.is_finite()
++                    && teacher.abs() < 30000.0
++                    && teacher.to_bits() == eval_teacher.to_bits()
++                    && weight == 1.0
++                    && wdl_target.is_none(),
++                "bounded material requires unchanged original CP target"
++            );
++        }
+         let stm = board.side_to_move;
+         let w = &self.weights;
+ 
+@@ -2174,6 +2484,15 @@
+             }
+         }
+ 
++        if self.bounded_material_v1.is_some() {
++            assert!(
++                acc_us
++                    .iter()
++                    .chain(&acc_them)
++                    .all(|value| value.is_finite()),
++                "nonfinite bounded FT accumulation"
++            );
++        }
+         // FT ClippedReLU [0, 127]
+         let relu_us: Vec<f32> = acc_us.iter().map(|&x| x.clamp(0.0, 127.0)).collect();
+         let relu_them: Vec<f32> = acc_them.iter().map(|&x| x.clamp(0.0, 127.0)).collect();
+@@ -2216,6 +2535,12 @@
+             }
+         }
+ 
++        if self.bounded_material_v1.is_some() {
++            assert!(
++                l2_acc.iter().all(|value| value.is_finite()),
++                "nonfinite bounded L2 accumulation"
++            );
++        }
+         // L2 ClippedReLU [0, 127]
+         let relu_l2: Vec<f32> = l2_acc.iter().map(|&x| x.clamp(0.0, 127.0)).collect();
+         for o in 0..L2 {
+@@ -2252,6 +2577,9 @@
+         let mut output = w.out_bias;
+         for o in 0..L2 {
+             output += relu_l2[o] * w.out[o];
++        }
++        if self.bounded_material_v1.is_some() {
++            assert!(output.is_finite(), "nonfinite bounded output");
+         }
+         let score = output / 64.0;
+         self.output_sum += score as f64;
+@@ -2718,9 +3046,23 @@
+ 
+         // ── Adam update ───────────────────────────────────────────────────────
+ 
+-        self.weights.step += 1;
++        if self.bounded_material_v1.is_some() {
++            self.weights.step = self
++                .weights
++                .step
++                .checked_add(1)
++                .expect("bounded Adam step overflow");
++        } else {
++            self.weights.step += 1;
++        }
+         let t = self.weights.step;
+         let lr = self.lr;
++
++        let bounded_updates = if self.bounded_material_v1.is_some() {
++            Some(self.apply_bounded_material_adam(&mut d_l2, &mut d_l2_bias, &mut d_out, lr, t))
++        } else {
++            None
++        };
+ 
+         // `--diagnostic-shadow-trace-from-position`/`-until-position`:
+         // branch CP-only/WDL-only/Blended one-step counterfactual FT+L2
+@@ -2779,7 +3121,7 @@
+         let l2_frozen = freeze_active && self.diagnostic_freeze_layer == Some(FreezeLayer::L2);
+         let out_frozen = freeze_active && self.diagnostic_freeze_layer == Some(FreezeLayer::Out);
+ 
+-        let (ft_update_sq, ft_bias_update_sq) = if ft_frozen {
++        let (ft_update_sq, ft_bias_update_sq) = if bounded_updates.is_some() || ft_frozen {
+             d_bias.iter_mut().for_each(|x| *x = 0.0);
+             (0.0, 0.0)
+         } else {
+@@ -2809,7 +3151,9 @@
+         for j in 0..L1 {
+             self.ft_bias_update_sq_sum[j] += (d_bias[j] as f64).powi(2);
+         }
+-        let (l2_update_sq, l2_bias_update_sq) = if l2_frozen {
++        let (l2_update_sq, l2_bias_update_sq) = if let Some((l2_sq, bias_sq, _)) = bounded_updates {
++            (l2_sq, bias_sq)
++        } else if l2_frozen {
+             d_l2_bias.iter_mut().for_each(|x| *x = 0.0);
+             (0.0, 0.0)
+         } else {
+@@ -2882,7 +3226,9 @@
+             group.new_dead_l2_sum += dead_after_l2.saturating_sub(dead_before_l2);
+         }
+ 
+-        let (out_update_sq, out_bias_delta) = if out_frozen {
++        let (out_update_sq, out_bias_delta) = if let Some((_, _, out_sq)) = bounded_updates {
++            (out_sq, 0.0f32)
++        } else if out_frozen {
+             (0.0, 0.0f32)
+         } else {
+             let out_update_sq = adam_update_slice(
+@@ -4119,6 +4465,134 @@
+     delta
+ }
+ 
++fn bounded_l2_mutable(row: usize, column: usize) -> bool {
++    column >= 4 && !matches!(row, 0 | 1 | 256 | 257)
++}
++
++fn bounded_check_protected(w: &TrainWeights) {
++    assert_eq!(w.l2.len(), 2 * L1 * L2);
++    assert_eq!(w.l2_bias.len(), L2);
++    assert_eq!(w.out.len(), L2);
++    for row in 0..2 * L1 {
++        for column in 0..L2 {
++            if !bounded_l2_mutable(row, column) {
++                let expected = if matches!((row, column), (0, 0) | (1, 1) | (256, 2) | (257, 3)) {
++                    1.0f32
++                } else {
++                    0.0
++                };
++                let i = row * L2 + column;
++                assert_eq!(
++                    w.l2[i].to_bits(),
++                    expected.to_bits(),
++                    "fixed material L2 changed"
++                );
++                assert_eq!(w.l2_m[i].to_bits(), 0, "fixed material L2 moment changed");
++                assert_eq!(w.l2_v[i].to_bits(), 0, "fixed material L2 variance changed");
++            }
++        }
++    }
++    for i in 0..4 {
++        let out = if i < 2 { 8192.0f32 } else { -8192.0 };
++        assert_eq!(w.l2_bias[i].to_bits(), 0);
++        assert_eq!(w.out[i].to_bits(), out.to_bits());
++        for value in [w.l2bias_m[i], w.l2bias_v[i], w.out_m[i], w.out_v[i]] {
++            assert_eq!(
++                value.to_bits(),
++                0,
++                "fixed material bias/output moment changed"
++            );
++        }
++    }
++    for value in [w.out_bias, w.obias_m, w.obias_v] {
++        assert_eq!(value.to_bits(), 0, "fixed output bias changed");
++    }
++}
++
++/// Upper bound on the exact sum of the actual binary32 coefficients: each
++/// nonnegative f64 addition is advanced one representable value upward.
++// Decode finite binary32 bits without SSE f32->f64 conversion: inherited
++// DAZ must not erase stored subnormal coefficients from the byte budget.
++fn bounded_f32_as_f64(value: f32) -> f64 {
++    let bits = value.to_bits();
++    let exponent = (bits >> 23) & 0xff;
++    let mantissa = bits & 0x7fffff;
++    assert!(exponent != 0xff, "nonfinite auxiliary output");
++    let magnitude = if exponent == 0 {
++        mantissa as f64 * f64::from_bits((1023u64 - 149) << 52)
++    } else {
++        f64::from_bits(((exponent as u64 + 896) << 52) | ((mantissa as u64) << 29))
++    };
++    if bits >> 31 != 0 {
++        -magnitude
++    } else {
++        magnitude
++    }
++}
++
++pub fn bounded_material_aux_l1_upper(out: &[f32]) -> f64 {
++    assert_eq!(out.len(), L2);
++    let mut sum = 0.0f64;
++    for &value in &out[4..] {
++        assert!(value.is_finite(), "nonfinite auxiliary output");
++        if value.to_bits() & 0x7fffffff != 0 {
++            let added = sum + bounded_f32_as_f64(value).abs();
++            assert!(added.is_finite());
++            sum = f64::from_bits(added.to_bits() + 1);
++        }
++    }
++    sum
++}
++
++pub fn bounded_material_aux_cp_upper(out: &[f32]) -> f64 {
++    let l1_upper = bounded_material_aux_l1_upper(out);
++    if l1_upper == 0.0 {
++        return 0.0;
++    }
++    let product = l1_upper * 127.0;
++    assert!(product.is_finite());
++    // Power-of-two division is exact in this finite binary32-derived range.
++    f64::from_bits(product.to_bits() + 1) / 64.0
++}
++
++fn bounded_shrink_aux_out(out: &mut [f32]) {
++    const CAP_L1: f64 = 99.0 * 64.0 / 127.0;
++    const MARGIN: f64 = 1.0 - 1.0 / 1048576.0;
++    for _ in 0..8 {
++        let upper = bounded_material_aux_l1_upper(out);
++        if bounded_material_aux_cp_upper(out) <= 99.0 {
++            return;
++        }
++        let shrink = (CAP_L1 / upper) * MARGIN;
++        assert!(shrink.is_finite() && shrink > 0.0 && shrink < 1.0);
++        for value in &mut out[4..] {
++            *value = (bounded_f32_as_f64(*value) * shrink) as f32;
++            assert!(value.is_finite());
++        }
++    }
++    assert!(
++        bounded_material_aux_cp_upper(out) <= 99.0,
++        "f32 auxiliary contraction did not meet budget"
++    );
++}
++
++fn bounded_adam_scalar(
++    param: &mut f32,
++    m: &mut f32,
++    v: &mut f32,
++    grad: f32,
++    lr: f32,
++    t: u64,
++) -> f32 {
++    assert!(param.is_finite() && m.is_finite() && v.is_finite() && *v >= 0.0 && grad.is_finite());
++    let delta = adam_update_scalar(param, m, v, grad, lr, t);
++    assert!(
++        param.is_finite() && m.is_finite() && v.is_finite() && delta.is_finite(),
++        "nonfinite bounded Adam update"
++    );
++    delta
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -6232,4 +6706,228 @@
+         trainer.set_residual_material_target(true);
+         assert_eq!(trainer.target_from_absolute(&board, 321.0), -719.0);
+     }
++
++    fn bounded_synthetic_trainer() -> Trainer {
++        let mut trainer = Trainer::new(42, 0.5);
++        let w = &mut trainer.weights;
++        w.ft.fill(1.0 / 64.0);
++        w.ft_bias.fill(1.0);
++        w.l2.fill(0.0);
++        for (row, col) in [(0, 0), (1, 1), (256, 2), (257, 3)] {
++            w.l2[row * L2 + col] = 1.0;
++        }
++        for row in 0..2 * L1 {
++            for col in 4..L2 {
++                if bounded_l2_mutable(row, col) {
++                    w.l2[row * L2 + col] = 1.0 / 256.0;
++                }
++            }
++        }
++        w.l2_bias.fill(4.0);
++        w.l2_bias[..4].fill(0.0);
++        w.out.fill(0.0);
++        w.out[..4].copy_from_slice(&[8192.0, 8192.0, -8192.0, -8192.0]);
++        trainer.teacher_score_cap = 30000.0;
++        trainer.enable_bounded_material_v1();
++        trainer
++    }
++
++    fn bounded_protected_bits(w: &TrainWeights) -> Vec<u32> {
++        let mut bits: Vec<u32> =
++            w.ft.iter()
++                .chain(&w.ft_bias)
++                .chain(&w.ft_m)
++                .chain(&w.ft_v)
++                .chain(&w.bias_m)
++                .chain(&w.bias_v)
++                .map(|x| x.to_bits())
++                .collect();
++        for row in 0..2 * L1 {
++            for col in 0..L2 {
++                if !bounded_l2_mutable(row, col) {
++                    let i = row * L2 + col;
++                    bits.extend([w.l2[i].to_bits(), w.l2_m[i].to_bits(), w.l2_v[i].to_bits()]);
++                }
++            }
++        }
++        for i in 0..4 {
++            for value in [
++                w.l2_bias[i],
++                w.l2bias_m[i],
++                w.l2bias_v[i],
++                w.out[i],
++                w.out_m[i],
++                w.out_v[i],
++            ] {
++                bits.push(value.to_bits());
++            }
++        }
++        bits.extend([
++            w.out_bias.to_bits(),
++            w.obias_m.to_bits(),
++            w.obias_v.to_bits(),
++        ]);
++        bits
++    }
++
++    #[test]
++    fn bounded_adam_skips_protected_params_and_nonzero_moments() {
++        let mut t = bounded_synthetic_trainer();
++        // Low-level skip semantics must remain true even for stale nonzero
++        // moments. Such state is rejected by the fresh/save guards separately.
++        t.weights.ft_m.fill(0.125);
++        t.weights.ft_v.fill(0.25);
++        t.weights.bias_m.fill(0.125);
++        t.weights.bias_v.fill(0.25);
++        for row in 0..2 * L1 {
++            for col in 0..L2 {
++                if !bounded_l2_mutable(row, col) {
++                    let i = row * L2 + col;
++                    t.weights.l2_m[i] = 0.125;
++                    t.weights.l2_v[i] = 0.25;
++                }
++            }
++        }
++        for i in 0..4 {
++            t.weights.l2bias_m[i] = 0.125;
++            t.weights.l2bias_v[i] = 0.25;
++            t.weights.out_m[i] = 0.125;
++            t.weights.out_v[i] = 0.25;
++        }
++        t.weights.obias_m = 0.125;
++        t.weights.obias_v = 0.25;
++        let before = bounded_protected_bits(&t.weights);
++        let aux_before = t.weights.l2[2 * L2 + 4];
++        t.apply_bounded_material_adam(
++            &mut vec![1.0; 2 * L1 * L2],
++            &mut vec![1.0; L2],
++            &mut vec![1.0; L2],
++            0.001,
++            1,
++        );
++        assert_eq!(bounded_protected_bits(&t.weights), before);
++        assert_ne!(t.weights.l2[2 * L2 + 4].to_bits(), aux_before.to_bits());
++        assert!(t.weights.out_m[4] != 0.0 && t.weights.out_v[4] != 0.0);
++    }
++
++    #[test]
++    fn bounded_auxiliary_output_then_l2_receives_gradient() {
++        let mut t = bounded_synthetic_trainer();
++        let board = Board::startpos();
++        let initial = t.weights.clone();
++        t.train_position(&board, 500.0, 1.0, 500.0, None, 0, GameResult::Unknown);
++        assert_eq!(t.weights.step, 1);
++        assert_eq!(t.weights.l2, initial.l2);
++        assert!(t.weights.out[4..].iter().any(|x| *x != 0.0));
++        t.train_position(&board, 500.0, 1.0, 500.0, None, 0, GameResult::Unknown);
++        assert_eq!(t.weights.step, 2);
++        assert_ne!(t.weights.l2, initial.l2);
++        assert_eq!(
++            bounded_protected_bits(&t.weights),
++            bounded_protected_bits(&initial)
++        );
++        t.assert_bounded_material_v1();
++    }
++
++    #[test]
++    fn bounded_ft_native_roundtrip_and_saved_f32_values_are_exact() {
++        let mut t = bounded_synthetic_trainer();
++        t.weights.ft[0] = -32767.0 / 64.0;
++        t.weights.ft[1] = 32767.0 / 64.0;
++        // Start a new private reference after the synthetic exact i16 setup.
++        t.bounded_material_v1 = None;
++        let native = t.weights.to_nnue_weights();
++        t.weights = TrainWeights::from_nnue_weights(&native);
++        t.enable_bounded_material_v1();
++        assert_eq!(native.ft, t.weights.to_nnue_weights().ft);
++        assert_eq!(native.ft_bias, t.weights.to_nnue_weights().ft_bias);
++        let directory = tempfile::tempdir().unwrap();
++        let path = directory.path().join("synthetic.bin");
++        sekirei_core::nnue::save_weights(&t.weights.to_nnue_weights(), &path).unwrap();
++        t.verify_bounded_saved_weights(&path);
++        let adam = directory.path().join("synthetic.adam.json");
++        t.weights.save_adam_checkpoint(&adam).unwrap();
++        t.verify_bounded_saved_adam(&adam);
++    }
++
++    #[test]
++    fn bounded_uniform_shrink_checks_saved_f32_endpoints_and_keeps_moments() {
++        let mut t = bounded_synthetic_trainer();
++        let material = t.weights.out[..4].to_vec();
++        let mut tiny = vec![0.0; L2];
++        tiny[4] = f32::from_bits(1);
++        assert!(bounded_material_aux_l1_upper(&tiny) >= f64::from_bits((1023u64 - 149) << 52));
++        let zero = t.weights.out.clone();
++        bounded_shrink_aux_out(&mut t.weights.out);
++        assert_eq!(t.weights.out, zero);
++        t.weights.out[4] = 1.0;
++        let under = t.weights.out.clone();
++        bounded_shrink_aux_out(&mut t.weights.out);
++        assert_eq!(t.weights.out, under);
++        let edge = (99.0f64 * 64.0 / 127.0) as f32;
++        t.weights.out[4] = f32::from_bits(edge.to_bits() + 1);
++        assert!(bounded_material_aux_l1_upper(&t.weights.out) * 127.0 / 64.0 > 99.0);
++        t.weights.out_m[4] = 0.125;
++        t.weights.out_v[4] = 0.25;
++        let before_m = t.weights.out_m.clone();
++        let before_v = t.weights.out_v.clone();
++        bounded_shrink_aux_out(&mut t.weights.out);
++        assert!(bounded_material_aux_l1_upper(&t.weights.out) * 127.0 / 64.0 <= 99.0);
++        assert_eq!(t.weights.out_m, before_m);
++        assert_eq!(t.weights.out_v, before_v);
++        t.weights.out[4..].fill(100.0);
++        t.weights.out[5] = -200.0;
++        bounded_shrink_aux_out(&mut t.weights.out);
++        assert!(bounded_material_aux_l1_upper(&t.weights.out) * 127.0 / 64.0 <= 99.0);
++        assert!((t.weights.out[5] + 2.0 * t.weights.out[4]).abs() <= 1e-6);
++        assert_eq!(t.weights.out[..4], material);
++    }
++
++    #[test]
++    fn bounded_guards_reject_nonfinite_stale_and_changed_fixed_state() {
++        for invalid in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
++            let mut out = vec![0.0; L2];
++            out[4] = invalid;
++            assert!(
++                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| bounded_shrink_aux_out(
++                    &mut out
++                )))
++                .is_err()
++            );
++        }
++        let mut stale = bounded_synthetic_trainer();
++        stale.bounded_material_v1 = None;
++        stale.weights.out_m[4] = 0.1;
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(
++                || stale.enable_bounded_material_v1()
++            ))
++            .is_err()
++        );
++        let mut stepped = bounded_synthetic_trainer();
++        stepped.bounded_material_v1 = None;
++        stepped.weights.step = 1;
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(
++                || stepped.enable_bounded_material_v1()
++            ))
++            .is_err()
++        );
++        let mut changed = bounded_synthetic_trainer();
++        changed.weights.ft[17] += 1.0 / 64.0;
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(
++                || changed.assert_bounded_material_v1()
++            ))
++            .is_err()
++        );
++        let mut fixed_row = bounded_synthetic_trainer();
++        fixed_row.weights.l2[4] = 0.1;
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(
++                || fixed_row.assert_bounded_material_v1()
++            ))
++            .is_err()
++        );
++    }
+ }

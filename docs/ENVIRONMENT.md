@@ -44,6 +44,8 @@ Issue #15も同じ教師packと `suisho11beta-v1/venv/bin/python`（cshogi 1.0.4
 
 Issue #15のcampaign・専用trainer・完了比較16 runは `archives/2026-10-03/issue-15-eight-hour-v1` へ保管した。source-before/source-after/destinationのファイル集合・サイズ・SHA-256、directory集合、symlink文字列を全照合し、20,765 files・757 directories・4 symlinks・2,417,083,627 bytesで一致した。非公開receiptは `receipts/issue15-eight-hour-v1`、[公開集計](validation/weight-improvement-2026-10-03/archive.json)には集約値とhashだけを置く。SSD原本は削除していない。比較バイナリ・旧データ等の既存依存は従来のruntimeと保管記録を併用し、このコピー単体で全環境を独立復元できるとは扱わない。
 
+Issue #17の112k epoch3・FT最近傍候補は、有効な正式比較でMAE改善・Top3低下のため採用未達となった。完了evaluation・4run・モデル/metadata・凍結snapshotを `archives/2026-10-03/issue-17-expanded-e3-nearest-v1` へ保管し、3,726 files・30 directories・0 symlinks・33,657,398 bytesがコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-expanded-e3-nearest-v1`、[公開保存集計](validation/autonomous-weight-2026-10-03/expanded-e3-nearest/archive.json)は集約値とhashのみ。SSD原本を保持し、固定runtime・audit venv・fallback証拠・Issue #15学習archiveへの依存をsnapshotに残した。採用モデルの更新や独立した全環境backupの成功とは扱わない。
+
 コピーと復元は次の手順で手動実行する。
 
 1. `findmnt --target /mnt/storage` と `df -h` でマウントと両保存先の空きを確認する。マウントがない、書き込めない、容量不足の場合は停止し、内蔵SSD側に同名の保管先を作らない。
@@ -55,6 +57,15 @@ Issue #15のcampaign・専用trainer・完了比較16 runは `archives/2026-10-0
 7. 復元時は元のSSDパスに別のデータがないことを確認し、保管コピーからコピーして同じ一覧・サイズ・SHA-256を照合する。資料リンクを実体へ戻す場合も、一時ディレクトリで照合してから切り替える。runtimeのバイナリ・重みを照合し、実機smokeと該当runの検証を行う。保存済みのmanifestやfingerprintを書き換えて検証を通さない。 旧v0.3.36 baselineのreport/exportは、当時の固定版 `ed76730` の専用worktreeで実行する。現行v0.3.39ではtoolchain lock不一致として拒否される。
 
 この配置は保管容量を補うもので、mergerfs自体による複製を意味しない。資料原本を移設した後、SSDの互換リンクは別コピーとして数えない。今回のファイル数・容量・照合結果とSSDの空き容量変化は[移設の検証記録](validation/storage-2026-10-02.md)に残す。
+
+Issue #17のridge=1は正式比較でMAE改善・Top3低下のため採用しない。完了evaluation・4run・model/metadata・凍結snapshotを`archives/2026-10-03/issue-17-material-ridge1-112k-v1`へ保存し、3,737 files / 33 directories / 0 symlinks / 34,969,726 bytesのsource前後と保存先のsize/SHA・集合一致を確認した。private receiptは`receipts/issue17-material-ridge1-112k-v1`、[公開集計](validation/autonomous-weight-2026-10-03/material-ridge1-112k/archive.json)を残す。SSD原本は保持した。
+
+Issue #17の次候補preflightでは、元SSDのdata-400-frozen-holdout/train.labelsだけが固定manifestとhash不一致で停止した。検証済みIssue #15 NAS copyとの差分は1行のteacher identityのみ、cp・SFEN集合・順序は同じ。原因は未特定。元SSDを上書きせず、`campaign-17-autonomous-v1/source-input-recovery-v1/dataset`へmanifestと4ファイル（5 files / 64,444,603 bytes）を新規copyし、元NAS・copy先・manifestのsize/SHA一致、元SSDの前後不変を確認した。次候補ではこの復元inputを使う。詳細receiptと差分記録はprivateに保持し、[自律改善](AUTONOMOUS_WEIGHT_IMPROVEMENT.md#次候補の事前登録と入力復元)にhashと判断を残す。
+
+Issue #17のfunctional-anchor halfも有効な正式比較でMAE改善・Top3維持未達となった。全生成・3epoch・診断・export・core証拠・4run・凍結snapshotを `archives/2026-10-03/issue-17-functional-anchor-half-e3-nearest-v1` へ保管し、3,831 files・43 directories・0 symlinks・415,829,630 bytesの集合・size・SHA-256等がコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-functional-anchor-half-e3-nearest-v1`、[公開集計](validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/archive.json)を参照。SSD原本・参照パスを保持し、元入力と固定環境等の既存依存も記録した。
+
+Issue #17のbounded-material E3は有効な正式比較でMAE・Top3とも悪化し、不採用とした。成功v3の全3epoch/native/Adam/metadata、metadata名誤りで停止したv2の実epoch1と旧source/helper、元O復元入力・全証拠・4run・凍結completionを `archives/2026-10-03/issue-17-bounded-material-residual-100cp-e3-v1` へ保存し、3,899 files・71 directories・0 symlinks・428,614,972 bytesのsource前後/保存先一致を確認した。private receiptは `receipts/issue17-bounded-material-residual-100cp-e3-v1`、[公開集計](validation/autonomous-weight-2026-10-03/bounded-material-residual-100cp-e3/archive.json)を残す。SSD原本と参照パスを保持し、専用build/venvはSSDに残す。保存helperが許容しないbuild lockを外側で保持した再試行も記録し、partial NAS copyの再利用やguardの緩和はしていない。
+
 
 ## 固定ソフト
 

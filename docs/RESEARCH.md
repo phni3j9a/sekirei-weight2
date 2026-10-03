@@ -48,6 +48,8 @@
 
 そこで少量の局面を固定V9.20・同一重み・100万ノードで再評価し、符号、尺度、評価値差、指し手、実ノード数を監査する。この監査は取り違え検出と互換性確認であり、由来の証明や学習データ自体を開発・最終評価データとして使うことではない。
 
+Issue #17で単位と手番の経路を再確認した。固定やねうら王はNNUE出力をFV_SCALEで内部Valueへ換算し、USIで`100*v/90`のcpを表示する。[固定USI実装](https://github.com/yaneurao/YaneuraOu/blob/a81730f47eefa4d53003ed85034715a28d2437ab/source/usi.cpp#L1084)。対象packより前の公開GenSfenはUSIの`score cp`を整数で受け取り、±32000へclampしてsigned16へ保存する。[parserとwriter](https://github.com/yaneurao/YaneuraOu-ScriptCollection/blob/c129c4c850268b0ed478ea9adee9caf12c7acf2f/GenSfen/ShogiCommonLib.py#L195)。今回のdecoder・dataset adapter・teacher cacheはこのcpを保持し、学習器とcoreはともに手番側の出力を`/64`で評価する。追加の倍率変換や符号修正の根拠は見つからなかった。既存の10件監査もexact6件のMAE3.167 cp・最大11 cpで整合するが、配布packの実生成commitや全optionが不明という限界は残る。別形式のclassic PackedSfenValueに使われる内部Valueの扱いを、このgame `.pack`へ適用しない。
+
 ## 評価と分割
 
 - 候補選択に使う開発棋譜と、節目だけで使う最終評価棋譜を分ける。学習・開発・最終評価の間で同一棋譜、変化枝、重複局面の混入を点検する。

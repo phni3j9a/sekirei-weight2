@@ -133,4 +133,6 @@ native/nearest両重みを既存core probeへ渡し、元train112,681・holdout5
 
 正式比較・厳密採否・保存は進行中。最良はfallback、goalは継続中。
 
+候補自身のMAE pilotは102/102 attemptを完了し、2026-10-03 08:28:27 UTCに正式MAEへ進んだ。独立監査は全raw SHA・position・USI lifecycle・option順・deadline・cleanup・supervisor・exit 0、両engineの17局面×3反復安定と51回ずつのweight読込を確認した。技術失敗・欠測・invalid node evidenceは0。最大報告はSekirei 1,000,001 / teacher 1,001,086で規定内、入力241ファイルの検証前後hashも一致した。fingerprintは`e5d41c0e6b6c107bba743137a4a781fb5402c853843da520ff49e4729f8da23b`、独立監査receipt SHAは`9f3099746275e388a8837f4d9b69a09b5f84ea602d300158e0d2180dc7c5e001`。訂正v2がpilot中の検証である点も独立照合し、開始前の記録へ読み替えていない。正式MAE・Top3の採否は未確定である。
+
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

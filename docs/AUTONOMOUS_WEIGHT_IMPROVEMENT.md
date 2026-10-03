@@ -172,4 +172,10 @@ pure contractのcommit `be7e0da`はCI217公開fixture tests成功（118.346秒�
 
 Pythonの新規fixtureはactual full-shape AdamのFT 1ULP改変（native/nearest byteが同じでも拒否）、固定moments、variance/step、全byte reexport、厳密な99cp予算・metadata型、異なる教師/epoch/cap、final sidecar形式、cleanup失敗receipt等を確認した。既存byte契約を含む37 testsが22.329秒で成功。共有supervisorの取消・reapを再利用し、その前後に外側termination guardとgroup停止確認を追加した。追加の隔離process fixtureも成功し、supervisorのhandler復元直後のSIGTERMで外側guardが両lockを保持して再cleanup・cancelled receiptまで到達することを確認した。今後の実学習は事前登録した3epoch/E3だけを採点し、lossからepoch・cap・LRを選び直さない。
 
+## bounded-material実学習のmetadata停止
+
+専用commit `fe4abb0`のCIは成功した。13 helpers・元O入力・専用build・固定3epoch/E3・99cp予算を事前登録し、同じ計算条件で実学習を開始したが、epoch1のNNUE/Adam/resume保存後、追加metadataの保存でexit1となった。30.125秒、cache112,681/112,681・misses0、group停止/cleanup成功。正式比較・採用には進んでいない。
+
+原因は`save_checkpoint_meta`の引数が`weights.epoch1.meta.json`なのに、追加処理が単純な`with_extension("bin")`で`weights.epoch1.meta.bin`を参照したこと。実際のnativeは`weights.epoch1.bin`であり、NNUE保存は済んでいた。失敗runの6 files・89,422,337 bytes、元のsource/build・事前登録・logを保持し、private erratumへhashを凍結した。metadataの厳密なsuffix解釈と実保存の回帰fixtureを追加して新source/buildを作る。学習math・CLI・mask・99cp・LR・seed・3epoch/E3は変えず、初期materialとfresh Adamから新runを始める。失敗epoch1を採点候補やresumeに流用しない。
+
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

@@ -22,14 +22,36 @@ Issue #15 / PR #16の実装と実験記録はマージ済みで、今回の専�
 
 正式結果を得てから次の仮説を一つ選ぶ。学習量、量子化、教師データ、学習目的、表現力のどれが制約かを今回の実測と原典から調べる。単純な学習延長やdevelopmentの特定局面に合わせる調整を反復しない。候補生成・静的選択規則は正式比較前に記録する。固定holdoutは既に候補選択に使われた検証集合であり、新しい汎化の証明として扱わない。final 5局は日々の仮説選択・局面採掘に使わない。
 
+最初の112k epoch3最近傍候補の正式比較が有効に完了し、採用条件を満たさなかった場合に限り、既存の112k・13駒価値候補ridge=1を次に評価する。最初の候補が採用された場合は評価しない。データ・特徴・prior・solver・制約・丸めを維持し、既評価のridge=0.01から正則化だけを強める。正式結果を見てlambdaを選び直さず、候補自身のpilot・正式MAE・Top3で判断する。技術的にinvalidな測定の場合はこの分岐へ進まず、証拠の問題を解消する。
+
+次候補のSHA-256は`db1e4c4c910194709a3b7edbbb601fa1c0962de9314f7f6c7b39e8fd0ad1672e`。前回の生成・core一致記録と実体hashを再確認した。元の13係数からのL2距離は851.140→297.610 cpと小さくなる一方、固定holdout MAEは662.717→719.088 cpへ悪化する。これは静的誤差を犠牲にして駒得保持を強めたとき探索Top3が回復するかを調べる新しい仮説であり、前回のholdout選択規則の書換えではない。位置的な優劣を表せないモデルの限界と、同じ5局での反復選択による過適合を踏まえて一候補だけを試す。
+
 探索実装・教師・100万ノード条件・二指標の採用基準を維持する。重み・特徴量・NNUE構造・学習方法・学習データは改善対象。現在のMac mini CPU・32 GiB RAM・既存SSD/NASだけを使い、重い実験は直列、解析jobs=1/Threads=1、build jobs=2とする。開始時SSD空き約27 GiB。初期の追加作業領域は8 GiB以内を目安にし、候補ごとに容量と時間見積りを確認する。既存原本を削除して容量を作らない。
 
 今回のprivate campaignは`campaign-17-autonomous-v1`。前回の実行・比較補助を新campaignへコピーし、削除済みIssue #15 worktreeへの参照だけを今回のworktreeへ変更した。比較を担う既存6スクリプトの内容hashは前回の正式比較と同じで、固定cshogi 1.0.4 / NumPy 1.26.4のvenvで実行する。適応補助のsource・変更後hashと候補identityはprivate receiptに残す。途中停止時は既存の厳密resumeで欠落attemptだけを再開し、技術失敗・破損・identity不一致を削除や書換えで救済しない。
 
 生局面・ラベル・weight・raw log・詳細receiptはGit外に保持する。完了成果物はSSD原本を維持し、ファイル集合・サイズ・SHA-256を照合して既存NASへ保管する。公開Git/Actionsにはコード・集計・条件・ハッシュだけを載せる。利用上限や技術的な障害は率直に報告し、未達のままgoal完了とは扱わない。
 
+## 比較の実行経路
+
+前回private運用に使った測定・厳密比較・公開化の補助を、それぞれ`scripts/evaluate_candidate.py`、`scripts/compare_candidates.py`、`scripts/publish_comparison.py`へ移した。repository参照をスクリプト位置から解決し、公開Markdownから今回の自律改善文書へのリンクを加えた。既存の測定・比較・公開境界を保持し、今回の最初のrunは開始時に保存したprivateコピーを使う。実行中のsourceは差し替えない。
+
+固定audit venvのPythonで、次の順に実行できる。`CAMPAIGN`と`WEIGHT`はそれぞれ新しいprivate保存先、候補重みの絶対パスとする。測定は既定の固定runtimeを使う。
+
+```sh
+python scripts/evaluate_candidate.py --weight "$WEIGHT" \
+  --output "$CAMPAIGN/evaluation" --prefix development-candidate-unique-v1
+python scripts/compare_candidates.py "$CAMPAIGN/evaluation" \
+  --output-json "$CAMPAIGN/comparison.json"
+python scripts/publish_comparison.py --comparison "$CAMPAIGN/comparison.json" \
+  --title '候補の正式比較' --candidate-label '候補モデル' \
+  --output "$CAMPAIGN/public"
+```
+
+測定コマンドは新しい出力先を要求し、採用は行わない。比較コマンドのexit 0は比較の有効性で、採用には`adopt=true`が必要。公開化はこのevaluation-directory経路に対応する。既定の比較基準は今回のfallback正式runであり、最良モデルが更新された後に追加比較する場合は`--baseline-evaluation`を明示し、公開化にも`--baseline-label`を渡す。途中再開は`benchmark.py resume`または`top3.py --resume`を使い、全体補助を同じ出力先へ再実行しない。
+
 ## 実行状態
 
-最初の候補の入力hashとabsolute metadata、固定runtime、cshogiによるdevelopment全570局面・46,668合法手の分類一致を確認した。2026-10-03 04:12:16 UTCに候補自身のMAE pilotを開始し、有効なpilotから正式MAE・Top3へ直列で進む。採用判断は保留で、最良モデルはfallbackを維持する。
+最初の候補の入力hashとabsolute metadata、固定runtime、cshogiによるdevelopment全570局面・46,668合法手の分類一致を確認した。2026-10-03 04:12:16 UTCに開始した候補自身のMAE pilotは102/102 attempt、技術失敗0、両エンジン17/17局面で3反復安定、最大報告1,001,086 nodes（規定上限1,010,000以下）を確認した。同candidateのpilotを凍結し、04:16:24 UTCに正式MAEへ進んだ。採用判断は保留で、最良モデルはfallbackを維持する。
 
 関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。

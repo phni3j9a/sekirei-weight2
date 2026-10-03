@@ -289,3 +289,9 @@ numeric監査の最初の起動は外部SHA指定の誤りで入力読取前に�
 公開workerの実入口は無効のままで、実入力を外部SHAで固定したRootが別versionを有効化して使う。容量は追加最大8GiB・残り最低2GiB、jobs=2、各childのwait/reap/group停止と前後input一致を要求する。公開合成15 testsと独立source peerで契約・legacy教師manifest・取消/cleanup・容量判定を検証した。
 
 専用buildを実行し、旧default9件・new white-view16件・B_small9件のRust testsが成功した。併用禁止の2feature指定は意図したcompile errorで終了101となり、新USI releaseと新coreのfingerprint一致、3 probeの新coreへのcompile/linkを確認した。教師の通常コピー・原典526ファイルの不変・1,161入力の前後size/SHA一致をRootが終了後に共有lock下で再検査した。専用treeの追加量は320,663,672 bytes。新release/depsは実測で63ファイルだったが、新しい全membershipを独立に束縛した結果で、旧training15の数を再利用していない。[公開build集計](validation/autonomous-weight-2026-10-04/white-view-runtime-build-v1/build.json)を参照。モデルの生成・実probe推論・正式測定はこのbuildでは行っていない。
+
+build後にstock01を全bytes検証して別のreference03を生成し、新coreの実read/saveを通した。元の盤上FT・bias・保護駒得と全持駒tieを保持し、read/save後の全1,305,356 bytesが一致した。reference03のSHAは`172e12c8cc62737463fd0b31bc665efdbd2a121dbb59e39432bc5d0da082da0e`、FNVは`fb1fe4867f6d20af`。親の正常終了・wait/reap・group停止と1,164入力の前後一致を確認した。候補fitの9成果物に混ぜず別initializerとして保持し、実forward・全118,591局面・8,185差分更新の証明は未実施。
+
+[新形式のfit driver](../scripts/fit_white_view_paired_linear.py)と[専用control/sidecar契約](../scripts/white_view_fit_contract.py)、[activation・source preflight・親launcherの準備source](../preparations/white-view-fit-operational-v2/README.md)を追加した。固定source inventory→ACT→PR→PF→親fitの順で非循環に束縛し、旧全pool replay・raw1000・原典526/依存63・core617のguardを継承する。新buildは別mapで検証し、6排他lockと2共有lockを終了まで保持する。子のdraftから親が保存済みGramによる3certとnearest castを再検算し、実wait/reap/group停止・入力不変を確認してからrunとsidecarを一方向に完成する。この親の検算を独立numeric監査とは扱わない。
+
+公開driverは外部SHAで固定したACT/PF/buildを必須とし、準備sourceのACT/PF/launcherは無効のままでRootが保存済み別copyを有効化する。実隣接build contractをSHAで固定し、同名の公開モジュールが既にimport済みでも専用validatorへ実隣接objectを渡し、元cacheを復元する。private sourceの合成43件、公開40件のうちNumPy4件を含む全件を固定audit環境で検証した。公開標準環境の全380 testsは成功（数値依存等30 skip）。既存solver bodyとNUMERIC_HASHESを保持し、source準備のみのprovenance比較3件はprivate監査へ残す。実fit・独立numeric・全row/差分更新・新fallback bridge・候補formalは未実施。

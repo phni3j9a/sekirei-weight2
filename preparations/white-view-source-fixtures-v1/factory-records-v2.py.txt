@@ -1,0 +1,192 @@
+"""Root-only immutable record factory; never launches engines or fits.
+
+Terminal actions are invoked only after the executor tool actually reports
+exit zero and a closed/reaped session. Original stock terminal events remain
+separately preserved; a later auditor session is never their executor.
+"""
+from contextlib import ExitStack
+from pathlib import Path
+import argparse
+import json
+import os
+import sys
+import time
+
+os.umask(0o077)
+for name in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS','VECLIB_MAXIMUM_THREADS','NUMEXPR_NUM_THREADS','BLIS_NUM_THREADS'):
+    os.environ[name]='1'
+R=Path('/home/server/worktrees/sekirei-weight2/issue-17-autonomous-weight-improvement')
+C=Path('/home/server/.local/share/sekirei-weight2/campaign-17-autonomous-v1')
+E=C/'white-view-evaluation-enabled-v4'
+sys.path.insert(0,str(E));sys.path.insert(1,str(R/'scripts'));sys.path.insert(2,str(C))
+import white_view_evaluation as w
+import white_view_runtime_io as io
+import white_view_production_ports as p
+import white_view_fit_operational_common as common
+
+OPAQUE_ALLOWLIST=Path('/home/server/.local/share/sekirei-weight2/campaign-17-autonomous-v1/white-view-preexisting-opaque-service-allowlist-v1.json')
+OPAQUE_ALLOWLIST_SHA='0cb4e02dd29beb136fc3f20d492e4d1846f93ad5dcd22f3cfe312ab6d9e64098'
+HEAD='6d099c79b4cac03390b9d861f11d05e083f0e66b'
+FALLBACK_PF=C/'white-view-fallback-formal-launch-preflight-v1.json'
+CANDIDATE_PF=C/'white-view-candidate-formal-launch-preflight-v1.json'
+OLD_IDS={'mae-pilot':'development-pilot-20261002-v039-v1','mae':'development-baseline-20261002-v039-v1','top3-pilot':'development-top3-baseline-pilot-20261002-v1','top3':'development-top3-baseline-20261002-v1'}
+MODEL={'kind':'material_fallback','path':None,'bytes':None,'sha256':None}
+
+def ref(path,expected=None):
+    path=Path(path);rec=io.info(path)
+    if expected is not None:w.require(rec['sha256']==expected,'Root external file SHA differs: '+str(path))
+    return {'path':str(path),**rec}
+
+def document(path):return json.loads(Path(path).read_bytes())
+
+def save(path,value):return io.write_new(Path(path),io.json_bytes(value))
+
+def add(inputs,path,expected=None):
+    rec=ref(path,expected);small={k:rec[k] for k in ('bytes','sha256')}
+    io.union_exact(inputs,{rec['path']:small});inputs[rec['path']]=small
+    return rec
+
+def sources(inputs,initial):
+    helpers=dict(initial)
+    add(inputs,OPAQUE_ALLOWLIST,OPAQUE_ALLOWLIST_SHA)
+    for path in sorted((R/'scripts').glob('*.py')):
+        rec=add(inputs,path);helpers[rec['path']]=rec['sha256']
+    for name in ('white_view_evaluation.py','white_view_runtime_io.py','white_view_production_ports.py','white_view_operations.py'):
+        rec=add(inputs,E/name);helpers[rec['path']]=rec['sha256']
+    rec=add(inputs,Path(__file__));helpers[rec['path']]=rec['sha256']
+    return helpers
+
+def fixed_pf(candidate=False):
+    path=CANDIDATE_PF if candidate else FALLBACK_PF
+    value=p.validate_launch_preflight(document(path))
+    if not candidate:ref(path,'ad053f5c94df30ae0f64a0c245b9324509db25ec345502b1dfe6078349b85bbd')
+    common.verify_git(HEAD)
+    return value
+
+def proc_identity(proc):
+    stat=(proc/'stat').read_text();a=stat[stat.rfind(')')+2:].split()
+    status={x.split(':',1)[0]:x.split(':',1)[1].strip() for x in (proc/'status').read_text().splitlines() if ':' in x}
+    return {'pid':int(proc.name),'ppid':int(a[1]),'pgid':int(a[2]),'sid':int(a[3]),'start_ticks':int(a[19]),'uids':[int(v) for v in status['Uid'].split()],'gids':[int(v) for v in status['Gid'].split()],'name':status['Name'],'comm':(proc/'comm').read_text().rstrip('\n'),'cmdline_hex':(proc/'cmdline').read_bytes().hex(),'cgroup':(proc/'cgroup').read_text()}
+
+def stopped_processes():
+    """Actual same-user runtime/runner processes; ignore this reader itself."""
+    runtime_roots=(p.B,p.N,p.Q.parent,p.OLD_FAN)
+    executables={str(E/'white_view_operations.py'),str(R/'scripts/benchmark.py'),str(R/'scripts/top3.py')}
+    allow_ref=ref(OPAQUE_ALLOWLIST,OPAQUE_ALLOWLIST_SHA);allow=document(allow_ref['path'])
+    w.require(Path('/proc/sys/kernel/random/boot_id').read_text().strip()==allow['boot_id'],'opaque-service boot identity changed')
+    found=[];excluded=[]
+    for proc in Path('/proc').iterdir():
+        if not proc.name.isdigit() or int(proc.name)==os.getpid():continue
+        try:
+            if proc.stat().st_uid!=os.getuid():continue
+            exe=(proc/'exe').resolve(strict=True);cwd=(proc/'cwd').resolve(strict=True)
+            argv=[v.decode('utf-8','surrogateescape') for v in (proc/'cmdline').read_bytes().split(b'\0') if v]
+            scoped=any(exe==root or root in exe.parents or cwd==root or root in cwd.parents for root in runtime_roots)
+            scoped=scoped or any(a in executables for a in argv)
+            scoped=scoped or any(a==str(root) or a.startswith(str(root)+'/') for a in argv for root in runtime_roots)
+            if scoped:found.append({'pid':int(proc.name),'exe':str(exe),'cwd':str(cwd),'argv':argv})
+        except (FileNotFoundError,ProcessLookupError):continue
+        except PermissionError as error:
+            if error.errno!=13 or error.filename not in (str(proc/'exe'),str(proc/'cwd')):raise
+            before=proc_identity(proc);frozen=allow['descriptors'].get(proc.name)
+            w.require(frozen is not None and w.exact(before,frozen),'unknown or changed opaque process')
+            w.require(before['start_ticks']<(allow['campaign_started_unix']-allow['btime_unix'])*allow['clock_ticks_per_second'],'opaque process did not predate campaign')
+            after=proc_identity(proc);w.require(w.exact(before,after),'opaque process identity changed while classified')
+            excluded.append({'descriptor':before,'denied_path':error.filename,'errno':error.errno,'allowlist':allow_ref,'reason':allow['excluded_reason'],'identity_reread_unchanged':True})
+    return found,excluded
+
+def terminal(args,old=False):
+    fixed_pf();observations=[];excluded_observations=[]
+    with ExitStack() as stack:
+        for path,exclusive in p.LOCKS:stack.enter_context(io.existing_lock(path,exclusive))
+        for root in (p.B,p.N):stack.enter_context(io.existing_lock(root/'.benchmark.lock',True))
+        if old:
+            origin=ref(C/'white-view-old-fallback-original-tool-completions-v1.json','f7149aa7f46a04a698ac50e449ec2f44bb9a4c765fc10ed7b63808bd500358f8')
+            original=document(origin['path']);w.require(set(original['stages'])==set(w.STAGES),'four original tool completions required')
+            for stage,row in original['stages'].items():
+                item=row['native_completion_event']['payload']['item']
+                w.require(item['status']=='completed' and type(item['exit_code']) is int and item['exit_code']==0,'original stock executor failed')
+            ids=OLD_IDS;role='fallback';model=MODEL
+            sid=int(original['stages']['top3']['native_completion_event']['payload']['item']['process_id'])
+            provenance={'original_tool_completions':origin,'all_original_stage_executor_sessions':{s:int(row['native_completion_event']['payload']['item']['process_id']) for s,row in original['stages'].items()},'current_audit_session_used_as_measurement_executor':False}
+            output=C/'white-view-old-fallback-original-executor-terminal-v1.json'
+        else:
+            w.require(type(args.session_id) is int and args.session_id>0 and type(args.chunk_id) is str and args.chunk_id,'actual tool terminal observation required')
+            pf=fixed_pf(args.role=='candidate');spec=pf['spec'];role=spec['role'];model=spec['model'];ids=spec['run_ids'];sid=args.session_id
+            parent=ref(C/('white-view-'+role+'-parent-v1')/'parent-outcome.json');outcome=document(parent['path'])['child_outcome']
+            w.require(type(outcome['returncode']) is int and outcome['returncode']==0 and outcome['waited'] is True and outcome['reaped'] is True and outcome['process_group_stopped'] is True and outcome['timed_out'] is False,'normal reaped child parent outcome required')
+            w.require(not io.group_exists(outcome['pgid']),'recorded child process group still exists')
+            provenance={'parent_outcome':parent,'executor_tool_chunk_id':args.chunk_id,'executor_tool_exit_code':0,'executor_tool_session_closed':True,'child_process_group_id':outcome['pgid'],'child_group_observed_exists':False}
+            output=C/('white-view-'+role+'-executor-terminal-v1.json')
+        for _ in range(2):
+            rows,excluded=stopped_processes();w.require(not rows,'related runtime/runner process still exists');observations.append(rows);excluded_observations.append(excluded);time.sleep(0.1)
+        value={'schema':'sekirei.white-view-evaluation-terminal.v1','status':'observed-stopped','role':role,'model':model,'run_ids':ids,'executor_session_id':sid,'exit_code':0,'session_closed':True,'tool_observed_reaped':True,'all_related_groups_observed_stopped':True,'locked_process_scans':observations,'excluded_preexisting_service_scans':excluded_observations,'preexisting_service_allowlist':ref(OPAQUE_ALLOWLIST,OPAQUE_ALLOWLIST_SHA),'source_head':HEAD,'final_used':False,'goal_complete':False,**provenance}
+        p.validate_audit_terminal(value,role,model,ids)
+        return save(output,value)
+
+def audit_request(args):
+    old=args.role=='old-fallback';candidate=args.role=='candidate';pf=fixed_pf(candidate)
+    spec=pf['spec'];role='candidate' if candidate else 'fallback'
+    inputs=dict(spec['inputs']);helpers=sources(inputs,spec['source_helpers'])
+    runtime=p.B if old else p.N;ids=OLD_IDS if old else spec['run_ids'];model=MODEL if old else spec['model']
+    config=add(inputs,R/'config/development-benchmark.json' if old else Path(spec['evaluation_path'])/'candidate.json')
+    build=add(inputs,runtime/'build-manifest.json');term=add(inputs,C/('white-view-old-fallback-original-executor-terminal-v1.json' if old else 'white-view-'+role+'-executor-terminal-v1.json'))
+    if old:
+        add(inputs,C/'white-view-old-fallback-original-tool-completions-v1.json','f7149aa7f46a04a698ac50e449ec2f44bb9a4c765fc10ed7b63808bd500358f8')
+        desc={'config':config['path'],'evaluation':None,'runtime':str(runtime),'mae':str(runtime/'runs'/ids['mae']),'top3':str(runtime/'runs'/ids['top3'])};binding=None
+    else:
+        state=add(inputs,Path(spec['evaluation_path'])/'evaluation.json');desc=w.descriptor(document(state['path']),spec['evaluation_path'],config['path'],role,model);binding=pf['new_build_binding']
+        add(inputs,Path(spec['evaluation_path'])/'operational-verification.json')
+    raw=io.inventory([runtime/'runs'/ids[s] for s in w.STAGES])
+    inputs=io.union_exact(inputs,raw['files'])
+    value={'schema':'sekirei.white-view-full-role-audit-request.v1','status':'frozen-before-raw-reparse','role':role,'model':model,'runtime':str(runtime),'descriptor':desc,'run_ids':ids,'config':config,'build_manifest':build,'terminal':term,'source_inputs':inputs,'source_helpers':helpers,'repo_identity':pf['repo_identity'],'decoder_versions':pf['decoder_versions'],'new_build_binding':binding,'output':str(C/('white-view-'+args.role+'-full-raw-audit-v1'))}
+    p.validate_audit_request(value)
+    return save(C/('white-view-'+args.role+'-full-raw-audit-request-v1.json'),value)
+
+def audit_closure(inputs,reference):
+    receipt=document(reference['path']);payload_ref=receipt['payload'];add(inputs,reference['path'],reference['sha256']);add(inputs,payload_ref['path'],payload_ref['sha256'])
+    payload=document(payload_ref['path']);w.require(w.exact(payload['audit_inputs_before'],payload['audit_inputs_after']),'audit closure input maps differ')
+    return io.union_exact(inputs,payload['audit_inputs_after'])
+
+def comparison_request(args):
+    pf=fixed_pf(args.action=='compare-request');inputs=dict(pf['spec']['inputs']);helpers=sources(inputs,pf['spec']['source_helpers'])
+    if args.action=='bridge-request':
+        old=ref(C/'white-view-old-fallback-full-raw-audit-v1/receipt.json');new=ref(C/'white-view-fallback-full-raw-audit-v1/receipt.json')
+        extra={'old_audit':old,'new_audit':new,'old_build':ref(p.B/'build-manifest.json'),'new_build':pf['spec']['build_manifest'],'old_runtime':str(p.B)}
+        inputs=audit_closure(audit_closure(inputs,old),new);action='bridge';output=C/'white-view-fallback-semantic-bridge-v1.json'
+    else:
+        baseline=ref(C/'white-view-fallback-full-raw-audit-v1/receipt.json');candidate=ref(C/'white-view-candidate-full-raw-audit-v1/receipt.json');bridge=ref(C/'white-view-fallback-semantic-bridge-v1.json')
+        extra={'baseline_audit':baseline,'candidate_audit':candidate,'bridge':bridge,'model':pf['spec']['model']}
+        inputs=audit_closure(audit_closure(inputs,baseline),candidate);add(inputs,bridge['path'],bridge['sha256'])
+        original=document(bridge['path'])['old_audit'];inputs=audit_closure(inputs,original);action='compare';output=C/'white-view-candidate-same-runtime-comparison-v1.json'
+    request={'schema':'sekirei.white-view-comparison-request.v1','status':'frozen-before-comparison','action':action,'source_inputs':inputs,'source_helpers':helpers,'output':str(output),**extra}
+    return save(C/('white-view-'+action+'-request-v1.json'),request)
+
+def candidate_preflight(args):
+    fallback=fixed_pf();spec0=fallback['spec'];gate=ref(C/'white-view-model-technical-gate-v1.json','6d141118a540dfd3746748da6dcda77daf4e4ac8536227caa58e07c10c8694e0');value=document(gate['path'])
+    inputs=io.union_exact(spec0['inputs'],value['inputs_before']);helpers=sources(inputs,spec0['source_helpers'])
+    invocation=document(C/'white-view-model-gate-root-invocation-v2.json')['external_refs'];binding={'schema':'sekirei.white-view-candidate-gate-binding.v1'}
+    for key,record in invocation.items():
+        name='gate_worker' if key=='worker' else key.replace('-','_');actual=add(inputs,record['path'],record['sha256']);w.require(w.exact(actual,record),'Root original 18 binding fullref differs');binding[name]=record
+        if name in ('common','numeric_worker','core_worker','incremental_worker','gate_worker'):helpers[record['path']]=record['sha256']
+    binding['gate']=add(inputs,gate['path'],gate['sha256']);w.validate_candidate_binding(binding,inputs)
+    bridge=add(inputs,C/'white-view-fallback-semantic-bridge-v1.json');bridge_doc=document(bridge['path'])
+    inputs=audit_closure(audit_closure(inputs,bridge_doc['old_audit']),bridge_doc['new_audit'])
+    model=value['model'];build=fallback['new_build_binding']
+    spec=w.make_spec('candidate','development-white-view-candidate-20261004-v1',str(C/'eval-white-view-candidate-v1'),model,build['manifest'],build['identity'],helpers,inputs,gate,bridge)
+    pf={'schema':'sekirei.white-view-evaluation-launch-preflight.v1','status':'frozen-before-first-write','spec':spec,'config_source':fallback['config_source'],'new_build_binding':build,'repo_identity':fallback['repo_identity'],'decoder_versions':fallback['decoder_versions'],'preregistration':binding['preregistration'],'candidate_binding':binding,'candidate_validator':binding['gate_worker']}
+    p.validate_launch_preflight(pf);pfref=save(CANDIDATE_PF,pf)
+    ports=p.ProductionPorts(pfref)
+    with ports.coordinating_locks(spec):verified=ports.preflight(spec,w.config_for_role(document(pf['config_source']['path']),spec))
+    w.require(verified['native_gate_verified'] is True and verified['fallback_bridge_verified'] is True and verified['output_and_four_run_paths_absent'] is True,'full candidate read-only preflight failed')
+    return save(C/'white-view-candidate-root-readonly-preflight-v1.json',{'schema':'sekirei.white-view-candidate-root-readonly-preflight.v1','status':'complete-before-first-engine','launch_preflight':pfref,'verified':verified,'no_engine_or_fit_started':True,'goal_complete':False})
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument('action',choices=('terminal','old-terminal','audit-request','bridge-request','candidate-preflight','compare-request'));ap.add_argument('--role',choices=('old-fallback','fallback','candidate'),default='fallback');ap.add_argument('--session-id',type=int);ap.add_argument('--chunk-id');args=ap.parse_args()
+    if args.action=='terminal':result=terminal(args)
+    elif args.action=='old-terminal':result=terminal(args,old=True)
+    elif args.action=='audit-request':result=audit_request(args)
+    elif args.action in ('bridge-request','compare-request'):result=comparison_request(args)
+    else:result=candidate_preflight(args)
+    print(result,flush=True)
+if __name__=='__main__':main()

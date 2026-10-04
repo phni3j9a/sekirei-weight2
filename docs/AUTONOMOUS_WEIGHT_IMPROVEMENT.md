@@ -303,3 +303,34 @@ build後にstock01を全bytes検証して別のreference03を生成し、新core
 [新runtimeの正式比較監督source](../preparations/white-view-evaluation-runtime-v3/README.md)は、旧parserを保持して新fallbackと候補の四段階をそれぞれ新規実行する。旧fallbackとの橋では固定semantic projection・7共通identity・各局のexact整数集計を要求し、同じ新binaryの候補比較では8identityと共同採用条件を維持する。新fallbackのown pilotも省略しない。親の直接子が終了しても残るprocess groupをKILLし、最大5秒の別期限で消滅を確認する修正を、未使用のD2 sourceと分けてD3に保存した。正式technical gateの19外部参照・5proof・全起動入力集合への包含を接続し、私有合成42件と公開用41件が成功した。実四段階の成功・採用は未確認で、公開sourceは無効のまま保持する。
 
 これらの追加後、公開標準環境で全449 testsが成功（既存の数値依存等30 skip、204.638秒）。同一の公開source commitをACT・PR・PF・fit・proof・新fallback/候補formalまで保持し、終了後に実測と記録を追加する。
+
+
+### 第七候補の独立検証と正式結果（2026-10-04）
+
+白視点・対線形補助出力の固定ridge=1案を元train112,681局面だけで一度fitし、18反復で終了した。親processの所要時間は約51秒、solverのfit部分は約7.98秒。保存native03 SHAは `0497ecd8f3d70645562e1bdcae43b8612bde24683281e33858c264325051b8af`、非零の係数は254個中1個だった。元holdoutやdevelopmentを係数の調整・反復選択に使っていない。
+
+初回NUM1はrunに保存した小数の所要秒とexact dyadic再構成の表示差を拒否し、exit1で終了した。失敗原本を保持し、目的・gradient・最適性certificateの演算を保持した[NUM2準備](../preparations/white-view-numeric-audit-v2/README.md)で再監査した。fit・Gram生成・重み生成は繰り返していない。NUM2の成功は保存Gramからのexact再計算とnative全bytes再構成であり、独立の再Gram生成やFISTA軌跡の再証明とは扱わない。
+
+[新proof2準備](../preparations/white-view-model-proof-v2/README.md)を別copyで実行し、元train/holdout/公開fixtureの計118,591局面、8,185差分更新観測、19参照のtechnical gateを通過した。Coreのfloat/整数差はtrain最大0.968994cp、holdout最大0.53125cp。この線形候補固有のbound・exact certificateを次の非線形学習へ流用しない。
+
+[新E4準備](../preparations/white-view-evaluation-runtime-v4/README.md)を別copyで実行し、同じ新binaryのfallbackと候補それぞれでown MAE pilot・正式MAE・own Top3 pilot・正式Top3を新規測定した。旧fallbackの元終了記録を結び直し、旧・新・候補の各1,829試行を全生ログから独立監査した。新旧fallbackは7共通identity、rawの意味、各局のexact整数集計が一致した。候補比較では8identityが一致し、採否を有理数で再計算した。
+
+| 指標 | 新binaryのfallback | 白視点の対線形候補 | 差 |
+| --- | ---: | ---: | ---: |
+| MAE | 1084.4786006022962 cp | 1085.388326432022 cp | +0.909725829726 cp |
+| Top3 | 55.388757425930% | 55.592402180895% | +0.203644754965ポイント |
+
+candidate MAEは `314545537/289800`、Top3は `22339078/40183689`。baseline MAEは `1152366961/1062600`、Top3は `127184263/229621080`。**正式比較は有効だが不採用**。Top3維持条件は満たし、MAE改善条件を満たさなかった。最良モデルは駒得fallbackのまま、final 5局は使っていない。[局別比較・条件・SHAとグラフ](validation/autonomous-weight-2026-10-04/white-view-paired-linear-constrained-ridge1-l1-39p5-v1/comparison.md)を参照。SVGは20個の数値ラベルだけ位置と文字サイズを調整し、数値textとbar geometryが元exportと同一であることを確認して表示をレビューした。
+
+[停止準備](../preparations/white-view-postformal-v1/README.md)による実停止確認は、19,935固定入力、3独立audit、12 raw rootsの11,010 raw files、gateと比較、9排他lock、2回のprocess観測を束縛した。[保存launcher準備](../preparations/white-view-nas-launcher-v1/README.md)による実コピーは16 source roots・13,340 files・79 directories・448,847,736 bytesで、source-before/source-after/NAS destinationの集合・size・SHA-256が一致した。保存中22,246入力の前後一致、helperと親の実wait/reap・process group停止を確認した。保存request/result等のRootメタデータ11files・28,251,586 bytesも別領域へ同一bytesで保存した。SSD原本は保持し、runtime/compiler/build/venvの全環境をこのコピーだけで復元できるとは扱わない。公開4filesの[hash manifest](validation/autonomous-weight-2026-10-04/white-view-paired-linear-constrained-ridge1-l1-39p5-v1/hashmanifest.json)に集約値とSHAを残す。
+
+[公開projection準備](../preparations/white-view-public-projection-v1/README.md)は3audit・橋・比較を再構成し、22,251入力の前後一致とraw membership一致を確認して局別集計のみをexportした。supplementalのnumeric/core/incremental/gate/stop/NASはpublisherではSHA参照として保持する。これらの実bodyは上記のRootの各検証で別に確認した。公開前にCore SHAを手入力した63桁の参照でbootstrapが停止したが、requestやexportを作る前だった。既存stopのcanonical fullrefを使って訂正し、guardや採用規則を緩めていない。
+
+### 次の容量改善案の準備状態
+
+線形係数一つの補正と99cp制限に留まる旧案では、二指標の同時改善を得られなかった。次は白視点・持駒tie・駒得保護を維持し、254補助FTと14組の対非線形headを学習するSOURCE案を用意した。正負head出力を組にして手番だけの定数補正を避ける。原典absolute CP-MSEとscalar Adam、全inactive moment更新、nearest-even native03保存を保つ。LR・head幅・bias・output budgetはまだ選択していない。
+
+全shapeは602,516 master更新/局面、3epochで203,676,316,188 scalar更新となる。過去のsparse trainerの時間を予測値に流用せず、実release型検査と純メモリの全shape CPU計測でwall budgetを決める。SOURCE fixture成功をRust compile・実学習・新proof/gate・正式比較の成功には読み替えない。CPU予算が厳しければ同じ原典の意味を守った実装効率化や容量・実験数で調整し、正式100万ノードと共同採用条件は維持する。goalは継続中、PR #18は下書き・未マージである。
+
+
+公開CIには6つの新しい準備版だけを追加した。旧NUM1/proof1/E3 source・既存testsを保持し、historical enabled sourceはAST専用text fixtureとして実importを閉じた。作者と独立peerが内部125 testsを通過し、Rootは移植後の公開全455 testsを211.423秒で成功確認した（既存の数値依存等30 skip）。Python構文・config JSON・差分空白検査も成功。これらは公開fixture/source契約の検証であり、実dataset・Rust学習・棋力改善の証明とは区別する。[移植の検証範囲](../preparations/WHITE-VIEW-CI-PORT.md)を参照。

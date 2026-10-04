@@ -1,0 +1,386 @@
+{
+  "schema": "sekirei.white-view-public-comparison.v1",
+  "status": "complete",
+  "candidate": "white-view-paired-linear-constrained-ridge1-l1-39p5-v1",
+  "source_head": "6d099c79b4cac03390b9d861f11d05e083f0e66b",
+  "plan_sha256": "1f274b187a96b16674814c51f77cb402ca8a80e6a7e5d738a5caf9354127e836",
+  "model": {
+    "kind": "nnue",
+    "native_magic": "SEKIRW03",
+    "bytes": 1305356,
+    "sha256": "0497ecd8f3d70645562e1bdcae43b8612bde24683281e33858c264325051b8af"
+  },
+  "conditions": {
+    "sekirei": "v0.3.39",
+    "compile_feature": "nnue_white_view_aux_tied",
+    "teacher": "Suisho Concerto 202512 (Suisho11beta)",
+    "requested_nodes": 1000000,
+    "max_reported_nodes": 1010000,
+    "threads": 1,
+    "hash_mib": 128,
+    "mae_multipv": 1,
+    "candidate_top3_multipv": 3,
+    "games": 5,
+    "occurrences": 570,
+    "teacher_exact_count": 266,
+    "top3_eligible_count": 551,
+    "aggregation": "equal mean of five per-game metrics",
+    "nnue_output": "absolute",
+    "final_used": false
+  },
+  "identities": {
+    "new_build_manifest_sha256": "acdf54127ecea9d6d3317490f1547a13c43f65db749a48115c055ebc7d9e5c30",
+    "old_build_manifest_sha256": "13d1116d61d9e60358a0738e8d3127e9ca122925965dc3107de6085584623420",
+    "new_sekirei_binary_sha256": "c8818d71c3c3b54684f76ef5c204d56b1f1445e12cf81d22820c69a8c8b0c1c3",
+    "old_sekirei_binary_sha256": "1fcb3e9e67d3a926eed6cd172824ef9e4336af80f3ac62e02fa58abd0e865582",
+    "teacher_binary_sha256": "5de16bb5070b4bcd2ee4150ab08d7dcf1c65dcee1ebc072ff4463539a4b1595c"
+  },
+  "decision": {
+    "comparison_valid": true,
+    "mae_improved": false,
+    "top3_preserved": true,
+    "adopt": false,
+    "rule": "MAE strictly lower AND Top3 non-decreasing; exact five-game rational comparison"
+  },
+  "headline": {
+    "baseline_exact": {
+      "mae": {
+        "numerator": 1152366961,
+        "denominator": 1062600
+      },
+      "top3": {
+        "numerator": 127184263,
+        "denominator": 229621080
+      }
+    },
+    "candidate_exact": {
+      "mae": {
+        "numerator": 314545537,
+        "denominator": 289800
+      },
+      "top3": {
+        "numerator": 22339078,
+        "denominator": 40183689
+      }
+    },
+    "mae_delta_cp": 0.9097258297258297,
+    "top3_delta_percentage_points": 0.20364475496513026
+  },
+  "per_game": [
+    {
+      "game": "G1",
+      "teacher_exact_count": 42,
+      "top3_denominator": 84,
+      "baseline_error_sum_cp": 15431,
+      "candidate_error_sum_cp": 14306,
+      "baseline_top3_hits": 49,
+      "candidate_top3_hits": 47,
+      "baseline_mae": {
+        "numerator": 15431,
+        "denominator": 42
+      },
+      "candidate_mae": {
+        "numerator": 7153,
+        "denominator": 21
+      },
+      "baseline_top3": {
+        "numerator": 7,
+        "denominator": 12
+      },
+      "candidate_top3": {
+        "numerator": 47,
+        "denominator": 84
+      }
+    },
+    {
+      "game": "G2",
+      "teacher_exact_count": 72,
+      "top3_denominator": 122,
+      "baseline_error_sum_cp": 109038,
+      "candidate_error_sum_cp": 111226,
+      "baseline_top3_hits": 83,
+      "candidate_top3_hits": 85,
+      "baseline_mae": {
+        "numerator": 18173,
+        "denominator": 12
+      },
+      "candidate_mae": {
+        "numerator": 55613,
+        "denominator": 36
+      },
+      "baseline_top3": {
+        "numerator": 83,
+        "denominator": 122
+      },
+      "candidate_top3": {
+        "numerator": 85,
+        "denominator": 122
+      }
+    },
+    {
+      "game": "G3",
+      "teacher_exact_count": 66,
+      "top3_denominator": 127,
+      "baseline_error_sum_cp": 71233,
+      "candidate_error_sum_cp": 72622,
+      "baseline_top3_hits": 55,
+      "candidate_top3_hits": 54,
+      "baseline_mae": {
+        "numerator": 71233,
+        "denominator": 66
+      },
+      "candidate_mae": {
+        "numerator": 3301,
+        "denominator": 3
+      },
+      "baseline_top3": {
+        "numerator": 55,
+        "denominator": 127
+      },
+      "candidate_top3": {
+        "numerator": 54,
+        "denominator": 127
+      }
+    },
+    {
+      "game": "G4",
+      "teacher_exact_count": 40,
+      "top3_denominator": 104,
+      "baseline_error_sum_cp": 48907,
+      "candidate_error_sum_cp": 48683,
+      "baseline_top3_hits": 55,
+      "candidate_top3_hits": 54,
+      "baseline_mae": {
+        "numerator": 48907,
+        "denominator": 40
+      },
+      "candidate_mae": {
+        "numerator": 48683,
+        "denominator": 40
+      },
+      "baseline_top3": {
+        "numerator": 55,
+        "denominator": 104
+      },
+      "candidate_top3": {
+        "numerator": 27,
+        "denominator": 52
+      }
+    },
+    {
+      "game": "G5",
+      "teacher_exact_count": 46,
+      "top3_denominator": 114,
+      "baseline_error_sum_cp": 56976,
+      "candidate_error_sum_cp": 56309,
+      "baseline_top3_hits": 62,
+      "candidate_top3_hits": 66,
+      "baseline_mae": {
+        "numerator": 28488,
+        "denominator": 23
+      },
+      "candidate_mae": {
+        "numerator": 56309,
+        "denominator": 46
+      },
+      "baseline_top3": {
+        "numerator": 31,
+        "denominator": 57
+      },
+      "candidate_top3": {
+        "numerator": 11,
+        "denominator": 19
+      }
+    }
+  ],
+  "reference_checks": {
+    "occurrences": {
+      "equal": true,
+      "baseline_sha256": "25862b6e170093b6f15674465b4f4ead89399c7a52029d4678f8090930d9964d",
+      "candidate_sha256": "25862b6e170093b6f15674465b4f4ead89399c7a52029d4678f8090930d9964d"
+    },
+    "top3_legal_moves_sha256": {
+      "equal": true,
+      "baseline_sha256": "fe1f83479f039ffe4596bd655399445404234e9e6fa3cb60f362a20c88ddf47b",
+      "candidate_sha256": "fe1f83479f039ffe4596bd655399445404234e9e6fa3cb60f362a20c88ddf47b"
+    },
+    "top3_teacher_bestmoves": {
+      "equal": true,
+      "baseline_sha256": "2b16df792f3d910497b70572fca23efb4d017509ec98ed30ef3c09cb7e2b657d",
+      "candidate_sha256": "2b16df792f3d910497b70572fca23efb4d017509ec98ed30ef3c09cb7e2b657d",
+      "mismatch_count": 0
+    },
+    "execution_except_model": {
+      "equal": true,
+      "baseline_sha256": "6359b0bb4e45d1a440e754005ddaf5563c603d73315322f01b42eebcd4478ce4",
+      "candidate_sha256": "6359b0bb4e45d1a440e754005ddaf5563c603d73315322f01b42eebcd4478ce4",
+      "mismatch_count": 0
+    },
+    "top3_denominators": {
+      "equal": true,
+      "baseline_sha256": "eb7b988257a97b8afe5fb1bea99c58c2921fe3787aaa72d5551349ba3382b46a",
+      "candidate_sha256": "eb7b988257a97b8afe5fb1bea99c58c2921fe3787aaa72d5551349ba3382b46a",
+      "mismatch_count": 0
+    },
+    "teacher_E_cp": {
+      "equal": true,
+      "baseline_sha256": "1a188135ed62c9672c71368ab778a7352cf716f3631a0e2df4e97450599a127f",
+      "candidate_sha256": "1a188135ed62c9672c71368ab778a7352cf716f3631a0e2df4e97450599a127f",
+      "mismatch_count": 0
+    },
+    "teacher_results": {
+      "equal": true,
+      "baseline_sha256": "5f0fc5489e9a6e643e220dd64892a12c9c8597b2b4bc3286538f19fecb26c665",
+      "candidate_sha256": "5f0fc5489e9a6e643e220dd64892a12c9c8597b2b4bc3286538f19fecb26c665",
+      "mismatch_count": 0
+    },
+    "top3_occurrences": {
+      "equal": true,
+      "baseline_sha256": "a741334ccfa9eea52bf8c04e787503edfdb607a7c8166bc4fa32517f6c221ced",
+      "candidate_sha256": "a741334ccfa9eea52bf8c04e787503edfdb607a7c8166bc4fa32517f6c221ced"
+    }
+  },
+  "fallback_bridge": {
+    "semantic_and_exact_integer_metrics_equal": true,
+    "execution_identities_equal": false,
+    "old_results_reused_as_new": false
+  },
+  "stage_evidence": {
+    "baseline": {
+      "mae-pilot": {
+        "attempts": 102,
+        "raw_sha_verified": 102,
+        "lifecycle_verified": 102,
+        "cleanup_ok": 102,
+        "runner_exit_zero": 102,
+        "max_reported_nodes": 1001086,
+        "fingerprint": "c576d97657dc83b10e69c272fe1428c691d6db46d35a0e63a936f9093ee2a8dc"
+      },
+      "mae": {
+        "attempts": 1140,
+        "raw_sha_verified": 1140,
+        "lifecycle_verified": 1140,
+        "cleanup_ok": 1140,
+        "runner_exit_zero": 1140,
+        "max_reported_nodes": 1001086,
+        "fingerprint": "878b92945724af874e650e5cf860d4153542bdcea1d024613f28620a42bed186"
+      },
+      "top3-pilot": {
+        "attempts": 36,
+        "raw_sha_verified": 36,
+        "lifecycle_verified": 36,
+        "cleanup_ok": 36,
+        "runner_exit_zero": 36,
+        "max_reported_nodes": 1000002,
+        "fingerprint": "2e70a430c0e737dab88414b7bc2d6e5f090d75312e3ed9974ca19fdd31d8ff01"
+      },
+      "top3": {
+        "attempts": 551,
+        "raw_sha_verified": 551,
+        "lifecycle_verified": 551,
+        "cleanup_ok": 551,
+        "runner_exit_zero": 551,
+        "max_reported_nodes": 1000004,
+        "fingerprint": "3d5997b37628338740642f4e5a102214733c538d11bce49c36a4ea38b7921b79"
+      }
+    },
+    "candidate": {
+      "mae-pilot": {
+        "attempts": 102,
+        "raw_sha_verified": 102,
+        "lifecycle_verified": 102,
+        "cleanup_ok": 102,
+        "runner_exit_zero": 102,
+        "max_reported_nodes": 1001086,
+        "fingerprint": "46114c9ae5e7ccb74591e5cefe96760adb868ff1c5a510c8c154dd6c14f669ab"
+      },
+      "mae": {
+        "attempts": 1140,
+        "raw_sha_verified": 1140,
+        "lifecycle_verified": 1140,
+        "cleanup_ok": 1140,
+        "runner_exit_zero": 1140,
+        "max_reported_nodes": 1001086,
+        "fingerprint": "b6913f59813bb062bd7c67abd073b6387b74ea421dcc2f4d8e01058988d8da37"
+      },
+      "top3-pilot": {
+        "attempts": 36,
+        "raw_sha_verified": 36,
+        "lifecycle_verified": 36,
+        "cleanup_ok": 36,
+        "runner_exit_zero": 36,
+        "max_reported_nodes": 1000000,
+        "fingerprint": "f71478e2496654084de5bc62eb9c26775f9b50ac167bdf6d93333365212d8403"
+      },
+      "top3": {
+        "attempts": 551,
+        "raw_sha_verified": 551,
+        "lifecycle_verified": 551,
+        "cleanup_ok": 551,
+        "runner_exit_zero": 551,
+        "max_reported_nodes": 1000004,
+        "fingerprint": "b3c068677af865723f9e902922c9b87b7b9fc7ff6caf8df24a8cca4d315c9715"
+      }
+    }
+  },
+  "verification_sha256": {
+    "comparison": "a8855303c520fe34bd2c39f204cc5a20e95c70c8377bdac23a965ea9978cfe24",
+    "fallback_bridge": "352670aa275206dbbed718f594de0e4759e9e3f85e12226d9e7f9fcbc1c3f0aa",
+    "old_fallback_audit": "63628128f99772826886b53885e27b660c4f52fe6a889280ae1eded02052e41c",
+    "new_fallback_audit": "0aac8258f553744b44a44b14ed977cf3f0f0d54adf669da9c324608e53de7d28",
+    "candidate_audit": "07fb61e34bc5cf1729e5dd4cdbf906a78e6d3edd1252fc692e50201a983c0104",
+    "comparison_contract_source": "44b45d998cc89156ff70e8fee546bc509e9bc8f37f0200657e08154f9fdc9148",
+    "comparison_producer_source": "675f3b78b42bd4a5d1830a90cbe8e360adaa8f35bd9450eb566384607acf14cc",
+    "publisher_source": "0f136f525d819067e2b273ecab26f35f9b9ea2d0f3e4c857d7dd8ca6efce41ab",
+    "old_fallback_terminal": "7268fd58393a329c517263206005bfbb6adb173deeda173a9d0edd90482e931d",
+    "new_fallback_terminal": "c912b4c0118f433e36838858877af07231e163dadfcba679d5505cf0388291b5",
+    "candidate_terminal": "9eb0d8e1e08742c6c377aea7bd89c8a5e8757613df757a261f9798b862d39c67"
+  },
+  "supplemental_evidence": {
+    "core": {
+      "provided": true,
+      "sha256": "aa2862a92d30d7d8c80be7c218f82032cbf331fd45d55be758e7269a24f6ebed",
+      "publisher_validation": "sha_reference_only",
+      "proof_body_independently_verified_by_publisher": false
+    },
+    "incremental": {
+      "provided": true,
+      "sha256": "77404aaed18a34c061cf64c1bcd6dd8de7b1c0efdf6d134f138022f90bfa30b8",
+      "publisher_validation": "sha_reference_only",
+      "proof_body_independently_verified_by_publisher": false
+    },
+    "model_gate": {
+      "provided": true,
+      "sha256": "6d141118a540dfd3746748da6dcda77daf4e4ac8536227caa58e07c10c8694e0",
+      "publisher_validation": "sha_reference_only",
+      "proof_body_independently_verified_by_publisher": false
+    },
+    "nas": {
+      "provided": true,
+      "sha256": "3175ed4b730fbcd863a3072d79fce9a1d3e0d7b2e7d8b8d19b00746ce443da71",
+      "publisher_validation": "sha_reference_only",
+      "proof_body_independently_verified_by_publisher": false
+    },
+    "numeric": {
+      "provided": true,
+      "sha256": "4dce73f03f1eb10e8ce08b22801ea9b91786844f9fe5eee936c85a04d4ee5813",
+      "publisher_validation": "sha_reference_only",
+      "proof_body_independently_verified_by_publisher": false
+    },
+    "stop": {
+      "provided": true,
+      "sha256": "27a818c60ca9480477e6462fb5e77ba1585a6c286c09dbf76b7cf5c13009bd80",
+      "publisher_validation": "sha_reference_only",
+      "proof_body_independently_verified_by_publisher": false
+    }
+  },
+  "scope": {
+    "private_inputs_rehashed_unchanged": true,
+    "receipt_arithmetic_reproduced": true,
+    "usi_raw_reparsed_by_publisher": false,
+    "runtime_rebuilt_or_reverified_by_publisher": false,
+    "supplemental_proof_bodies_verified_by_publisher": false,
+    "final_data_used": false,
+    "general_playing_strength_proven": false
+  }
+}

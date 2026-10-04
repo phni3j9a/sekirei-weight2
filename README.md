@@ -8,7 +8,7 @@
 
 ## 現在の段階
 
-Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の自律改善では、6候補を固定100万ノードで正式比較した。いずれも採用条件を満たさず、最良は駒得fallbackを維持する。最新の対線形補助出力・制約付きridge=1候補はMAE **1087.385635 cp / Top3 54.483043%**で、基準よりMAEが2.907034 cp悪化し、Top3が0.905714ポイント低下した。学習のexact最適性確認とstock core・incremental検証は通ったが、正式な二指標では改善しなかった。初回の測定失敗を無効な履歴として保持し、新しい四段階の測定・独立監査・停止確認を完了した。[最新の正式比較](docs/validation/autonomous-weight-2026-10-04/paired-linear-constrained-ridge1-l1-39p5-v2/comparison.md)と[全候補・入力復元・次案](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。次は白視点と持駒の評価特徴の対応を揃える案を準備する。PR #18は下書き・未マージ、goalは継続中。
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の自律改善では、7候補を固定100万ノードで正式比較した。いずれも採用条件を満たさず、最良は駒得fallbackを維持する。最新の白視点・対線形補助出力・制約付きridge=1候補はMAE **1085.388326 cp / Top3 55.592402%**。同じ新binaryで再測定したfallbackよりMAEが0.909726 cp増え、Top3は0.203645ポイント改善した。MAEの厳密低下とTop3の非低下を同時に要求するため不採用とした。重みを変更せず、独立数値監査・core・incremental検証、新旧fallbackの橋、各四段階の正式測定・生ログ監査・停止・NAS保存まで完了している。[最新の正式比較](docs/validation/autonomous-weight-2026-10-04/white-view-paired-linear-constrained-ridge1-l1-39p5-v1/comparison.md)と[全候補・入力復元・次案](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。次は白視点を維持して補助特徴と対非線形headを学習する案を準備し、全結合Adam更新のCPU所要時間を確認する。次候補の学習・正式比較は未実施。PR #18は下書き・未マージ、goalは継続中。
 
 Issue [#13](https://github.com/phni3j9a/sekirei-weight2/issues/13) / [PR #14](https://github.com/phni3j9a/sekirei-weight2/pull/14) で、配布packから最初の学習済みweightを生成し、固定v0.3.39で比較した。採用指標は **評価値MAE** と **水匠の最善手がSekireiのTop3に入る割合** の二つ。
 
@@ -118,7 +118,7 @@ Issue [#15](https://github.com/phni3j9a/sekirei-weight2/issues/15) / [PR #16](ht
 
 探索実装、教師、正式比較条件、採用基準を維持し、final 5局はモデル選択や採点に使用していない。実験成果物20,765ファイル（2,417,083,627 bytes）は、ファイル集合・サイズ・SHA-256等の一致を確認してNASへ保存した。SSD原本と参照パスも保持している。[保存の検証集計](docs/validation/weight-improvement-2026-10-03/archive.json)を参照。PR #16はマージ済みで、モデル採用は未達のまま。
 
-Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を継続する。6候補の正式比較・独立監査は有効に完了したが、MAE改善とTop3維持を同時に満たすモデルは未達である。最新候補は固定の制約付き目的を32.574秒・22反復でfitし、保存f32のexact certificateと118,591局面のcore・8,185回のincremental検証を通過した。初回の正式測定はsupervisorの終了記録欠落で無効となったため、937試行の途中記録を保存し、同じ重みで四段階を新規実行した。再測定は候補・基準各1,829試行の独立raw監査と、8,194入力の前後照合・6排他lock下の停止確認まで完了した。次候補のbuild・学習・正式比較は未実施。[目標・条件・結果・資源](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
+Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)で、採用可能なモデルが得られるまでgoalによる自律改善を継続する。7候補の正式比較・独立監査は有効に完了したが、MAE改善とTop3維持を同時に満たすモデルは未達である。最新候補の実fitは一回だけで、保存重み・exact最適性確認・118,591局面のcore・8,185差分更新観測を検証した。最初のnumeric監査はJSONの小数秒とexact dyadic値の表示差を検出して失敗したため、原結果を保持して専用NUM2で再監査し、fitは繰り返していない。新binaryのfallbackと候補を各1,829試行で再測定・独立監査し、旧fallbackと新fallbackの意味・各局の整数集計も一致した。停止時19,935入力の前後一致と9排他lock下の停止、保存時22,246入力の前後一致とNASの集合・size・SHA-256一致を確認した。公開準備sourceの125追加fixtureは実モデル採用の証明と区別する。[目標・条件・結果・資源](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)を参照。
 
 ## 文書
 

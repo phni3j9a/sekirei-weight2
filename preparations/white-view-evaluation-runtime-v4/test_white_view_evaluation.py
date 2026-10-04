@@ -332,7 +332,7 @@ class Tests(unittest.TestCase):
         with self.assertRaises(ValueError):w.validate_native_gate(bad,NATIVE,build,binding,expected_inputs)
 
     def test_field_policy_matches_unchanged_compare_source(self):
-        path = Path('/home/server/worktrees/sekirei-weight2/issue-17-autonomous-weight-improvement/scripts/compare_candidates.py')
+        path = Path(__file__).resolve().parents[2] / 'scripts' / 'compare_candidates.py'
         tree = ast.parse(path.read_text())
         value = next(node.value for node in tree.body if isinstance(node, ast.Assign)
                      and any(isinstance(t, ast.Name) and t.id == 'TEACHER_FIELDS' for t in node.targets))

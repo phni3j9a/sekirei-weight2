@@ -334,3 +334,6 @@ candidate MAEは `314545537/289800`、Top3は `22339078/40183689`。baseline MAE
 
 
 公開CIには6つの新しい準備版だけを追加した。旧NUM1/proof1/E3 source・既存testsを保持し、historical enabled sourceはAST専用text fixtureとして実importを閉じた。作者と独立peerが内部125 testsを通過し、Rootは移植後の公開全455 testsを211.423秒で成功確認した（既存の数値依存等30 skip）。Python構文・config JSON・差分空白検査も成功。これらは公開fixture/source契約の検証であり、実dataset・Rust学習・棋力改善の証明とは区別する。[移植の検証範囲](../preparations/WHITE-VIEW-CI-PORT.md)を参照。
+
+
+初回GitHub CIでは、追加E4のfield-policyテストに実ホストの絶対source pathが一か所残り、FileNotFoundErrorで失敗した。ローカル455成功は、この参照先が読める環境だけの確認だった。テストのsource selector一行だけをリポジトリ相対に訂正し、production source・SEMANTIC_FIELDS・assertions・旧sourceは保持した。Rootの6wrapper/125件は6.655秒で再成功。独立peerは実ホスト/NASのreadをLandlockとPython guardで拒否する移設overlayで、旧テストの失敗を再現してから修正版125件を7.412秒で成功確認した。GitHubでの修正後全CIは別に確認する。

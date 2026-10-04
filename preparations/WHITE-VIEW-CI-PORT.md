@@ -32,3 +32,6 @@ actualC/model/data/runtime/NAS/proc、fit/build/engine/probe、採用の確認�
 実行例：`python3 -B -m unittest discover -s tests -p test_white_view_append_preparations.py`
 通常の公開tests discoveryでもこの6 wrappersが見つかります。過去のsuiteの
 代わりではなく、appendしたversionの追加検証です。
+
+
+初回移植ではE4 field-policyテストの比較元sourceがホスト絶対pathのまま残っていた。修正はそのselector一行だけで、`Path(__file__).resolve().parents[2] / 'scripts' / 'compare_candidates.py'`へ接続した。production sourceとassertionsは不変。元40file treeの凍結を保持し、この修正を別commitに記録する。移設した公開overlayで実ホストとNASの読取りを拒否し、旧selectorのPermissionError再現と新125件の成功を独立に確認した。

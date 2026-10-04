@@ -1,0 +1,77 @@
+import hashlib
+from pathlib import Path
+import re
+import unittest
+
+D=Path(__file__).resolve().parent
+A=Path('/tmp/sekirei-weight2-root-nonlinear-activation-source-v2')
+N=Path('/tmp/sekirei-weight2-white-view-paired-nonlinear-checkpoint-native-source-v1/paired_nonlinear_checkpoint_native.rs')
+U=Path('/tmp/sekirei-weight2-white-view-paired-nonlinear-rust-adapter-source-v1/paired_nonlinear_adapter.rs')
+S=(D/'paired_nonlinear_fullshape_synthetic_epoch_tests.rs').read_text()
+
+class SourceContract(unittest.TestCase):
+    def test_exactly_two_add_only_rust_tests(self):
+        self.assertEqual(S.count('#[test]'),2)
+        self.assertIn('#[cfg(test)]',S)
+        self.assertNotRegex(S,r'pub\s+(?:fn|struct|enum|mod)\b')
+    def test_original_inputs_are_frozen_source(self):
+        pins={A/'paired_nonlinear_positions.rs':'77ad4c09ec80423ad68df5d170942d279e9649c8b92b041c96872f75cad8ce1d',
+          A/'paired_nonlinear_checkpoint_io.rs':'256c16067433f460bab5728f1d73ef59de80456c310d1e9864e787748be64b33',
+          A/'main.rs':'e5ab5089a7332837750fe6561aa39d1863c78c0e019e621d9b8eaace6c58cea8',
+          N:'5b8eca54db91f3c2c6e926fd88178589f21f4ab21b688f168790132ad810a9ed',
+          U:'f567d9d74a2df13b2be1dca11795fe819a17b6573703ba4ac3f50d52891604fa'}
+        for p,digest in pins.items():
+            self.assertEqual(hashlib.sha256(p.read_bytes()).hexdigest(),digest)
+    def test_selected_four_bits_only(self):
+        self.assertEqual(re.findall(r'f32::from_bits\((0x[0-9a-f]+)\)',S),
+          ['0x3a83126f','0x3b800000','0x40800000','0x47000000'])
+    def test_one_public_white_fixture(self):
+        self.assertIn('lnsgkgsnl/1r5b1/ppppppppp/9/9/2P6/PP1PPPPPP/1B5R1/LNSGKGSNL w - 2',S)
+        self.assertIn('let samples=[public_sample()];',S)
+        self.assertIn('HashMap::from([(board_to_sfen(&sample.board), 500)])',S)
+    def test_fp_uses_existing_actual_readback(self):
+        self.assertIn('crate::configure_training_floats();',S)
+        self.assertIn('crate::paired_nonlinear_float::runtime_ready().unwrap()',S)
+        self.assertIn('snapshot.mxcsr_raw_bits & !0x3f, 0x9fc0',S)
+        self.assertNotIn('set_var(',S)
+        self.assertNotIn('asm!',S)
+        self.assertIn('fn configure_training_floats()', (A/'main.rs').read_text())
+    def test_fresh_context_and_token_connections_exist(self):
+        source=(A/'paired_nonlinear_positions.rs').read_text()
+        for method in ['from_verified_declaration','ensure_live','into_completed_reference',
+          'train_paired_nonlinear_epoch','paired_optimizer_step','paired_config_guard']:
+            self.assertIn('fn '+method+'(',source)
+        for field in ['epoch','positions','end_step']:
+            self.assertIn('token.'+field+'()',S)
+        self.assertIn('for epoch in 1..=3_u32',S)
+    def test_native_after3_and_official_export_are_separate(self):
+        self.assertIn('AfterPosition{expected_step:3}',S)
+        for name in ['validate_checkpoint_state','nearest_native03','encode_native03_layout','verify_native03_reexport']:
+            self.assertIn('pub fn '+name+'(',N.read_text())
+        for name in ['completed_checkpoint_bytes','completed_nearest_bytes','initialized_checkpoint_bytes','initialized_native_bytes']:
+            self.assertIn('pub fn '+name+'(', (A/'paired_nonlinear_checkpoint_io.rs').read_text())
+            self.assertIn('checkpoint::'+name,S)
+        self.assertIn('const STEPS:u64=3*112681;', (A/'paired_nonlinear_checkpoint_io.rs').read_text())
+    def test_poison_repaired_cache_and_all_state_comparison(self):
+        self.assertIn('[None,Some(30000_i32),Some(-30000_i32),Some(i32::MIN)]',S)
+        self.assertIn('public-synthetic-unmatched-key',S)
+        self.assertEqual(S.count('native::checkpoint_state_equal(&before_failure,&trainer.weights)'),2)
+        self.assertIn('context.into_completed_reference().is_err()',S)
+        self.assertIn('train_paired_nonlinear_epoch(&samples,&good,2,&mut context).is_err()',S)
+    def test_integer_teacher_domain_toy(self):
+        ordinary=lambda cp: abs(cp)<30000
+        for cp in [30000,-30000,-2**31]: self.assertFalse(ordinary(cp))
+        self.assertTrue(ordinary(500))
+    def test_no_reader_export_process_or_original_update_replacement(self):
+        for forbidden in ['std::fs','std::process','Command::','load_positions(','save_checkpoint(',
+          'adam_update_scalar(', 'apply_dense_update(', 'runtime_guard()']:
+            self.assertNotIn(forbidden,S)
+        old=(A/'paired_nonlinear_positions.rs').read_bytes()
+        joined=old+b'\n'+S.encode()
+        self.assertEqual(joined[:len(old)],old)
+    def test_source_reads_are_not_artifact_paths(self):
+        self.assertNotIn('/home/server/.local/share/',S)
+        self.assertNotIn('/mnt/storage/',S)
+        self.assertNotIn('std::env::set_var',S)
+
+if __name__=='__main__': unittest.main()

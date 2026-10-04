@@ -2,7 +2,7 @@
 
 | 対象 | 原典 | このリポジトリでの扱い |
 | --- | --- | --- |
-| Sekirei / 学習器 | https://github.com/kent-tokyo/sekirei | 固定 upstream を外部 runtime に取得。独自コード変更なし |
+| Sekirei / 学習器 | https://github.com/kent-tokyo/sekirei | 固定 upstream を外部 runtime に取得。評価・学習経路の実験用変更は原典commit・完全patch・元のMIT OR Apache-2.0ライセンスをpreparationsへ保存。探索実装は固定 |
 | shogiesa | https://github.com/kent-tokyo/shogiesa | 固定 upstream を外部 runtime に取得。独自コード変更なし |
 | やねうら王 | https://github.com/yaneurao/YaneuraOu | GPL-3.0 ソースを外部 runtime でビルド。バイナリを Git に入れない |
 | 水匠11β / V9.20 | https://www.fanbox.cc/@yaneurao/posts/11335845 | ユーザー提供アーカイブを主教師としてローカル利用。重み・記事・配布バイナリを Git に入れない |
@@ -19,3 +19,5 @@
 各ソフトの原著作権・ライセンスは取得したソース内に保持する。バージョン・ハッシュは config/toolchain.lock.json。今回の Python スクリプトと短い CSA fixture はこのプロジェクト用に新規作成した。
 
 データ・重み・派生モデルの公開条件は個別の利用条件に従う。配布教師データは自身の評価関数学習・実験・研究への利用が許諾されている一方、そのままの二次配布は禁止と明記されているため、ローカルruntimeと `/mnt/storage/NAS/sekirei-weight2` の非公開保管コピーだけで扱う。NASへの保管で公開・再配布の範囲を広げない。今回の環境構築はモデルや変換済みデータの公開可否を決めるものではない。
+
+Issue #17の非線形学習に使ったcompiled sourceは [公開snapshot](../preparations/white-view-paired-nonlinear-rust-v1/README.md)に保存した。原典commit f09c130の変更6ファイル・新規10モジュールを含む完全patchを原典clean treeへ適用し、全16postimageが実compiled sourceと一致することを確認済み。教師データ・checkpoint・重みは含まない。

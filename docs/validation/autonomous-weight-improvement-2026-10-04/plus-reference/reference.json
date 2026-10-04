@@ -1,0 +1,180 @@
+{
+  "conditions": {
+    "attempt_timeout_seconds": 180,
+    "hash_mib": 128,
+    "max_reported_nodes": 1010000,
+    "multipv": 1,
+    "plus_engine": "YaneuraOu NNUE 9.70git",
+    "primary_engine": "YaneuraOu V9.20",
+    "requested_nodes": 1000000,
+    "threads": 1
+  },
+  "format": "sekirei-plus-reference-public-v1",
+  "interpretation": {
+    "cp_differences_are_primary_formal_mae": false,
+    "cp_differences_are_representative_headline": false,
+    "reference_used_for_selection_or_adoption": false,
+    "repetitions_are_independent_positions": false,
+    "teacher_comparison_includes_engine_difference": true
+  },
+  "known_startup_warning_events": 561,
+  "known_startup_warning_types_observed": 2,
+  "observations_per_engine": 51,
+  "pairwise": {
+    "plus_vs_beta": [
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 10,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 2,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 691,
+          "mean_abs_cp_difference": 581.5
+        },
+        "repetition": 1
+      },
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 10,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 2,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 691,
+          "mean_abs_cp_difference": 581.5
+        },
+        "repetition": 2
+      },
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 10,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 2,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 691,
+          "mean_abs_cp_difference": 581.5
+        },
+        "repetition": 3
+      }
+    ],
+    "plus_vs_sekirei": [
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 7,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 4,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 1302,
+          "mean_abs_cp_difference": 573.0
+        },
+        "repetition": 1
+      },
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 7,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 4,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 1302,
+          "mean_abs_cp_difference": 573.0
+        },
+        "repetition": 2
+      },
+      {
+        "all_fixed_positions": 17,
+        "bestmove_comparable_normal_pairs": 16,
+        "bestmove_matches": 7,
+        "bestmove_noncomparable_categories": {
+          "resign / resign": 1
+        },
+        "common_exact_subset": {
+          "count": 4,
+          "coverage_denominator": 17,
+          "max_abs_cp_difference": 1302,
+          "mean_abs_cp_difference": 573.0
+        },
+        "repetition": 3
+      }
+    ]
+  },
+  "provenance": {
+    "joined_sha256": "9d667584e5918ce2f62c1996302a11bca3a923ba38eeaa6fa3ce36a71cf853ea",
+    "manifest_sha256": "3f2652369969e9b2f3c1675fa1fd3504053f9aed23490ffcefcbc3df22ceb141",
+    "plan_file_sha256": "b7080cde491bf509cf22c3c914b4096075700f7ffd0173b6eebe58334bcb2238",
+    "private_input_inventory_sha256": "056e24c66cfda1cb9f44fc917e582a5dfb45403833833b052ba0e5b0cc725ba2",
+    "publisher_sha256": "505f1d70894691d852af5e02f2cfe583c50a2d20224196ac4ad964c7004af9f5",
+    "source_wrapper_sha256": "9dffcbc66a82affbbd1e9d59b3be8a21300798db9bfc23b402c07c710af8ea7c",
+    "summary_sha256": "c1fbb4aef0e9144acc909ae0c947a29ce63ad390c6056221c2f84af36b2f45f8"
+  },
+  "purpose": "reference_only_not_model_selection_or_adoption",
+  "repetitions": 3,
+  "selected_model": {
+    "bytes": 1305356,
+    "kind": "nnue",
+    "sha256": "f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042"
+  },
+  "status": "complete",
+  "teacher_id": "suisho11plus-20260525",
+  "teacher_role": "reference",
+  "teachers": {
+    "beta": {
+      "all_three_typed_results_equal_positions": 17,
+      "max_reported_nodes_evidence": 1001086,
+      "observation_count": 51,
+      "reproducibility_denominator_positions": 17,
+      "statuses": {
+        "bound_cp": 30,
+        "exact_cp": 9,
+        "mate": 12,
+        "no_score": 0
+      },
+      "sum_go_to_bestmove_seconds": 117.951163489
+    },
+    "plus": {
+      "all_three_typed_results_equal_positions": 17,
+      "max_reported_nodes_evidence": 1000741,
+      "observation_count": 51,
+      "reproducibility_denominator_positions": 17,
+      "statuses": {
+        "bound_cp": 30,
+        "exact_cp": 12,
+        "mate": 9,
+        "no_score": 0
+      },
+      "sum_go_to_bestmove_seconds": 71.680618461
+    },
+    "sekirei": {
+      "all_three_typed_results_equal_positions": 17,
+      "max_reported_nodes_evidence": 1000001,
+      "observation_count": 51,
+      "reproducibility_denominator_positions": 17,
+      "statuses": {
+        "bound_cp": 0,
+        "exact_cp": 42,
+        "mate": 6,
+        "no_score": 3
+      },
+      "sum_go_to_bestmove_seconds": 62.397846984
+    }
+  },
+  "unique_positions": 17
+}

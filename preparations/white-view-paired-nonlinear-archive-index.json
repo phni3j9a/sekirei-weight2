@@ -1,0 +1,232 @@
+{
+  "historical_tests_renamed_to_text": 7,
+  "original_source_bytes_preserved": true,
+  "schema": "sekirei.public-source-archive-index.v1",
+  "sources": {
+    "preparations/white-view-paired-nonlinear-math-v1/gate-v2/README.md": {
+      "bytes": 10113,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/gate-v2/README.md",
+      "sha256": "93ee347b4891041025eed4773659aad876992d765cc61e7d8c3603f70a151019"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/gate-v2/paired_nonlinear_gate.py": {
+      "bytes": 47111,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/gate-v2/paired_nonlinear_gate.py",
+      "sha256": "2cdc3ec2a36e9a7be75011456294602283f6819704cbf1912db78d8fac82584f"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/gate-v2/paired_nonlinear_proof_contract.py": {
+      "bytes": 6946,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/gate-v2/paired_nonlinear_proof_contract.py",
+      "sha256": "f25a6763cbc6b4b7158fcd1072875f755d3b04e6c265604856f229bf6c39c6bd"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/gate-v2/test_paired_nonlinear_gate.py": {
+      "bytes": 15202,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/gate-v2/test_paired_nonlinear_gate.py.txt",
+      "sha256": "30fe19d6c5ecf10c0c184ce5ba9d910c40e60ec2acee731c7c4d505b9acc3fec"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/gate-v2/v1-to-v2-float-oracle.patch": {
+      "bytes": 2572,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/gate-v2/v1-to-v2-float-oracle.patch",
+      "sha256": "4e4b91541fdbd862daa588be0bea01a5ed619c6b1521e68347469955ff9403c4"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/safety-v2/analysis.md": {
+      "bytes": 16545,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/safety-v2/analysis.md",
+      "sha256": "f221330ecd77592f571802ab27c5efc8057ab82370f049af2c8bc827b8ab4f84"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/safety-v2/test_safety_math.py": {
+      "bytes": 3345,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/safety-v2/test_safety_math.py.txt",
+      "sha256": "1642bbc6af5ac293d94f991ddc133e9c22d3ed4792cc327ae92356244079d69b"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/update-v2/README.md": {
+      "bytes": 9434,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/update-v2/README.md",
+      "sha256": "abbddd0c3e18a853cff76b644d9be5d8557fa7199da45c0a7c10a5ceb75c909c"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/update-v2/paired_nonlinear_update.py": {
+      "bytes": 9993,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/update-v2/paired_nonlinear_update.py",
+      "sha256": "ff69938e0649dcb22f0d08ad2367eafb7f08ec3cd1ea3f6c740b5295d5949520"
+    },
+    "preparations/white-view-paired-nonlinear-math-v1/update-v2/test_paired_nonlinear_update.py": {
+      "bytes": 7940,
+      "published_path": "preparations/white-view-paired-nonlinear-math-v1/update-v2/test_paired_nonlinear_update.py.txt",
+      "sha256": "5469ec171aff29d6d9bf1e29b0d66f4e0faff9a42a911189fb1c6330b7222893"
+    },
+    "preparations/white-view-paired-nonlinear-proof-v1/README.md": {
+      "bytes": 6360,
+      "published_path": "preparations/white-view-paired-nonlinear-proof-v1/README.md",
+      "sha256": "bf9e53437e21d77b691982e8e84807d7c6909b4e3794b4e449cfa19b3ed3dafd"
+    },
+    "preparations/white-view-paired-nonlinear-proof-v1/paired-nonlinear-core-incremental-proof-v2.patch": {
+      "bytes": 29825,
+      "published_path": "preparations/white-view-paired-nonlinear-proof-v1/paired-nonlinear-core-incremental-proof-v2.patch",
+      "sha256": "017df0f1898e94efeba9e0f5623914db05619c5698a4f7737e9df0dbef72bd38"
+    },
+    "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_core_pair_probe.rs": {
+      "bytes": 9987,
+      "published_path": "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_core_pair_probe.rs",
+      "sha256": "ba362852b1e86a765ff06ab1036158eb06604bfbfeb04f8d3f831df9c116cf9b"
+    },
+    "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_incremental_probe.rs": {
+      "bytes": 10748,
+      "published_path": "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_incremental_probe.rs",
+      "sha256": "5d6c1fede3e686841ff74d16e7c40bc822e394415d6ff14c37a69ba09a266e8b"
+    },
+    "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_native_contract.rs": {
+      "bytes": 8291,
+      "published_path": "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_native_contract.rs",
+      "sha256": "95507c5360cdd1b0929369b8a15ebaf3ea621c2c1ffaf50f69f2580c9e27a5b3"
+    },
+    "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_proof_contract.py": {
+      "bytes": 6946,
+      "published_path": "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_proof_contract.py",
+      "sha256": "f25a6763cbc6b4b7158fcd1072875f755d3b04e6c265604856f229bf6c39c6bd"
+    },
+    "preparations/white-view-paired-nonlinear-proof-v1/test_incremental_source_contract.py": {
+      "bytes": 4158,
+      "published_path": "preparations/white-view-paired-nonlinear-proof-v1/test_incremental_source_contract.py.txt",
+      "sha256": "af94bef27570f9578d886a653f3971b1bd6d33e18fe8dfe9f9b47cd6c491dcaa"
+    },
+    "preparations/white-view-paired-nonlinear-proof-v1/test_source_contract.py": {
+      "bytes": 5163,
+      "published_path": "preparations/white-view-paired-nonlinear-proof-v1/test_source_contract.py.txt",
+      "sha256": "799b5189816a8f9c19c001bd6d76bc63bd7e52d6f980eec56461432f6791379e"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/README.md": {
+      "bytes": 4226,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/README.md",
+      "sha256": "1caa5281c050c64cdcd6f8f6eeb2bfcfdf6f963b846774640f0bd4b353ff5d7c"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/LICENSE": {
+      "bytes": 166,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/LICENSE",
+      "sha256": "6be7e3bc43fcd2a6ba0cd8ab92739cb26275ce123234c56e225e8dacd48026fe"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/LICENSE-APACHE": {
+      "bytes": 9553,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/LICENSE-APACHE",
+      "sha256": "1d97733652f212414eeda1c530c5872eec308528a7398eebc4fa482e0c0c1a03"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/LICENSE-MIT": {
+      "bytes": 1071,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/LICENSE-MIT",
+      "sha256": "3ff88fd2faeac25dcb4d14caac2e3f62611475551fc9ae2d77da23fea87fdb96"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/nonlinear-complete.patch": {
+      "bytes": 222641,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/nonlinear-complete.patch",
+      "sha256": "d97a4bae7947f7a5fc6722eaa43c41cc471b74ec876d861f8180b1ab39947ed1"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/public-source-manifest.json": {
+      "bytes": 3732,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/public-source-manifest.json",
+      "sha256": "dca8feb29475c5d3c492f64e1a3148b4055912adcffa44d5615b38bb94912fbf"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-core/Cargo.toml": {
+      "bytes": 581,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-core/Cargo.toml",
+      "sha256": "c6c0d7a2e60b988e2975c5bc5b7dff620fe74b4426ff1ffc69474a0fa5cc2fc8"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-core/src/nnue.rs": {
+      "bytes": 52355,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-core/src/nnue.rs",
+      "sha256": "083c99ed681108d1643fa897aa2a4c3f452a170a73219fa3dc2cf16cdf68de50"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/Cargo.toml": {
+      "bytes": 633,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/Cargo.toml",
+      "sha256": "eb458c7decdb85971e53ddde6fe5ff8c171f4773e89743682f60ffe90db6d738"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/main.rs": {
+      "bytes": 194824,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/main.rs",
+      "sha256": "e5ab5089a7332837750fe6561aa39d1863c78c0e019e621d9b8eaace6c58cea8"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_actual.rs": {
+      "bytes": 23629,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_actual.rs",
+      "sha256": "560c0b3644b00a39d0876c62340ffc3cd7f9153bd1a1631377f49fbb680af375"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_adapter.rs": {
+      "bytes": 18549,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_adapter.rs",
+      "sha256": "f567d9d74a2df13b2be1dca11795fe819a17b6573703ba4ac3f50d52891604fa"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_bound_io.rs": {
+      "bytes": 9260,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_bound_io.rs",
+      "sha256": "bc4e8587671c950e5e17a9e51ef5edd7258a72e10b52adf2538931e421f9240d"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_checkpoint_io.rs": {
+      "bytes": 14423,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_checkpoint_io.rs",
+      "sha256": "256c16067433f460bab5728f1d73ef59de80456c310d1e9864e787748be64b33"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_checkpoint_native.rs": {
+      "bytes": 17594,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_checkpoint_native.rs",
+      "sha256": "5b8eca54db91f3c2c6e926fd88178589f21f4ab21b688f168790132ad810a9ed"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_cli.rs": {
+      "bytes": 11208,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_cli.rs",
+      "sha256": "b3b57dcdeb66a7c900e5e36776b0a9d308d7eadadbdcf2b2665ddda1090d5c5b"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_float.rs": {
+      "bytes": 4262,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_float.rs",
+      "sha256": "e9a6ffecf3d7a0ce785c02530dc324e4d31cb6be6c22ebe8e0df50096cad101d"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_parent_binding.rs": {
+      "bytes": 37062,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_parent_binding.rs",
+      "sha256": "e9634890eb5bd23aa10bfe5435d387e544ac697dd35f1f7b10cea749988ac9ae"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_positions.rs": {
+      "bytes": 46671,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_positions.rs",
+      "sha256": "e3ad93b674e50c0ab5db701ea612f8eac373779fb5c53ce2c0f13d69022ddeef"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_sha256.rs": {
+      "bytes": 3075,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/paired_nonlinear_sha256.rs",
+      "sha256": "c0313f29aad5fcf2c41ed99a59bb20ac29e9cccc0d12b69751b60b589a05e7c8"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/trainer.rs": {
+      "bytes": 264137,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-train/src/trainer.rs",
+      "sha256": "77c84f1460a402781d8dcaf6318f2b173466aec0d8260c118ce305a6efc205d8"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-usi/Cargo.toml": {
+      "bytes": 500,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/compiled-source/source/crates/sekirei-usi/Cargo.toml",
+      "sha256": "f0f9689226fc59c10b7d1adc10a101f9f31914bc6a3e342b29b68917ef73ffea"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/source-validation/epoch/README.md": {
+      "bytes": 1973,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/source-validation/epoch/README.md",
+      "sha256": "26dd404da0ac2e766b20833f22489e953fc14fc9afb6862bf0586c3aebff8cda"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/source-validation/epoch/paired_nonlinear_fullshape_synthetic_epoch_tests.rs": {
+      "bytes": 7499,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/source-validation/epoch/paired_nonlinear_fullshape_synthetic_epoch_tests.rs",
+      "sha256": "ec83448089405a3e989c66c583fc9169e8606289a49a133d8da41ee5b12788a3"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/source-validation/epoch/test_source_contract.py": {
+      "bytes": 4830,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/source-validation/epoch/test_source_contract.py.txt",
+      "sha256": "be6adfc4fc687a0b8e2a19f4f98c5d7d839bc751e10ac25414c52504b6b2e493"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/source-validation/float/test_float_policy.py": {
+      "bytes": 4215,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/source-validation/float/test_float_policy.py.txt",
+      "sha256": "f07fcdf41145d384151cf1ac2a2049729f745fba3eb460f461f51225e0614a27"
+    },
+    "preparations/white-view-paired-nonlinear-rust-v1/test_public_source.py": {
+      "bytes": 10888,
+      "published_path": "preparations/white-view-paired-nonlinear-rust-v1/test_public_source.py",
+      "sha256": "8e2fa3a9eb45393ab421d7d2dd258869eaf275689fd171141c9d9c6a1b43c0c5"
+    }
+  }
+}

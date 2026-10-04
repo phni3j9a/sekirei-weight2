@@ -16,6 +16,8 @@ jobs:
         run: |
           python3 -m py_compile scripts/*.py tests/fixtures/fake_usi.py
           python3 -m unittest discover -s tests -v
+      - name: Nonlinear compiled source snapshot
+        run: python3 -B -m unittest discover -s preparations/white-view-paired-nonlinear-rust-v1 -p test_public_source.py -v
       - name: JSON configuration
         run: |
           python3 -m json.tool config/toolchain.lock.json >/dev/null

@@ -1,0 +1,90 @@
+{
+  "complete_patch_includes_untracked_modules": true,
+  "files": {
+    "LICENSE": {
+      "bytes": 166,
+      "sha256": "6be7e3bc43fcd2a6ba0cd8ab92739cb26275ce123234c56e225e8dacd48026fe"
+    },
+    "LICENSE-APACHE": {
+      "bytes": 9553,
+      "sha256": "1d97733652f212414eeda1c530c5872eec308528a7398eebc4fa482e0c0c1a03"
+    },
+    "LICENSE-MIT": {
+      "bytes": 1071,
+      "sha256": "3ff88fd2faeac25dcb4d14caac2e3f62611475551fc9ae2d77da23fea87fdb96"
+    },
+    "nonlinear-complete.patch": {
+      "bytes": 222641,
+      "sha256": "d97a4bae7947f7a5fc6722eaa43c41cc471b74ec876d861f8180b1ab39947ed1"
+    },
+    "source/crates/sekirei-core/Cargo.toml": {
+      "bytes": 581,
+      "sha256": "c6c0d7a2e60b988e2975c5bc5b7dff620fe74b4426ff1ffc69474a0fa5cc2fc8"
+    },
+    "source/crates/sekirei-core/src/nnue.rs": {
+      "bytes": 52355,
+      "sha256": "083c99ed681108d1643fa897aa2a4c3f452a170a73219fa3dc2cf16cdf68de50"
+    },
+    "source/crates/sekirei-train/Cargo.toml": {
+      "bytes": 633,
+      "sha256": "eb458c7decdb85971e53ddde6fe5ff8c171f4773e89743682f60ffe90db6d738"
+    },
+    "source/crates/sekirei-train/src/main.rs": {
+      "bytes": 194824,
+      "sha256": "e5ab5089a7332837750fe6561aa39d1863c78c0e019e621d9b8eaace6c58cea8"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_actual.rs": {
+      "bytes": 23629,
+      "sha256": "560c0b3644b00a39d0876c62340ffc3cd7f9153bd1a1631377f49fbb680af375"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_adapter.rs": {
+      "bytes": 18549,
+      "sha256": "f567d9d74a2df13b2be1dca11795fe819a17b6573703ba4ac3f50d52891604fa"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_bound_io.rs": {
+      "bytes": 9260,
+      "sha256": "bc4e8587671c950e5e17a9e51ef5edd7258a72e10b52adf2538931e421f9240d"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_checkpoint_io.rs": {
+      "bytes": 14423,
+      "sha256": "256c16067433f460bab5728f1d73ef59de80456c310d1e9864e787748be64b33"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_checkpoint_native.rs": {
+      "bytes": 17594,
+      "sha256": "5b8eca54db91f3c2c6e926fd88178589f21f4ab21b688f168790132ad810a9ed"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_cli.rs": {
+      "bytes": 11208,
+      "sha256": "b3b57dcdeb66a7c900e5e36776b0a9d308d7eadadbdcf2b2665ddda1090d5c5b"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_float.rs": {
+      "bytes": 4262,
+      "sha256": "e9a6ffecf3d7a0ce785c02530dc324e4d31cb6be6c22ebe8e0df50096cad101d"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_parent_binding.rs": {
+      "bytes": 37062,
+      "sha256": "e9634890eb5bd23aa10bfe5435d387e544ac697dd35f1f7b10cea749988ac9ae"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_positions.rs": {
+      "bytes": 46671,
+      "sha256": "e3ad93b674e50c0ab5db701ea612f8eac373779fb5c53ce2c0f13d69022ddeef"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_sha256.rs": {
+      "bytes": 3075,
+      "sha256": "c0313f29aad5fcf2c41ed99a59bb20ac29e9cccc0d12b69751b60b589a05e7c8"
+    },
+    "source/crates/sekirei-train/src/trainer.rs": {
+      "bytes": 264137,
+      "sha256": "77c84f1460a402781d8dcaf6318f2b173466aec0d8260c118ce305a6efc205d8"
+    },
+    "source/crates/sekirei-usi/Cargo.toml": {
+      "bytes": 500,
+      "sha256": "f0f9689226fc59c10b7d1adc10a101f9f31914bc6a3e342b29b68917ef73ffea"
+    }
+  },
+  "measurement_source_head": "8e07fdafe0ac44db79dd7ef1402fcc530b0e1f4b",
+  "private_data_included": false,
+  "schema": "sekirei.paired-nonlinear-compiled-source-snapshot.v1",
+  "training_build_sha256": "85ad6de5144dc49c77df80c190861f80e5edb00db8057f1386441281b25a9a42",
+  "upstream_commit": "f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9"
+}

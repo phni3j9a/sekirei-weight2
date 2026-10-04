@@ -1,0 +1,76 @@
+from pathlib import Path
+import importlib.util,json,re,struct,unittest
+D=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location('pure_nonlinear_contract',D/'paired_nonlinear_proof_contract.py');p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+R=(D/'paired_nonlinear_core_pair_probe.rs').read_text();M=(D/'paired_nonlinear_native_contract.rs').read_text();O=(D/'original_core_pair_probe.rs.txt').read_text()
+def function(s,name):
+    start=re.search(r'\bfn\s+'+name+r'\s*\(',s).start();opening=s.index('{',start);level=1;end=opening+1
+    while level:
+        if s[end]=='{':level+=1
+        elif s[end]=='}':level-=1
+        end+=1
+    return s[start:end]
+def row():
+    x={'index':0,'native_core_cp':200,'nearest_core_cp':100,'material_cp':100,'native_quantized_float_cp':200.5,'nearest_quantized_float_cp':100.0,'ft_prefixes_checked':True,'all_preclamp_intermediates_finite':True}
+    for role in ('candidate','reference'):
+        for op,n in [('l2_products',16384),('l2_additions',16384),('output_products',32),('output_additions',32)]:x[role+'_'+op]=n
+    return x
+class Tests(unittest.TestCase):
+    def test_selected_recipe(self):
+        self.assertEqual(p.selected_recipe_bits(dict(p.RECIPE_BITS)),p.RECIPE_BITS)
+        for k in p.RECIPE_BITS:
+            x=dict(p.RECIPE_BITS);x[k]='00000000'
+            with self.assertRaises(ValueError):p.selected_recipe_bits(x)
+    def test_completion(self):
+        x=dict(mode=p.MODE,adam_used=True,epochs_completed=3,positions_per_epoch=112681,global_step=338043,resume_used=False,shuffle_used=False)
+        self.assertTrue(p.training_completion(**x))
+        for k,v in [('adam_used',False),('epochs_completed',0),('epochs_completed',True),('global_step',338042),('resume_used',True),('shuffle_used',True)]:
+            y=dict(x);y[k]=v
+            with self.assertRaises(ValueError):p.training_completion(**y)
+    def test_good_row_no_old_100_cap(self):
+        x=row();x['native_core_cp']=2000;x['native_quantized_float_cp']=2000.25
+        self.assertEqual(p.core_row(json.dumps(x),0,100)['native_core_cp'],2000)
+    def test_operation_counts_and_flags(self):
+        for k in ['candidate_l2_products','reference_output_additions','all_preclamp_intermediates_finite','ft_prefixes_checked']:
+            x=row();x[k]=False
+            with self.assertRaises(ValueError):p.core_row(json.dumps(x),0,100)
+    def test_nonfinite_mate_and_wrong_type(self):
+        for k,v in [('native_quantized_float_cp',float('inf')),('native_quantized_float_cp',201.1),('native_core_cp',899000),('native_core_cp',True),('index',True),('nearest_core_cp',99),('nearest_quantized_float_cp',100)]:
+            x=row();x[k]=v
+            with self.assertRaises(ValueError):p.core_row(json.dumps(x),0,100)
+    def test_signed_zero_restored(self):
+        x=row();x.update(material_cp=0,nearest_core_cp=0,nearest_quantized_float_cp=-0.0)
+        with self.assertRaises(ValueError):p.core_row(json.dumps(x),0,0)
+    def test_duplicates_unknown(self):
+        with self.assertRaises(ValueError):p.strict_json('{"index":0,"index":0}')
+        x=row();x['legacy_material_cap']=100
+        with self.assertRaises(ValueError):p.core_row(json.dumps(x),0,100)
+    def test_before_io_barrier(self):
+        with self.assertRaises(RuntimeError):p.runtime_guard()
+        run=function(R,'run');self.assertLess(run.index('runtime_guard()?'),run.index('env::args'))
+        self.assertIn('const PROTOTYPE_ONLY:bool=true',R)
+    def test_refresh_feature_order_preserved(self):
+        old=function(O,'checked_float');new=function(R,'checked_float')
+        for begin,end in [('    let mut sums =','    let us =')]:
+            self.assertEqual(old[old.index(begin):old.index(end)],new[new.index(begin):new.index(end)])
+    def test_finite_before_each_clamp(self):
+        x=function(R,'checked_float')
+        self.assertEqual(x.count('checks.l2_products+=1'),2);self.assertEqual(x.count('checks.l2_additions+=1'),2)
+        self.assertIn('finite(l2[o],"L2 preactivation")?',x)
+        self.assertLess(x.index('finite(l2[o],"L2 preactivation")?'),x.index('before_clamp.clamp'))
+        self.assertIn('finite(out+product,"output sum")?',x)
+        self.assertIn('verify_float_control()?',x)
+    def test_loaded_wholebytes_bound(self):
+        self.assertIn('contract::native03_layout_bytes(&loaded)',R)
+        self.assertIn('actual core-loaded native fullbytes reconstruction differs',R)
+        self.assertIn('w.out_bias.to_le_bytes()',M)
+    def test_material_aux_bound_separate(self):
+        self.assertIn('candidate.ft[feature][..2]==reference.ft[feature][..2]',M)
+        self.assertIn('candidate.ft[feature][2..].iter()',M)
+        self.assertIn('64+41*797<=i16::MAX',M)
+        self.assertIn('candidate.out[minus].to_bits()==candidate.out[plus].to_bits()^0x8000_0000',M)
+    def test_selected_bits_and_no_old_linear_cloning(self):
+        for bits in p.RECIPE_BITS.values():self.assertIn('0x'+bits,M)
+        self.assertNotIn('<=100',R);self.assertNotIn('epochs:0',M)
+        self.assertIn('reference03 differs from independent seed42 full reconstruction',M)
+if __name__=='__main__':unittest.main()

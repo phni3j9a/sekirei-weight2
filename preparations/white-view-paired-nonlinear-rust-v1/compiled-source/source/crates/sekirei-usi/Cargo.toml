@@ -1,0 +1,20 @@
+[package]
+name = "sekirei"
+version = "0.3.39"
+edition = "2024"
+description = "USI shogi engine binary (Sekirei)"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/kent-tokyo/sekirei"
+
+[[bin]]
+name = "sekirei"
+path = "src/main.rs"
+
+[dependencies]
+sekirei-core = { path = "../sekirei-core", version = "0.3.39" }
+rayon = "1"
+lineprior = "0.11.1"
+
+[features]
+king_relative_b_small = ["sekirei-core/king_relative_b_small"]
+nnue_white_view_aux_tied = ["sekirei-core/nnue_white_view_aux_tied"]

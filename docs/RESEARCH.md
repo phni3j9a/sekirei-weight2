@@ -96,6 +96,14 @@ rfkit-rs の Planner → 一つの Issue → Worker → 検証済み PR の骨�
 
 駒得からの初期化、同一checkpointのFT最近傍丸め、112,681局面での13駒価値学習まで正式比較を完了した。最近傍丸め候補はMAE 985.098 cp / Top3 53.54%で、同checkpointの切り捨て版より両指標が改善したが、fallbackのTop3 55.39%を維持できなかった。4候補とも採用基準未達で最良fallbackを維持する。旧holdout 5,895局面をバイト単位で固定した追加NNUE学習は静的診断用で、正式未評価の候補は採用しない。Suisho11Plusの17局面×3反復も完了し、参考確認として分離した。初期値のcore一致、量子化差、学習後の静的診断、探索後の正式評価を別々に記録する。[実験条件と結果](WEIGHT_IMPROVEMENT.md)を参照。
 
+## Issue #17 第8候補の正式比較
+
+固定白視点・対非線形epoch3がdevelopment 5局の100万ノード正式比較で、同じ白視点binaryのfallbackに対しMAEとTop3を同時に改善した。MAEは907.671621 cp対1084.478601 cp、Top3は59.951320%対55.388757%。comparison_valid=true、adopt=true、8比較identity一致を確認し、採否は保存された各局の整数から5局等重みの有理数で判定した。学習lossや表示丸めによる判定ではない。
+
+固定3epoch338,043更新、保護駒得parameter/Adam m/vのbyte一致、通常probeによるcore118,591／差分更新8,185観測を確認した。通常probeとcfg(test)内のClone fixture未検証を分ける。原典の探索と正式条件、final未使用を維持し、Suisho11Plusの新しい51回の参考確認は採用後に完了した。一般的棋力の改善は未確認である。前7候補の有効な不採用結果と技術失敗の原本は[自律改善](AUTONOMOUS_WEIGHT_IMPROVEMENT.md)に残す。
+
+停止確認・NAS保存・公開集計の検証・最良モデルへの登録は完了した。[公開比較](validation/autonomous-weight-improvement-2026-10-04/paired-nonlinear/comparison.md)と[採用モデルidentity](validation/autonomous-weight-improvement-2026-10-04/best-model.json)を記録した。コードと知見はPR #18へ提出し、未マージでレビューを待つ。Goalの終了登録は公開PRの検証後に行う。
+
 ## Issue #9 Sekirei v0.3.39への移行
 
 現在のSekirei / sekirei-trainはupstream v0.3.39、commit `f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9`へ固定する。v0.3.37で入ったsingular-extension verification searchのTT cutoff修正を含む版を、今後の探索基準にする。upstream v0.3.38で公開されたA-flat NNUE checkpointは評価器そのものを変えるため、この移行には含めない。まず学習済み重みなしのmaterial fallbackで、v0.3.36との差を探索版だけに限定する。

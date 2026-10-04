@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 390" width="960" height="390">
+<title>White-view aggregate MAE and Top3 comparison</title>
+<desc>Five ordinal game aggregates; no per-position values.</desc>
+<rect width="960" height="390" fill="white"/>
+<style>text{font-family:sans-serif;font-size:12px;fill:#172033}.base{fill:#64748b}.candidate{fill:#0369a1}.axis{stroke:#64748b}.value{font-size:9px}</style>
+<text x="55" y="26">MAE (cp)</text>
+<line class="axis" x1="55" y1="60" x2="55" y2="320"/>
+<line class="axis" x1="55" y1="320" x2="450" y2="320"/>
+<rect class="base" x="73" y="261.595" width="20" height="58.405"/>
+<text class="value" x="83" y="256.595" text-anchor="middle">367.4</text>
+<rect class="candidate" x="96" y="254.014" width="20" height="65.986"/>
+<text class="value" x="106" y="231.014" text-anchor="middle">415.1</text>
+<text x="83" y="342">G1</text>
+<rect class="base" x="150" y="79.259" width="20" height="240.741"/>
+<text class="value" x="160" y="74.259" text-anchor="middle">1514.4</text>
+<rect class="candidate" x="173" y="144.287" width="20" height="175.713"/>
+<text class="value" x="183" y="139.287" text-anchor="middle">1105.3</text>
+<text x="160" y="342">G2</text>
+<rect class="base" x="227" y="148.430" width="20" height="171.570"/>
+<text class="value" x="237" y="143.430" text-anchor="middle">1079.3</text>
+<rect class="candidate" x="250" y="135.655" width="20" height="184.345"/>
+<text class="value" x="260" y="112.655" text-anchor="middle">1159.7</text>
+<text x="237" y="342">G3</text>
+<rect class="base" x="304" y="125.636" width="20" height="194.364"/>
+<text class="value" x="314" y="120.636" text-anchor="middle">1222.7</text>
+<rect class="candidate" x="327" y="217.225" width="20" height="102.775"/>
+<text class="value" x="337" y="212.225" text-anchor="middle">646.5</text>
+<text x="314" y="342">G4</text>
+<rect class="base" x="381" y="123.103" width="20" height="196.897"/>
+<text class="value" x="391" y="118.103" text-anchor="middle">1238.6</text>
+<rect class="candidate" x="404" y="127.375" width="20" height="192.625"/>
+<text class="value" x="414" y="100.103" text-anchor="middle">1211.7</text>
+<text x="391" y="342">G5</text>
+<text x="535" y="26">Top3 (%)</text>
+<line class="axis" x1="535" y1="60" x2="535" y2="320"/>
+<line class="axis" x1="535" y1="320" x2="930" y2="320"/>
+<rect class="base" x="553" y="168.333" width="20" height="151.667"/>
+<text class="value" x="563" y="163.333" text-anchor="middle">58.3</text>
+<rect class="candidate" x="576" y="159.048" width="20" height="160.952"/>
+<text class="value" x="586" y="136.048" text-anchor="middle">61.9</text>
+<text x="563" y="342">G1</text>
+<rect class="base" x="630" y="143.115" width="20" height="176.885"/>
+<text class="value" x="640" y="138.115" text-anchor="middle">68.0</text>
+<rect class="candidate" x="653" y="138.852" width="20" height="181.148"/>
+<text class="value" x="663" y="115.852" text-anchor="middle">69.7</text>
+<text x="640" y="342">G2</text>
+<rect class="base" x="707" y="207.402" width="20" height="112.598"/>
+<text class="value" x="717" y="202.402" text-anchor="middle">43.3</text>
+<rect class="candidate" x="730" y="184.882" width="20" height="135.118"/>
+<text class="value" x="740" y="179.882" text-anchor="middle">52.0</text>
+<text x="717" y="342">G3</text>
+<rect class="base" x="784" y="182.500" width="20" height="137.500"/>
+<text class="value" x="794" y="177.500" text-anchor="middle">52.9</text>
+<rect class="candidate" x="807" y="177.500" width="20" height="142.500"/>
+<text class="value" x="817" y="154.500" text-anchor="middle">54.8</text>
+<text x="794" y="342">G4</text>
+<rect class="base" x="861" y="178.596" width="20" height="141.404"/>
+<text class="value" x="871" y="173.596" text-anchor="middle">54.4</text>
+<rect class="candidate" x="884" y="160.351" width="20" height="159.649"/>
+<text class="value" x="894" y="155.351" text-anchor="middle">61.4</text>
+<text x="871" y="342">G5</text>
+<rect class="base" x="310" y="362" width="12" height="12"/><text x="328" y="372">new-binary material fallback</text>
+<rect class="candidate" x="550" y="362" width="12" height="12"/><text x="568" y="372">candidate</text>
+</svg>

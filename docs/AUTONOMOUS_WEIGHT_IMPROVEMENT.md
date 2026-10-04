@@ -6,6 +6,8 @@
 
 Issue #15 / PR #16の実装と実験記録はマージ済みで、今回の専用worktreeは最新mainから開始した。実験コードの統合とモデル採用を区別し、今回のPRは別途許可があるまでマージしない。
 
+第8候補の固定白視点・対非線形epoch3は有効な正式比較で共同採用条件を満たした。前7候補の有効な不採用結果と当時の最良fallback維持の判断は履歴として保持する。最新の数値と後処理の状態は末尾の「第八候補の固定E3と正式結果」を参照。停止確認・NAS保存・公開集計検証・最良モデルへの登録は完了した。コードと記録はPR #18へ提出し、未マージでレビューを待つ。Goalは達成条件に到達しており、公開PRの検証後に終了登録する。
+
 ## 最初の候補
 
 - 112,681局面・constant LR=0.0001・3エポック・駒得初期化・fresh Adam・seed42。
@@ -326,14 +328,38 @@ candidate MAEは `314545537/289800`、Top3は `22339078/40183689`。baseline MAE
 
 [公開projection準備](../preparations/white-view-public-projection-v1/README.md)は3audit・橋・比較を再構成し、22,251入力の前後一致とraw membership一致を確認して局別集計のみをexportした。supplementalのnumeric/core/incremental/gate/stop/NASはpublisherではSHA参照として保持する。これらの実bodyは上記のRootの各検証で別に確認した。公開前にCore SHAを手入力した63桁の参照でbootstrapが停止したが、requestやexportを作る前だった。既存stopのcanonical fullrefを使って訂正し、guardや採用規則を緩めていない。
 
-### 次の容量改善案の準備状態
+### 第八候補のSOURCE準備時点
 
-線形係数一つの補正と99cp制限に留まる旧案では、二指標の同時改善を得られなかった。次は白視点・持駒tie・駒得保護を維持し、254補助FTと14組の対非線形headを学習するSOURCE案を用意した。正負head出力を組にして手番だけの定数補正を避ける。原典absolute CP-MSEとscalar Adam、全inactive moment更新、nearest-even native03保存を保つ。LR・head幅・bias・output budgetはまだ選択していない。
+線形係数一つの補正と99cp制限に留まる旧案では、二指標の同時改善を得られなかった。次は白視点・持駒tie・駒得保護を維持し、254補助FTと14組の対非線形headを学習するSOURCE案を用意した。正負head出力を組にして手番だけの定数補正を避ける。原典absolute CP-MSEとscalar Adam、全inactive moment更新、nearest-even native03保存を保つ。このSOURCE準備時点ではLR・head幅・bias・output budgetは未選択だった。後に条件を固定して実行し、結果を以下に記録する。
 
-全shapeは602,516 master更新/局面、3epochで203,676,316,188 scalar更新となる。過去のsparse trainerの時間を予測値に流用せず、実release型検査と純メモリの全shape CPU計測でwall budgetを決める。SOURCE fixture成功をRust compile・実学習・新proof/gate・正式比較の成功には読み替えない。CPU予算が厳しければ同じ原典の意味を守った実装効率化や容量・実験数で調整し、正式100万ノードと共同採用条件は維持する。goalは継続中、PR #18は下書き・未マージである。
+全shapeは602,516 master更新/局面、3epochで203,676,316,188 scalar更新となる。過去のsparse trainerの時間を予測値に流用せず、実release型検査と純メモリの全shape CPU計測でwall budgetを決める。SOURCE fixture成功をRust compile・実学習・新proof/gate・正式比較の成功には読み替えない。CPU予算が厳しければ同じ原典の意味を守った実装効率化や容量・実験数で調整し、正式100万ノードと共同採用条件は維持する。このSOURCE準備時点ではgoalは継続中、PR #18は下書き・未マージだった。現在の反映・統合状態は末尾で別に確定する。
 
 
 公開CIには6つの新しい準備版だけを追加した。旧NUM1/proof1/E3 source・既存testsを保持し、historical enabled sourceはAST専用text fixtureとして実importを閉じた。作者と独立peerが内部125 testsを通過し、Rootは移植後の公開全455 testsを211.423秒で成功確認した（既存の数値依存等30 skip）。Python構文・config JSON・差分空白検査も成功。これらは公開fixture/source契約の検証であり、実dataset・Rust学習・棋力改善の証明とは区別する。[移植の検証範囲](../preparations/WHITE-VIEW-CI-PORT.md)を参照。
 
 
 初回GitHub CIでは、追加E4のfield-policyテストに実ホストの絶対source pathが一か所残り、FileNotFoundErrorで失敗した。ローカル455成功は、この参照先が読める環境だけの確認だった。テストのsource selector一行だけをリポジトリ相対に訂正し、production source・SEMANTIC_FIELDS・assertions・旧sourceは保持した。Rootの6wrapper/125件は6.655秒で再成功。独立peerは実ホスト/NASのreadをLandlockとPython guardで拒否する移設overlayで、旧テストの失敗を再現してから修正版125件を7.412秒で成功確認した。GitHubでの修正後全CIは別に確認する。
+
+
+## 第八候補の固定E3と正式結果
+
+白視点・持駒tie・駒得保護を維持して補助特徴と14対の非線形headを学習した固定候補 `white-view-paired-nonlinear-adam-e3-v1` を正式比較した。実学習子は元train112,681局面を3epoch、計338,043更新して正常終了し、epoch3を固定選択した。選択native03のSHA-256は `f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042`。保護駒得のparameterとAdam m/vはbyte一致を確認した。元の学習親は学習終了後のpost-validationでg未定義のNameErrorにより失敗したため、その元失敗・START・保存済み子の終了・成果物は保持する。回収producerの実検証参照は回収producer session81253 / chunkfaccecはexit0・reaped、completion SHA `5b776809`（完全SHAは公開comparison JSONのsupplemental evidenceに記録）とparent lifecycleを別に保存として別記録し、元親を成功へ書き換えない。
+
+新非線形専用proofで118,591局面のcoreと8,185差分更新観測を確認した。旧線形のepochs0/noAdam/100cp residual capをこの候補へ合成していない。これらは通常compileのprobeで、cfg(test)内のNnueWeights Clone fixture1件は未実行・型不整合が残る。通常probeの成功とそのRust unit testの成功を区別する。全legal局面や一般的な棋力、raw float学習stateと丸めnativeの全局面誤差保証を追加主張しない。
+
+正式測定は固定development 5局・100万ノード指定、棋譜ごとの5局等重みで採点した。元の新binary fallbackを基準に、保存済みraw auditと橋を結んで8比較identityが一致し、厳密有理数の共同採用条件を確認した。Rootの比較executorはnative tool session86193、chunk496f7d、exit0、reapedである。
+
+| 指標 | 同じ白視点binaryのfallback | 固定対非線形E3 | 差 |
+| --- | ---: | ---: | ---: |
+| MAE | 1084.4786006022962 cp | 907.6716211807516 cp | -176.806979421545 cp（16.303409%改善） |
+| Top3入り率 | 55.388757425930% | 59.951319613787% | +4.562562187857ポイント |
+
+candidate MAEは `1446737797/1593900`、Top3は `321208691/535782520`。baseline MAEは `1152366961/1062600`、Top3は `127184263/229621080`。**comparison_valid=true、adopt=true**。MAE strict lowerかつTop3 non-decreasingという従来の規則を変更せず、表示丸めで合格させていない。final 5局は未使用。採用後のSuisho11Plus確認は51/51完了し、17局面すべてで3反復の型付き結果が一致した。前7候補の非採用記録は保持する。
+
+公開比較はvalidation/autonomous-weight-improvement-2026-10-04/paired-nonlinear/comparison.md、技術gate・監査・比較・tool参照は公開comparison JSONのverification_sha256とsupplemental_evidence、およびbest-model.jsonに完全SHAを記録。公開するのはcomparison JSON/Markdown/2指標集計SVGの3filesとRootが別に照合するsize/SHA manifestの計4filesで、private SFEN・labels・raw・inputmaps・教師／モデル内容は出さない。集計SVGは既存runの5panel report.svgの代替ではない。
+
+停止はsession75745 / chunk7dbcbd、exit0・reaped、11 locksと二回のプロセス確認。STOP SHA `4be0f65efea3580ddd674b374ec5bf37143b3879e9e382a7618a8c522c79f5c9`、NASの全ファイル集合／サイズ／SHA／directory前後と保存先の一致は13,911 files / 647,117,529 bytes / 187 directories / symlink0。全source-before・source-after・destination一致、NAS親session39965 / chunk940afbはexit0・reaped。追加metadata 322 files / 217,349,120 bytesもコピー前後・保存先一致、ledger SHA `891ae53d92874ff1afd437eb7fdfb8d91a20d44777876bc7677f1ed79ad0b430`。最良モデルへの実反映はsession71288 / chunka9b68e、exit0・reaped。best更新はverified。採用記録SHA `402a2c48b47751d2a6335818513b64f3b54671294fdc9fdcdfa5c5bf306433ef`、Goalの最終状態は採用可能モデルというGoalの達成条件に到達。Goalの終了登録は公開PRの検証後に行う、PR #18のコード統合／マージ状態はOPEN・未マージ。実装と記録を提出し、レビューを待つ。原本・既存参照パス・失敗履歴を保持した後処理までRootが確認してから各欄を確定する。採用条件を満たした結果と、これらの完了を混同しない。
+
+採用後の[Suisho11Plus参考確認](validation/autonomous-weight-improvement-2026-10-04/plus-reference/reference.md)は51/51成功し、既存β・Sekirei pilotの102回を再検証して再利用した。新規Plusはbound_cp30、exact_cp12、mate9、17/17局面で3反復の型付き結果が一致した。参考量を正式MAEや採用条件へ使っていない。[保存集計](validation/autonomous-weight-improvement-2026-10-04/archive.json)、[公開best identity](validation/autonomous-weight-improvement-2026-10-04/best-model.json)、[compiled sourceとpatch](../preparations/white-view-paired-nonlinear-rust-v1/README.md)も保持する。
+
+best登録の最初の試行は、状態項目formal_completedが未存在なのにFalseを要求した準備コードによって更新前に停止した。既存履歴を保持し、実際のprior4項目とその項目の不存在を厳密に検証する別版で登録を完了した。Plusの最初のcheck-onlyはfresh planのcshogi metadataがNoneのため停止し、同じ合法手検証を再実行して全plan一致を確認する別版で完了した。どちらも元の失敗を保存し、学習・モデル選択・正式比較の再実行はしていない。

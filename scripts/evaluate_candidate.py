@@ -119,6 +119,8 @@ def evaluate(args):
         raise ValueError('candidate changed while preparing its pinned configuration')
     if output.exists() or output.is_relative_to(REPO):
         raise ValueError('use a new private output outside the repository')
+    # Verify both pinned decoder dependencies before output creation or engines.
+    top3.require_decoder()
     output.mkdir(parents=True)
     shutil.copyfile(__file__, output / 'evaluation-script.py')
     config_path = output / 'candidate.json'

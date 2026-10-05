@@ -4,8 +4,10 @@ from contextlib import ExitStack, redirect_stdout
 from copy import deepcopy
 import io
 import json
+import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -20,8 +22,11 @@ def save(path, body):
 
 
 class EvaluationFixture:
-    def __init__(self, root, mismatch=None, mutate=None):
+    def __init__(self, root, mismatch=None, mutate=None, decoder_error=None):
         self.root, self.mismatch, self.mutate = root, mismatch, mutate
+        self.decoder_error = decoder_error
+        self.decoder_checks = 0
+        self.decoder_outputs_absent = []
         self.weight = root / 'untrained-public-fixture.bin'
         self.weight.write_bytes(b'untrained tiny public fixture')
         self.runtime = root / 'explicit-white-runtime'
@@ -35,6 +40,15 @@ class EvaluationFixture:
             runtime=self.runtime, base_config=self.base_path, output=root / 'evaluation', prefix='public-candidate')
         self.calls = []
         self.snapshots = []
+
+    def decoder(self):
+        self.decoder_checks += 1
+        self.decoder_outputs_absent.append(not self.args.output.exists())
+        if self.calls:
+            raise AssertionError('decoder must be checked before every engine stage')
+        if self.decoder_error is not None:
+            raise self.decoder_error
+        return None, None, {'cshogi': '1.0.4', 'numpy': '1.26.4'}
 
     def recorded_model(self, name, config):
         model = e.b._model_identity(config)
@@ -93,7 +107,8 @@ class EvaluationFixture:
 
     def run(self):
         with ExitStack() as stack:
-            for owner, name, value in [(e.b, 'execute_run', self.execute), (e.top3, 'run', self.top3),
+            for owner, name, value in [(e.top3, 'require_decoder', self.decoder),
+                (e.b, 'execute_run', self.execute), (e.top3, 'run', self.top3),
                 (e.br, 'report_from_run', self.report), (e.br, 'export_public', lambda *_args: None),
                 (e.b, 'validate_run_artifacts', self.validate_artifacts),
                 (e.b, 'observed_max_reported_nodes', lambda *_args, **_kwargs: 1000000),
@@ -108,6 +123,8 @@ class CandidateEvaluationTests(unittest.TestCase):
             fixture = EvaluationFixture(Path(directory))
             state = fixture.run()
             self.assertEqual(state['status'], 'complete')
+            self.assertEqual(fixture.decoder_checks, 1)
+            self.assertEqual(fixture.decoder_outputs_absent, [True])
             names = ['mae-pilot', 'mae', 'top3-pilot', 'top3']
             self.assertEqual(fixture.calls, [(name, fixture.runtime) for name in names])
             self.assertIsNone(fixture.snapshots[0][1]['formal']['pilot_evidence'])
@@ -172,6 +189,71 @@ class CandidateEvaluationTests(unittest.TestCase):
                 save(fixture.base_path, fixture.base)
                 with self.assertRaises((ValueError, e.b.ConfigurationError)): fixture.run()
                 self.assertFalse(fixture.args.output.exists()); self.assertFalse(fixture.calls)
+
+    def test_decoder_failure_rejects_missing_or_mismatched_dependencies_before_outputs_and_engines(self):
+        for message in ('pack audit dependencies are missing', 'pack audit dependency mismatch'):
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as directory:
+                fixture = EvaluationFixture(Path(directory), decoder_error=RuntimeError(message))
+                fixture.args.output = fixture.root / 'fresh-parent' / 'evaluation'
+                original = fixture.weight.read_bytes()
+                with self.assertRaisesRegex(RuntimeError, message):
+                    fixture.run()
+                self.assertEqual(fixture.decoder_checks, 1)
+                self.assertEqual(fixture.decoder_outputs_absent, [True])
+                self.assertFalse(fixture.args.output.parent.exists())
+                self.assertFalse((fixture.runtime / 'runs').exists())
+                self.assertFalse(fixture.calls)
+                self.assertEqual(fixture.weight.read_bytes(), original)
+
+    def test_existing_or_repository_output_guard_precedes_decoder_check(self):
+        for kind in ('directory', 'file', 'repository'):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as directory:
+                fixture = EvaluationFixture(Path(directory), decoder_error=AssertionError('decoder reached'))
+                sentinel = None
+                if kind == 'directory':
+                    fixture.args.output.mkdir()
+                    sentinel = fixture.args.output / 'existing.json'
+                    sentinel.write_bytes(b'keep existing output exactly')
+                elif kind == 'file':
+                    sentinel = fixture.args.output
+                    sentinel.write_bytes(b'keep existing output exactly')
+                else:
+                    fixture.args.output = e.REPO / 'decoder-fixture-refused-output'
+                    self.assertFalse(fixture.args.output.exists())
+                original = sentinel.read_bytes() if sentinel else None
+                with self.assertRaisesRegex(ValueError, 'new private output'):
+                    fixture.run()
+                self.assertEqual(fixture.decoder_checks, 0)
+                self.assertFalse(fixture.calls)
+                if sentinel:
+                    self.assertEqual(sentinel.read_bytes(), original)
+                else:
+                    self.assertFalse(fixture.args.output.exists())
+
+    def test_standard_python_help_works_without_site_decoder_packages(self):
+        environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+        completed = subprocess.run([sys.executable, '-S', str(Path(e.__file__)), '--help'],
+            env=environment, capture_output=True, text=True, timeout=10)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn('--weight', completed.stdout)
+        self.assertIn('--runtime', completed.stdout)
+        self.assertNotIn('dependencies are missing', completed.stderr)
+
+    def test_standard_python_missing_decoder_cli_creates_no_output_or_engine_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = EvaluationFixture(Path(directory))
+            fixture.args.output = fixture.root / 'fresh-parent' / 'evaluation'
+            environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+            command = [sys.executable, '-S', str(Path(e.__file__)),
+                '--weight', str(fixture.weight), '--expected-weight-sha256', fixture.args.expected_weight_sha256,
+                '--runtime', str(fixture.runtime), '--base-config', str(fixture.base_path),
+                '--output', str(fixture.args.output), '--prefix', fixture.args.prefix]
+            completed = subprocess.run(command, env=environment, capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn('pack audit dependencies are missing', completed.stderr)
+            self.assertNotIn('mae-pilot', completed.stdout)
+            self.assertFalse(fixture.args.output.parent.exists())
+            self.assertFalse((fixture.runtime / 'runs').exists())
 
     def test_run_identity_missing_wrong_type_duplicate_json_and_bool_size_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

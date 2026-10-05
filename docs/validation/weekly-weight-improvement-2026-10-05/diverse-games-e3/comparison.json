@@ -1,0 +1,226 @@
+{
+  "candidate": "white-view-diverse-games-seed42-e3-v1",
+  "conditions": {
+    "aggregation": "equal mean of five per-game metrics",
+    "candidate_top3_multipv": 3,
+    "compile_feature": "nnue_white_view_aux_tied",
+    "final_used": false,
+    "games": 5,
+    "hash_mib": 128,
+    "mae_multipv": 1,
+    "max_reported_nodes": 1010000,
+    "nnue_output": "absolute",
+    "occurrences": 570,
+    "requested_nodes": 1000000,
+    "sekirei": "v0.3.39",
+    "teacher": "Suisho Concerto 202512 (Suisho11beta)",
+    "teacher_exact_count": 266,
+    "threads": 1,
+    "top3_eligible_count": 551
+  },
+  "decision": {
+    "adopt": false,
+    "comparison_valid": true,
+    "decision": "reject",
+    "mae_improved": false,
+    "top3_preserved": false
+  },
+  "headline": {
+    "candidate_exact": {
+      "mae": {
+        "denominator": 531300,
+        "numerator": 513433951
+      },
+      "top3": {
+        "denominator": 200918445,
+        "numerator": 114632561
+      }
+    },
+    "incumbent_exact": {
+      "mae": {
+        "denominator": 1593900,
+        "numerator": 1446737797
+      },
+      "top3": {
+        "denominator": 535782520,
+        "numerator": 321208691
+      }
+    },
+    "mae_delta_cp": 58.70133383524688,
+    "top3_delta_percentage_points": -2.8970451792019394
+  },
+  "incumbent": "white-view-paired-nonlinear-adam-e3-v1",
+  "models": {
+    "candidate": {
+      "bytes": 1305356,
+      "kind": "nnue",
+      "sha256": "44d1b412da22688542a406599dd40b40bc3243285aaaeae67b21d003db9a0429"
+    },
+    "incumbent": {
+      "bytes": 1305356,
+      "kind": "nnue",
+      "sha256": "f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042"
+    }
+  },
+  "per_game": [
+    {
+      "candidate_error_sum_cp": 12379,
+      "candidate_mae": {
+        "denominator": 42,
+        "numerator": 12379
+      },
+      "candidate_top3_hits": 48,
+      "game": "G1",
+      "incumbent_error_sum_cp": 17434,
+      "incumbent_mae": {
+        "denominator": 21,
+        "numerator": 8717
+      },
+      "incumbent_top3_hits": 52,
+      "teacher_exact_count": 42,
+      "top3_denominator": 84
+    },
+    {
+      "candidate_error_sum_cp": 88914,
+      "candidate_mae": {
+        "denominator": 12,
+        "numerator": 14819
+      },
+      "candidate_top3_hits": 77,
+      "game": "G2",
+      "incumbent_error_sum_cp": 79585,
+      "incumbent_mae": {
+        "denominator": 72,
+        "numerator": 79585
+      },
+      "incumbent_top3_hits": 85,
+      "teacher_exact_count": 72,
+      "top3_denominator": 122
+    },
+    {
+      "candidate_error_sum_cp": 76540,
+      "candidate_mae": {
+        "denominator": 33,
+        "numerator": 38270
+      },
+      "candidate_top3_hits": 65,
+      "game": "G3",
+      "incumbent_error_sum_cp": 76537,
+      "incumbent_mae": {
+        "denominator": 66,
+        "numerator": 76537
+      },
+      "incumbent_top3_hits": 66,
+      "teacher_exact_count": 66,
+      "top3_denominator": 127
+    },
+    {
+      "candidate_error_sum_cp": 37624,
+      "candidate_mae": {
+        "denominator": 5,
+        "numerator": 4703
+      },
+      "candidate_top3_hits": 60,
+      "game": "G4",
+      "incumbent_error_sum_cp": 25861,
+      "incumbent_mae": {
+        "denominator": 40,
+        "numerator": 25861
+      },
+      "incumbent_top3_hits": 57,
+      "teacher_exact_count": 40,
+      "top3_denominator": 104
+    },
+    {
+      "candidate_error_sum_cp": 55288,
+      "candidate_mae": {
+        "denominator": 23,
+        "numerator": 27644
+      },
+      "candidate_top3_hits": 64,
+      "game": "G5",
+      "incumbent_error_sum_cp": 55740,
+      "incumbent_mae": {
+        "denominator": 23,
+        "numerator": 27870
+      },
+      "incumbent_top3_hits": 70,
+      "teacher_exact_count": 46,
+      "top3_denominator": 114
+    }
+  ],
+  "recoveries": {
+    "evaluation": "Original parent stopped before Top3 pilot because the launch interpreter lacked pinned cshogi/NumPy. Complete own MAE raw evidence was revalidated and reused; both Top3 stages ran fresh with the pinned audit interpreter. Failed original retained.",
+    "latest_best_guard": "Original guard compared whole dictionaries including a derived display float. Its failure is retained. A separate revalidation confirmed exact numerator/denominator and rational equality plus unchanged latest-best registry; the valid formal comparison was not rerun."
+  },
+  "reference_checks": {
+    "execution_except_model": {
+      "baseline_sha256": "6359b0bb4e45d1a440e754005ddaf5563c603d73315322f01b42eebcd4478ce4",
+      "candidate_sha256": "6359b0bb4e45d1a440e754005ddaf5563c603d73315322f01b42eebcd4478ce4",
+      "equal": true,
+      "mismatch_count": 0
+    },
+    "occurrences": {
+      "baseline_sha256": "25862b6e170093b6f15674465b4f4ead89399c7a52029d4678f8090930d9964d",
+      "candidate_sha256": "25862b6e170093b6f15674465b4f4ead89399c7a52029d4678f8090930d9964d",
+      "equal": true
+    },
+    "teacher_E_cp": {
+      "baseline_sha256": "1a188135ed62c9672c71368ab778a7352cf716f3631a0e2df4e97450599a127f",
+      "candidate_sha256": "1a188135ed62c9672c71368ab778a7352cf716f3631a0e2df4e97450599a127f",
+      "equal": true,
+      "mismatch_count": 0
+    },
+    "teacher_results": {
+      "baseline_sha256": "5f0fc5489e9a6e643e220dd64892a12c9c8597b2b4bc3286538f19fecb26c665",
+      "candidate_sha256": "5f0fc5489e9a6e643e220dd64892a12c9c8597b2b4bc3286538f19fecb26c665",
+      "equal": true,
+      "mismatch_count": 0
+    },
+    "top3_denominators": {
+      "baseline_sha256": "eb7b988257a97b8afe5fb1bea99c58c2921fe3787aaa72d5551349ba3382b46a",
+      "candidate_sha256": "eb7b988257a97b8afe5fb1bea99c58c2921fe3787aaa72d5551349ba3382b46a",
+      "equal": true,
+      "mismatch_count": 0
+    },
+    "top3_legal_moves_sha256": {
+      "baseline_sha256": "fe1f83479f039ffe4596bd655399445404234e9e6fa3cb60f362a20c88ddf47b",
+      "candidate_sha256": "fe1f83479f039ffe4596bd655399445404234e9e6fa3cb60f362a20c88ddf47b",
+      "equal": true
+    },
+    "top3_occurrences": {
+      "baseline_sha256": "a741334ccfa9eea52bf8c04e787503edfdb607a7c8166bc4fa32517f6c221ced",
+      "candidate_sha256": "a741334ccfa9eea52bf8c04e787503edfdb607a7c8166bc4fa32517f6c221ced",
+      "equal": true
+    },
+    "top3_teacher_bestmoves": {
+      "baseline_sha256": "2b16df792f3d910497b70572fca23efb4d017509ec98ed30ef3c09cb7e2b657d",
+      "candidate_sha256": "2b16df792f3d910497b70572fca23efb4d017509ec98ed30ef3c09cb7e2b657d",
+      "equal": true,
+      "mismatch_count": 0
+    }
+  },
+  "schema": "sekirei.weekly-candidate-public-comparison.v1",
+  "scope": {
+    "all_eight_comparison_identities_equal": true,
+    "candidate_own_four_stage_evidence_revalidated": true,
+    "comparison_inputs_rehashed_unchanged": true,
+    "exact_equal_game_rationals_checked": true,
+    "final_data_used": false,
+    "general_playing_strength_proven": false,
+    "incumbent_own_four_stage_evidence_revalidated": true,
+    "latest_best_registry_before_after_unchanged": true,
+    "latest_best_revision": 0,
+    "new_model_adopted": false
+  },
+  "source_head": "cf4ce391850234a7f1b08d5a997618dc58a8ce3a",
+  "status": "complete",
+  "verification_sha256": {
+    "comparison": "e69c7c5afbb6d403a13795cfd0ebd12ca3124f9e9250b478826b0f0a126a1478",
+    "comparison_time_best": "18e9946bdf508ec1ffd9637731d27fc884b9aad23bac2fda1f96f619045be36b",
+    "latest_best_guard_revalidation": "2284ad8a20add2da8db8f3482de89fbb3d2f06300c0edd8a3aea9e6fc671dc3f",
+    "measurement_recovery": "4c2f6417890a7eaa473d3ea2875efa1388de105809a0aa69aa45bf687f3f4a30",
+    "preserved_original_evaluation_failure": "c084489384ae8d044e038b17b2ab6419db03fd070fbb923047adc97cfbbd1b0a",
+    "preserved_original_guard_failure": "2613caf18b1c4364d8d220caa4ddf74adac881905f93b1f24d93eebd7c235794"
+  }
+}

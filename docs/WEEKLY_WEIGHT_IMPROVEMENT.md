@@ -26,7 +26,7 @@
 
 教師データの抽出は実機で完了した。最初に固定した各pack500局は、1個のpackが全392局のため31.87秒で失敗し、学習を開始しなかった。全13packの境界索引を確認し、12個各500局・短い1個392局、計6,392局を明記した新profileと事前登録v3を生成前に固定した。選択数を暗黙で縮めず、全局数・選択数・pack集合・source closureを検証するv2 producerへ改めた。
 
-再生成は53.85秒で成功し、112,681学習局面とbyte一致の5,895 holdout局面を維持した。実際に学習行へ使ったゲームは4,537局、旧学習盤面との重複は14,782局面。手数と評価値帯の分布は旧データと近く、pack内prefix限定による偏りの有無や改善効果は未検証である。[公開データ準備集計](validation/weekly-weight-improvement-2026-10-05/diverse-data-preparation.json)は失敗と成功のreceipt SHAを含み、生局面・ラベルを含めない。
+再生成は53.85秒で成功し、112,681学習局面とbyte一致の5,895 holdout局面を維持した。実際に学習行へ使ったゲームは4,537局、旧学習盤面との重複は14,782局面。手数と評価値帯の分布は旧データと近かった。以下の正式比較では改善に至らず、今回の選択規則と学習条件による多様化仮説は不採用となった。[公開データ準備集計](validation/weekly-weight-improvement-2026-10-05/diverse-data-preparation.json)は失敗と成功のreceipt SHAを含み、生局面・ラベルを含めない。
 
 固定upstreamと旧complete patchを全postimageで確認し、専用trainer sourceを新runtimeへ展開した。新Readerは実manifestのmetadata検査を通過した。数値更新・scalar Adam・export・initialized I/O本体と旧snapshotを維持し、Python親にはgateを明示注入する。新親の小実プロセスfixtureで正常終了、exit失敗、timeout、SIGTERM時のwait/reapとgroup停止を確認した。長時間学習の前に、この候補自身の読込・初期状態保存/読込とFTZ未設定時のI/O前拒否を実行した。
 
@@ -34,13 +34,13 @@
 
 新しい入力証明の実作者runは59.66秒で成功した。全packの境界と選択順位、固定holdoutの全byte、独立1000局の全盤面除外、完全label join、reference03の独立再構成、4,435件の入力、source/compiler/dependency集合を再照合した。[公開preflight集計](validation/weekly-weight-improvement-2026-10-05/preflight.json)を残した。選択ゲームの合法手再生は固定producer側で行い、このconsumerはraw境界・順位・入力と出力のprovenanceを再確認する。preflight公開fixture13件と、launch親の公開fixture9件、全体549件が通過した。独立レビューで見つかったlaunch時のprocess読取不能の見逃しを修正し、同じallowlist検査を起動前と完了後にも維持する。
 
-候補自身の実input routeと初期状態codec検査を通過し、3エポックCPU学習を開始した。FTZ/DAZ未設定の負例はI/O前にexit=1で拒否し、正例では全state bits、nearest03全byte、compiled native readerの読込一致、child wait/reapとgroup停止を確認した。[公開学習開始集計](validation/weekly-weight-improvement-2026-10-05/training-start.json)を記録した。実fit childの起動と実command一致を確認した。開始時の記録と、以下の学習完了・技術検証の記録を区別する。候補自身の4段階比較とモデル採用はまだ未完了である。
+候補自身の実input routeと初期状態codec検査を通過し、3エポックCPU学習を開始した。FTZ/DAZ未設定の負例はI/O前にexit=1で拒否し、正例では全state bits、nearest03全byte、compiled native readerの読込一致、child wait/reapとgroup停止を確認した。[公開学習開始集計](validation/weekly-weight-improvement-2026-10-05/training-start.json)を記録した。実fit childの起動と実command一致を確認した。開始時の記録と、以下の学習完了・技術検証の記録を区別する。開始時の段階では候補自身の4段階比較は未完了だった。現在の結果と採否は以下に記録する。
 
 正式評価helperはruntime・base config・モデルSHAを明示できるようにした。固定development 5局と整数100万ノードを要求し、候補自身のpilotを用いる。各段階の前後の実重みと、MAE/Top3の実manifestに記録された全4件のモデルidentityを同じpinへ照合する。公開7 fixtureと、既存bestの保存済み4件の実manifestを使った読取smokeが通過した。白視点runtimeを省略せず指定して使用する。
 
 学習後の週次candidate専用proof helperも準備し、公開18 fixtureと独立読取レビューを通過した。[公開proof準備集計](validation/weekly-weight-improvement-2026-10-05/proof-preparation.json)に予定の全118,591 core行と8,185 incremental観測を記録する。レビューで固定White manifestの削除済み旧公開worktree参照8件を見つけ、元manifest/identityを保持したまま、両build endpointと同じsize/SHAの現公開sourceへ明示的に束縛するreceiptを追加した。private入力・compiler・依存・logにはこの対応を適用しない。元/current各1,161件の入力集合と対応8件、欠落0件を独立確認した。この準備集計は新candidateでの全量compile/probeを含まない。学習後の実機結果は[公開技術検証集計](validation/weekly-weight-improvement-2026-10-05/technical-proof.json)に別に記録し、fixture成功と区別する。初期pin検査で拒否した既存directoryを変更せず、新規作成した出力だけへ失敗記録を保存する条件も実CLIのfixtureで確認した。
 
-学習・固定holdoutの静的誤差診断helperを用意し、公開12 fixtureが通過した。[公開診断準備集計](validation/weekly-weight-improvement-2026-10-05/static-residual-preparation.json)に固定集計規則とsource SHAを残す。候補自身の全量proof成功後に、その保存済みcore出力を教師ラベルへ結び、pack・手数帯・教師評価値帯・旧学習盤面との重複・手番別の誤差と、train二乗誤差への上位1／5／10／20%の寄与を集計する。新たな探索やdevelopment/finalの参照は行わず、診断結果は次の仮説選定に使う。実データの診断はまだ実行しておらず、採用判定は正式比較で行う。
+学習・固定holdoutの静的誤差診断helperを用意し、公開12 fixtureが通過した。[公開診断準備集計](validation/weekly-weight-improvement-2026-10-05/static-residual-preparation.json)に固定集計規則とsource SHAを残す。候補自身の全量proof成功後に、その保存済みcore出力を教師ラベルへ結び、pack・手数帯・教師評価値帯・旧学習盤面との重複・手番別の誤差と、train二乗誤差への上位1／5／10／20%の寄与を集計する。新たな探索やdevelopment/finalの参照は行わず、診断結果は次の仮説選定に使う。実データの診断も完了し、下記に集計を記録した。採用判定は正式比較で行う。
 
 ## 第1候補の学習完了と技術検証
 
@@ -50,19 +50,44 @@
 
 候補自身の全量技術検証も完了した。coreはtrain 112,681行・固定holdout 5,895行・自作技術fixture 15行、計118,591行を検証した。保存nativeを復号したfloat forwardと同じnativeの整数coreとのbridgeは全対象で1.001 cp未満であり、raw master floatからnearest03への量子化差を測った結果とは区別する。incrementalは8,185観測でrefresh error=0、accumulatorとfresh refreshの一致、undo後のparent復元一致を確認した。compile 2件・core 3件・incremental 1件の計6 childはすべてreturncode=0、wait/reap完了、group空を2回確認した。[公開技術検証集計](validation/weekly-weight-improvement-2026-10-05/technical-proof.json)には件数と検証範囲だけを投影する。全局面での整数bit単位の色交換共変性や、全board FTの保存を新たに主張しない。
 
-候補自身の100万ノード・4段階比較は **2026-10-06 00:05:20 JST（10-05 15:05:20 UTC）** に開始した。正式比較の結果と採用判断、実データの静的誤差診断、実candidateのNAS保管はまだ未完了である。学習と技術検証の成功をモデル改善へ読み替えず、採用条件を満たす新結果が得られるまで起点のbestを維持する。final 5局は未使用。
+候補自身の100万ノード・4段階比較は **2026-10-06 00:05:20 JST（10-05 15:05:20 UTC）** に開始し、**01:27:08 JST**に全段階を完了した。最新bestの登録を比較直前に凍結し、全4段階のraw再検証、8項目の比較identity一致、入力とbest登録の前後不変を確認した。正式比較は有効で、**第1候補は不採用**。現bestを維持する。
+
+| 指標 | 現best | 多様化データE3 |
+| --- | ---: | ---: |
+| 5局等重みMAE（cp） | 907.671621 | 966.372955 |
+| 5局等重みTop3入り率 | 59.951320% | 57.054274% |
+
+MAEは`513433951/531300`、Top3は`114632561/200918445`。MAEは58.701334 cp悪化し、Top3は2.897045ポイント低下した。[正式比較・各局集計・評価値グラフ](validation/weekly-weight-improvement-2026-10-05/diverse-games-e3/comparison.md)を保存する。データの多様化一般ではなく、今回の固定選択規則・構造・更新量の組合せの結果とする。
+
+初回の親処理は通常Pythonで起動したため、Top3 pilot前に固定decoder依存の欠落で停止した。候補自身の完了済みMAE rawを再検証し、固定audit環境でTop3 pilot・formalを新規実行した。最新best照合の補助処理でも、表示用floatを含む辞書と整数だけの登録形式の違いで停止し、別記録で分子・分母と有理数の同値、登録前後不変を再検証した。元の失敗記録を保持し、成功へ書き換えていない。正式比較の生データを再取得・変更した結果ではない。
+
+保存済みnative core出力を使った[静的誤差診断](validation/weekly-weight-improvement-2026-10-05/diverse-games-e3/static-residuals.json)も完了した。trainの静的MAEは607.573806 cp、固定holdoutは651.689737 cp。train残差の上位1%（1,127行）が二乗誤差の46.233841%、上位5%（5,635行）が67.257528%を占めた。教師の絶対評価値10,000 cp以上の155行（0.137556%）は二乗誤差の31.4715%を占める。これは学習完了後のnative静的残差であり、各更新時のmaster lossや勾配を個別測定した結果ではない。次は大きな残差への感度を抑える学習目的を検討する。新たな探索・development/final参照は行わなかった。
+
+第1候補の完了記録14,994 regular files・803 directories・2,325,993,562 bytesをNASへ保存し、独立verifyと新しいSSD領域への物理復元で集合・mode・size・SHAを照合した。復元コピーからRustとaudit venvの2,473 files・1,027,715,260 bytesを再構成し、4リンクの再作成と5件の実動作確認を通過した。Pythonの実import先も新しいvenvだった。同じplatformの固定OS・Python stdlib・loader/shared libraries・linkerを前提とする復元であり、OS全体を独立復元したという主張ではない。
+
+コピーした8個の元parserだけで7,371 inputs・180,568,115 bytesを再集計し、8比較identity・入力前後不変・整数集計・不採用判定が元receiptと一致した。live原本へのfallback、engine起動、採用反映は行わなかった。さらに元source binding、元compiled readerの初期step 0保存/読込、元8段階raw比較を実行し、元参照パス、最新best revision 0、exact metrics、入力/source不変、lock解放を再確認した。学習更新は0。この確認からtrained masterの量子化差を推定しない。[保存・復元集計](validation/weekly-weight-improvement-2026-10-05/diverse-games-e3/archive-recovery.json)に件数とreceipt SHAを残す。
+
+復元環境の初版はリンクの生成順で停止した。全リンクを作ってから検査する別sourceを用意し、実4リンクの8回帰fixtureと独立レビューを経て成功した。再集計コマンドのSHA誤記、元reader補助の4-key metadata / 3-key identity形式差による停止も別記録で保持した。後者はpath・bytes・SHAの厳密一致と実modeを維持する修正を31 fixtureで確認した。修正controller 7 files・54,670 bytesと、失敗/成功・実child出力等71 files・30,918,032 bytesも別NAS補足として照合保存した。base archiveと原本は上書きせず、SSD重複の削除はまだ行っていない。
+
+評価helperはdecoder依存を出力作成・最初のMAE実行の前に検査するよう修正した。固定audit venvの11 fixture、構文、差分、CLI helpが通過した。第1候補の凍結済みprivate script/config/weights/runtime controlは保持した。
+
+## 次の候補
+
+次は同じ多様化データ、fresh seed42、3epoch、構造、scalar Adam、LR、保護パラメータ、export、探索条件を固定し、損失だけをδ=1,000 cpのHuberへ変える。実装は[標準Huber](https://docs.pytorch.org/docs/2.14/generated/torch.nn.HuberLoss.html)の2倍とし、絶対誤差が1,000 cp以下では旧MSEのloss・gradientと演算順を維持する。大きい残差域で二乗増加を線形増加に変える仮説で、ラベルやデータは変更しない。δは今回の事前選択値である。
+
+private source準備と独立読取レビューは完了した。actual Rust compile、全state/Adam moments/stepのbit比較fixture、新recipe/preflight、候補自身の初期readerを通してから学習する。現段階では新候補の学習・モデル採用は未実行。起点のbestを維持して期間内の改善を継続する。final5局は未使用。
 
 ## 計算と保存
 
 現在のMac mini CPU・32 GiB RAM・既存SSD/NASだけを使う。解析jobs=1、Threads=1、build jobs=2、重い実験は直列。開始時SSD空き約27 GiB、NAS空き約5.9 TiB。初期の追加SSD作業領域は8 GiBを目安とし、各候補前に空き容量と時間を再確認する。
 
-前回の非線形3epoch学習は、保存済みchild outcomeとcompletionの一致するwall timeで13,200.321秒（約3時間40分）。今回第1候補の実測は13,189.706秒だった。旧sparse trainerの時間は流用しない。正式4段階の過去実測は約66〜72分で、今回の完了時間はまだ未確定である。
+前回の非線形3epoch学習は、保存済みchild outcomeとcompletionの一致するwall timeで13,200.321秒（約3時間40分）。今回第1候補の実測は13,189.706秒だった。旧sparse trainerの時間は流用しない。正式4段階の過去実測は約66〜72分。今回は起動依存の修復と待機を含め、開始から全段階完了まで81分48秒だった。MAE/Top3の有効raw測定と失敗・復旧を分けて保存する。
 
 Git/worktree・build・venv・使用中データと重み・実行中出力はSSDに置く。今回新規の完了runは、停止、ファイル集合・size・SHA-256一致、参照依存の復元可能性、元パスからの参照を確認して `/mnt/storage/NAS/sekirei-weight2` に保管する。確認済みの今回のSSD重複は整理できる。過去原本と既存runの参照を保持し、単なるsymlink置換でvalidatorが通るとは仮定しない。詳細receipt、モデル、教師、生局面・ラベル・ログは非公開に保持する。
 
 NASの小fixture保存は初回のpublishで失敗した。実mergerfsが `renameat2(RENAME_NOREPLACE)` をEINVALで拒否したため、SSD原本とNAS stageを保持し、archive成功として扱わなかった。非対応filesystemの場合だけ、既存先を上書きしない排他mkdir・全集合物理コピー・manifest最終公開へ切り替える方式を追加した。この方式はdirectory全体のatomic renameではなく、完全なmanifest SHAと全集合の照合を成功条件とし、コピー元stageも保持する。
 
-新しい実機v2試験では44 bytesの1ファイルと空directoryをNASへ保存し、独立したverifyとSSDへの物理復元を通過した。集合・mode・size・SHA一致と、SSD復元inodeが原本と異なることを確認した。公開15 fixtureでは破損、集合差、特殊file、出力競合、途中コピー失敗などの拒否も確認した。[公開NAS疎通集計](validation/weekly-weight-improvement-2026-10-05/nas-copy-smoke.json)を残す。これは小fixtureの保存・復元確認であり、実験run全体や依存環境の復元検証は今後の完了runで行う。SSD原本と過去資料の削除は行っていない。
+新しい実機v2試験では44 bytesの1ファイルと空directoryをNASへ保存し、独立したverifyとSSDへの物理復元を通過した。集合・mode・size・SHA一致と、SSD復元inodeが原本と異なることを確認した。公開15 fixtureでは破損、集合差、特殊file、出力競合、途中コピー失敗などの拒否も確認した。[公開NAS疎通集計](validation/weekly-weight-improvement-2026-10-05/nas-copy-smoke.json)を残す。これは小fixtureの保存・復元確認である。第1候補の実験記録と依存環境については上記の実検証を完了した。SSD原本と過去資料の削除は行っていない。
 
 ## 記録と終了
 

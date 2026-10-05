@@ -106,6 +106,8 @@ baseline=null、native_magic=SEKIRW03を含め、モデルfull SHA/bytes、newMO
 completion、recipe、source binding、E3/step338043/fresh Adamへ束縛する。
 publication中のcancel/failureは今回作成したsidecar/proofだけrejected名へ保存する。
 既存outputとの排他open失敗はownershipを取得せず、既存ファイルを移動しない。
+failure.jsonも、cleaning guard内でfresh mkdir成功後に所有権を取得した今回のoutput
+directoryだけへ保存する。初期pin/fresh検査の拒否では既存directoryへ書き込まない。
 
 technical completionはcore_fullrows_verified/incremental_verified/
 protected_material_ft_bits_preserved=true、whole_board_ft_preservation_claimed/

@@ -38,7 +38,9 @@
 
 正式評価helperはruntime・base config・モデルSHAを明示できるようにした。固定development 5局と整数100万ノードを要求し、候補自身のpilotを用いる。各段階の前後の実重みと、MAE/Top3の実manifestに記録された全4件のモデルidentityを同じpinへ照合する。公開7 fixtureと、既存bestの保存済み4件の実manifestを使った読取smokeが通過した。白視点runtimeを省略せず指定して使用する。
 
-学習後の週次candidate専用proof helperも準備し、公開17 fixtureと独立読取レビューを通過した。[公開proof準備集計](validation/weekly-weight-improvement-2026-10-05/proof-preparation.json)に予定の全118,591 core行と8,185 incremental観測を記録する。レビューで固定White manifestの削除済み旧公開worktree参照8件を見つけ、元manifest/identityを保持したまま、両build endpointと同じsize/SHAの現公開sourceへ明示的に束縛するreceiptを追加した。private入力・compiler・依存・logにはこの対応を適用しない。元/current各1,161件の入力集合と対応8件、欠落0件を独立確認した。新candidateでの全量compile/probeは学習完了後に行い、fixture成功をその成功へ読み替えない。
+学習後の週次candidate専用proof helperも準備し、公開18 fixtureと独立読取レビューを通過した。[公開proof準備集計](validation/weekly-weight-improvement-2026-10-05/proof-preparation.json)に予定の全118,591 core行と8,185 incremental観測を記録する。レビューで固定White manifestの削除済み旧公開worktree参照8件を見つけ、元manifest/identityを保持したまま、両build endpointと同じsize/SHAの現公開sourceへ明示的に束縛するreceiptを追加した。private入力・compiler・依存・logにはこの対応を適用しない。元/current各1,161件の入力集合と対応8件、欠落0件を独立確認した。新candidateでの全量compile/probeは学習完了後に行い、fixture成功をその成功へ読み替えない。初期pin検査で拒否した既存directoryを変更せず、新規作成した出力だけへ失敗記録を保存する条件も実CLIのfixtureで確認した。
+
+学習・固定holdoutの静的誤差診断helperを用意し、公開12 fixtureが通過した。[公開診断準備集計](validation/weekly-weight-improvement-2026-10-05/static-residual-preparation.json)に固定集計規則とsource SHAを残す。候補自身の全量proof成功後に、その保存済みcore出力を教師ラベルへ結び、pack・手数帯・教師評価値帯・旧学習盤面との重複・手番別の誤差と、train二乗誤差への上位1／5／10／20%の寄与を集計する。新たな探索やdevelopment/finalの参照は行わず、診断結果は次の仮説選定に使う。実データの診断はまだ実行しておらず、採用判定は正式比較で行う。
 
 ## 計算と保存
 

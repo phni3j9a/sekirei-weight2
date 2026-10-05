@@ -3,18 +3,18 @@
   "status": "prepared-not-executed-on-new-trained-candidate",
   "mode": "white-view-diverse-games-seed42-e3-v1",
   "helper": {
-    "bytes": 52631,
-    "sha256": "da9bd3aa13d68d4df269bf61d4efe75bf29dbd70aca30c4d568c68196cfe3fb9"
+    "bytes": 52940,
+    "sha256": "9e34ba60bff9e16f8f348f4fbe3fb0bcbbc28cc2c60dd322cc1597d7928224e7"
   },
   "tests": {
-    "bytes": 36850,
-    "sha256": "80b01e70a7db5c5c62944120de1eaad2ed177cc026ac62f28fdb39f9bca97f5a"
+    "bytes": 38593,
+    "sha256": "e401d6303908f8edd63aed95ed89d14e17726e48b512891049dc28b159992bcb"
   },
   "contract": {
-    "bytes": 8284,
-    "sha256": "6db0e7bcb739ad81d6e1d82dc294d31740f630cf2d3a66a9c9cff1ae9f74464c"
+    "bytes": 8494,
+    "sha256": "0ad44e7f87f67d7719bd3b0f4f946c370bafdecd11b0a54891aa5f6b1f0bb147"
   },
-  "fixture_tests_passed": 17,
+  "fixture_tests_passed": 18,
   "independent_read_review_complete": true,
   "historical_engine_input_inventory": 1161,
   "current_engine_input_inventory": 1161,
@@ -33,5 +33,6 @@
   "full_core_rows_verified_on_new_candidate": false,
   "incremental_verified_on_new_candidate": false,
   "model_adopted": false,
-  "final_used": false
+  "final_used": false,
+  "initial_rejection_preserves_existing_output_directory": true
 }

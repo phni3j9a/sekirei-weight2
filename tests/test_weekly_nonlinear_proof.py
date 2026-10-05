@@ -418,6 +418,33 @@ class ProofNumericalTests(unittest.TestCase):
 
 
 class SplitSupervisorTests(unittest.TestCase):
+    def test_cli_initial_pin_rejection_preserves_existing_input_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            existing = root / "existing-inputs"
+            (existing / "nested").mkdir(parents=True)
+            completion = existing / "completion.json"
+            completion.write_bytes(b"{}\n")
+            (existing / "sentinel").write_bytes(b"preserved input\x00\xff\n")
+            (existing / "nested" / "other-input").write_bytes(b"preserved nested input\n")
+            def snapshot():
+                return {str(path.relative_to(existing)): path.read_bytes() if path.is_file() else None
+                        for path in existing.rglob("*")}
+            before = snapshot()
+            argv = [sys.executable, "-B", str(Path(p.__file__).resolve()),
+                "--completion", str(completion), "--expected-completion-sha256", "0"*64,
+                "--engine-identity", str(root / "unused-engine-identity"),
+                "--expected-engine-identity-sha256", "0"*64,
+                "--numeric-build-contract", str(p.REPO / "scripts" / "white_view_build_contract.py"),
+                "--output", str(existing), "--stock-runtime", str(root / "unused-stock-runtime")]
+            result = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, timeout=10, check=False)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn(b"completion external SHA differs", result.stderr)
+            self.assertEqual(result.stdout, b"")
+            self.assertEqual(snapshot(), before)
+            self.assertFalse((existing / "failure.json").exists())
+
     def test_exclusive_writer_marks_only_created_outputs_as_owned(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

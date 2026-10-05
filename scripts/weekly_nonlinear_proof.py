@@ -607,7 +607,13 @@ def run(args, state):
         positions, fixtures = dataset_rows(reader, refs, gate)
         require(shutil.disk_usage(args.output.parent).free >= bound["plan"]["resources"]["minimum_ssd_remaining_bytes"] + 2**30,
                 "insufficient SSD reserve and padded proof space")
-        args.output.mkdir(mode=0o700)
+        state["cleaning"] = True
+        try:
+            args.output.mkdir(mode=0o700)
+            state["owned_output_directory"] = True
+        finally:
+            state["cleaning"] = False
+        require(state["signal"] is None, "cancelled during proof directory ownership")
         (args.output / "src").mkdir(mode=0o700)
         relocation_ref = write_new(args.output / "engine-public-input-relocation.json", relocation)
         collect_refs(expected, relocation_ref)
@@ -747,7 +753,7 @@ def main():
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()
     with termination_guard() as state:
-        state.update(owned_completion=False, owned_metadata=None)
+        state.update(owned_completion=False, owned_metadata=None, owned_output_directory=False)
         try:
             run(args, state)
             require(state["signal"] is None, "cancelled at proof parent exit")
@@ -758,7 +764,7 @@ def main():
                     (args.output / "technical-proof.json").rename(args.output / "rejected-technical-proof.json")
                 if state["owned_metadata"] is not None and state["owned_metadata"].exists():
                     state["owned_metadata"].rename(args.output / "rejected-native-sidecar.json")
-                if args.output.exists():
+                if state["owned_output_directory"] and args.output.exists():
                     write_new(args.output / "failure.json", {"schema": "sekirei.weekly-nonlinear-proof-failure.v1",
                         "status": "failed", "error_type": type(error).__name__, "error": str(error),
                         "signal": state["signal"] or getattr(error, "child_signal", None),

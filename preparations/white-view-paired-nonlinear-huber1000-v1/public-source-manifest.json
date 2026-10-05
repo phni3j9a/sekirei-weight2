@@ -1,0 +1,60 @@
+{
+  "candidate_patch": {
+    "bytes": 62020,
+    "sha256": "ff5584cb0f749fc1ce9deabd9882923889163ac76d1530ac7636445749c09b0a"
+  },
+  "changed_files": {
+    "crates/sekirei-train/src/paired_nonlinear_cli.rs": {
+      "after": {
+        "bytes": 14369,
+        "sha256": "83562578a5e207717193b50bab7f26244069d7d7885df491f90fe24e20389319"
+      },
+      "before": {
+        "bytes": 11205,
+        "sha256": "1c581a0abbd0d4c6c89aa027a48e6b0500e5ceaf9d30dab77315a624c4239dee"
+      }
+    },
+    "crates/sekirei-train/src/paired_nonlinear_parent_binding.rs": {
+      "after": {
+        "bytes": 34450,
+        "sha256": "5a594c9ea00d4337806f672caa083e27dd609a374666e4e7616e925788410a8c"
+      },
+      "before": {
+        "bytes": 33110,
+        "sha256": "14973ada77ca1e042d7b81946e5885a71d179dea721a75c27c75b5286bd39a28"
+      }
+    },
+    "crates/sekirei-train/src/paired_nonlinear_positions.rs": {
+      "after": {
+        "bytes": 93144,
+        "sha256": "3a3a6b4614a3294b5721e0963950d5a4139f68e535df6996f82c512b46b265da"
+      },
+      "before": {
+        "bytes": 46671,
+        "sha256": "e3ad93b674e50c0ab5db701ea612f8eac373779fb5c53ce2c0f13d69022ddeef"
+      }
+    }
+  },
+  "compiled": false,
+  "final_used": false,
+  "huber_delta_cp_f32_bits": "447a0000",
+  "mode": "white-view-diverse-games-seed42-huber1000-e3-v1",
+  "objective": "absolute-cp-twice-huber",
+  "optimizer_actual_reader_codec_fixed_core_preserved": true,
+  "production_objective_only_changed": true,
+  "required_actual_rust_test_suffixes": [
+    "paired_nonlinear_huber1000_scalar_tests::small_residuals_preserve_original_loss_gradient_and_signed_zero_bits",
+    "paired_nonlinear_huber1000_scalar_tests::threshold_neighbors_and_positive_negative_tail_are_explicit",
+    "paired_nonlinear_huber1000_scalar_tests::nonfinite_error_cannot_be_hidden_by_tail_gradient",
+    "paired_nonlinear_huber1000_scalar_tests::finite_tail_domain_differs_from_mse_but_tail_overflow_still_fails",
+    "paired_nonlinear_huber1000_scalar_tests::loss_error_poison_prevents_next_update",
+    "paired_nonlinear_huber1000_recipe_tests::exact_new_variant_is_required",
+    "paired_nonlinear_huber1000_recipe_tests::unknown_missing_or_noncanonical_variant_keys_fail",
+    "paired_nonlinear_huber1000_control_tests::small_residual_three_updates_match_mse_all_parameter_moment_step_bits",
+    "paired_nonlinear_huber1000_control_tests::actual_position_failure_poison_blocks_next_position_and_preserves_fullstate_bits",
+    "paired_nonlinear_huber1000_control_tests::huber_loss_failure_poison_blocks_next_position_and_preserves_fullstate_bits"
+  ],
+  "schema": "sekirei.weekly-huber1000-public-source-variant.v1",
+  "status": "source-only",
+  "training_started": false
+}

@@ -4,3 +4,4 @@ patches/sekirei-white-view-aux-tied-v1.patch whitespace=-blank-at-eol
 preparations/white-view-paired-nonlinear-math-v1/gate-v2/v1-to-v2-float-oracle.patch whitespace=-blank-at-eol
 preparations/white-view-paired-nonlinear-rust-v1/compiled-source/nonlinear-complete.patch whitespace=-blank-at-eol
 preparations/white-view-paired-nonlinear-runtime-v2/native-contract-fixture-copy.patch whitespace=-blank-at-eol
+preparations/white-view-paired-nonlinear-huber1000-v1/candidate.patch whitespace=-blank-at-eol

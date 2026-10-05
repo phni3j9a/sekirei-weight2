@@ -75,7 +75,7 @@ MAEは`513433951/531300`、Top3は`114632561/200918445`。MAEは58.701334 cp悪�
 
 次は同じ多様化データ、fresh seed42、3epoch、構造、scalar Adam、LR、保護パラメータ、export、探索条件を固定し、損失だけをδ=1,000 cpのHuberへ変える。実装は[標準Huber](https://docs.pytorch.org/docs/2.14/generated/torch.nn.HuberLoss.html)の2倍とし、絶対誤差が1,000 cp以下では旧MSEのloss・gradientと演算順を維持する。大きい残差域で二乗増加を線形増加に変える仮説で、ラベルやデータは変更しない。δは今回の事前選択値である。
 
-private source準備と独立読取レビューは完了した。actual Rust compile、全state/Adam moments/stepのbit比較fixture、新recipe/preflight、候補自身の初期readerを通してから学習する。現段階では新候補の学習・モデル採用は未実行。起点のbestを維持して期間内の改善を継続する。final5局は未使用。
+新変種専用の[sourceと補助CLI](../preparations/white-view-paired-nonlinear-huber1000-v1/README.md)を追加した。元MSEのsourceと補助CLIを維持し、3 Rust postimages・5専用CLI・共有検証module・variant manifest・patchを公開する。source準備と独立読取レビューは完了した。actual Rust compile、全state/Adam moments/stepのbit比較fixture、新recipe/preflight、候補自身の初期readerを通してから学習する。現段階では新候補の学習・モデル採用は未実行。起点のbestを維持して期間内の改善を継続する。final5局は未使用。
 
 ## 計算と保存
 

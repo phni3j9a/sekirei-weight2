@@ -1,0 +1,43 @@
+from pathlib import Path
+import importlib.util,unittest,re,json
+D=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location('pure_nonlinear_v2',D/'paired_nonlinear_proof_contract.py');p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+NEW=(D/'paired_nonlinear_incremental_probe.rs').read_text();OLD=(D/'original_incremental_probe.rs.txt').read_text()
+def result():
+    v=dict(positions_checked=8185,fixtures=15,walks=16,search_walks=8,captures=50,promotions=40,drops=30,undos=4000,null_undos=250,max_material_difference_cp=4000,incremental_refresh_error_cp=0,accumulator_refresh_equal=True,parent_restoration_equal=True,observed_float_intermediates_finite=True,all_preclamp_intermediates_finite=True,mxcsr_control='9fc0',material_bound_enabled=False,normal_score_domain_verified=True,native_structure_verified=True,native_loaded_fullbytes_equal=True,max_abs_core_cp=3000,max_abs_quantized_float_cp=3000.5,maximum_stored_float_core_bridge_cp=0.5,l2_products_checked=8185*16384,l2_additions_checked=8185*16384,output_products_checked=8185*32,output_additions_checked=8185*32,native_q_l1_upper=100.0,native_absolute_cp_upper=27000.0)
+    return v
+class Tests(unittest.TestCase):
+    def test_valid_nonlinear_not100(self):self.assertEqual(p.incremental_result(result())['max_material_difference_cp'],4000)
+    def test_old_cap_and_unknown_fields_rejected(self):
+        for delta in [{'material_bound_enabled':True},{'legacy_cap':100}]:
+            v=result();v.update(delta)
+            with self.assertRaises(ValueError):p.incremental_result(v)
+    def test_bool_or_wrong_count(self):
+        for key,value in [('positions_checked',True),('l2_products_checked',8185*16384-1),('captures',0),('native_loaded_fullbytes_equal',1),('all_preclamp_intermediates_finite',False),('incremental_refresh_error_cp',1)]:
+            v=result();v[key]=value
+            with self.assertRaises(ValueError):p.incremental_result(v)
+    def test_normal_finite_bridge_budget(self):
+        for key,value in [('max_abs_core_cp',899000),('max_abs_quantized_float_cp',899000.0),('maximum_stored_float_core_bridge_cp',1.001),('native_q_l1_upper',32769.0),('native_absolute_cp_upper',float('inf')),('max_abs_quantized_float_cp',27001.0)]:
+            v=result();v[key]=value
+            with self.assertRaises(ValueError):p.incremental_result(v)
+    def test_walk_sequence_exact(self):
+        start='    let (mut captures, mut promotions, mut drops, mut undos)';end='    assert!(captures > 0'
+        a=NEW[NEW.index(start):NEW.index(end)];b=OLD[OLD.index(start):OLD.index(end)]
+        self.assertEqual(a.replace('check(&board,weights,&mut observed)','check(&board, weights, bound)'),b)
+    def test_snapshots_exact(self):
+        a=NEW[NEW.index('fn snapshot'):NEW.index('fn finite_forward')];b=OLD[OLD.index('fn snapshot'):OLD.index('fn finite_forward')];self.assertEqual(a,b)
+    def test_before_io_and_fixed_argv(self):
+        main=NEW[NEW.index('fn main'):]
+        self.assertLess(main.index('runtime_guard()'),main.index('_mm_getcsr()'))
+        self.assertLess(main.index('runtime_guard()'),main.index('env::args()'))
+        self.assertIn('args.len(),4',main);self.assertNotIn('Some(100)',main)
+        self.assertIn('native03_layout_bytes(weights)',main);self.assertIn('contract::validate_pair(weights,&reference)',main)
+    def test_all_mul_add_counts_and_clamp_order(self):
+        forward=NEW[NEW.index('fn finite_forward'):NEW.index('fn check')]
+        self.assertIn('observed.l2_products+=2',forward);self.assertEqual(forward.count('observed.l2_additions+=1'),2)
+        self.assertIn('observed.output_products+=1',forward);self.assertIn('observed.output_additions+=1',forward)
+        self.assertLess(forward.index('"nonfinite L2 preactivation before clamp"'),forward.index('l2[o].clamp'))
+    def test_global_load_and_absolute_mode_unchanged(self):
+        for text in ['nnue::load_weights(Path::new(&args[1])).expect("load weight")','assert!(nnue::weights_active())','eval::set_nnue_output_mode(eval::NnueOutputMode::Absolute)','incremental, rebuilt']:
+            self.assertIn(text,NEW)
+if __name__=='__main__':unittest.main()

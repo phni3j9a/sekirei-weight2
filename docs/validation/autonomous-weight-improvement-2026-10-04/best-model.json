@@ -1,0 +1,44 @@
+{
+  "baseline_exact": {
+    "mae": {
+      "denominator": 1062600,
+      "numerator": 1152366961
+    },
+    "top3": {
+      "denominator": 229621080,
+      "numerator": 127184263
+    }
+  },
+  "candidate": "white-view-paired-nonlinear-adam-e3-v1",
+  "candidate_exact": {
+    "mae": {
+      "denominator": 1593900,
+      "numerator": 1446737797
+    },
+    "top3": {
+      "denominator": 535782520,
+      "numerator": 321208691
+    }
+  },
+  "comparison_valid": true,
+  "evidence_sha256": {
+    "comparison": "aec0798806af439d7d6f2db04d55bd710da648ae7458d4108d61f47b2ddf46f3",
+    "model": "f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042",
+    "nas_request": "c5d07f9bf906e552ba3567b914de31bb86867902afd6ef40f0e59ad7a8b86768",
+    "nas_result": "64905659226fbe9a2be228289b0225ba4d8070eeea7fb1a0c98e4c21d6998078",
+    "nas_tool": "632363310ecfcb6b9f4cd53fbfc2d96b8240a0c7c9939a78a229c768b312c757",
+    "stop": "4be0f65efea3580ddd674b374ec5bf37143b3879e9e382a7618a8c522c79f5c9",
+    "stop_tool": "9e4846b51292cac32c07dd0b1e1c05038d94918f9c8bcf5bd4c6a1c3e17ecc0a"
+  },
+  "final_used": false,
+  "mae_improved": true,
+  "model": {
+    "bytes": 1305356,
+    "kind": "nnue",
+    "native_magic": "SEKIRW03",
+    "sha256": "f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042"
+  },
+  "reference_used_for_selection": false,
+  "selection_basis": "primary-beta-formal-only",
+  "top3_preserved": true
+}

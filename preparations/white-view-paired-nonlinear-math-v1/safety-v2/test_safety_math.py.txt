@@ -1,0 +1,83 @@
+"""Tiny arithmetic witnesses only: no modules, model files, SFEN or processes."""
+from fractions import Fraction as F
+import math
+import unittest
+
+
+def relu(value):
+    return min(max(value, F(0)), F(127))
+
+
+def conservative_score_bound(q):
+    return (F(1682688) + 254*q) / (1-F(1, 2**18)) / 64 + 1
+
+
+class SafetyMath(unittest.TestCase):
+    def test_aux_41_prefix_and_42_counterboundary(self):
+        self.assertEqual((64-41*797, 64+41*797), (-32613, 32741))
+        self.assertGreaterEqual(64-41*797, -32768)
+        self.assertLessEqual(64+41*797, 32767)
+        self.assertGreater(64+42*797, 32767)
+
+    def test_caller_order_symbolic_counts(self):
+        # This tests explicit nnue sequences, not uninspected Board callers.
+        sequences = ((-1, 1), (-1, 1, -1, 1), (-1, 1, 1, -1), (1, -1))
+        for operations in sequences:
+            counts = [40]
+            for delta in operations:
+                counts.append(counts[-1]+delta)
+            self.assertEqual(counts[-1], 40)
+            self.assertLessEqual(max(counts), 41)
+        self.assertEqual(max([40,39,40,41,40]), 41)
+
+    def test_material_is_separate_from_aux797(self):
+        pawn_half = 18*300
+        other_half = 4*300+4*300+4*320+4*340+2*575+2*650
+        self.assertEqual((pawn_half+64, other_half+64), (5464,7554))
+        self.assertLess(other_half+64, 8128)
+        self.assertEqual(1300//2,650)
+        # Original material has its own exact reference/group bound;
+        # single saved q is cp/2, not cp. No aux box is applied to M.
+        self.assertEqual((4*64 + pawn_half + other_half)*128, 1682688)
+
+    def test_max_nearest_ft_real_error(self):
+        self.assertEqual(40*F(1,128), F(5,16))
+
+    def test_raw_float_to_nearest_is_not_one_cp_guarantee(self):
+        # Pure two-input dyadic arithmetic, NOT a generated legal/model tensor.
+        a_raw, b_raw = 1+40*F(1,1024), F(1)
+        a_saved, b_saved = F(1), F(1)
+        u, v, bias, out = F(64), F(0), F(-64), F(64)
+        def paired(a,b):
+            return out*(relu(bias+u*a+v*b)-relu(bias+v*a+u*b))/64
+        raw, saved = paired(a_raw,b_raw), paired(a_saved,b_saved)
+        self.assertEqual(raw, F(5,2))
+        self.assertEqual(saved, 0)
+        self.assertGreater(abs(raw-saved), F(1001,1000))
+        self.assertEqual(paired(b_raw,a_raw), -raw)
+        self.assertLess(conservative_score_bound(abs(out)), 899000)
+
+    def test_output_absolute_terms_and_unselected_budget_example(self):
+        self.assertEqual(2*127, 254)
+        # Neither example is a chosen recipe/default.
+        self.assertLess(conservative_score_bound(F(219893)), 899000)
+        self.assertGreater(conservative_score_bound(F(220000)), 899000)
+
+    def test_gamma_operation_count_scales(self):
+        self.assertEqual(1024*F(1,2**24), F(1,2**14))
+        self.assertEqual(64*F(1,2**24), F(1,2**18))
+        self.assertGreater(F(1,10**30), 1024*F(1,2**126))
+
+    def test_final_finite_does_not_imply_preclamp_finite(self):
+        pre = float('inf')
+        post = min(max(pre,0.0),127.0)
+        self.assertFalse(math.isfinite(pre))
+        self.assertTrue(math.isfinite(post))
+
+    def test_same_finite_float_integer_truncation_bridge_only(self):
+        for x in (F(5,2), F(-5,2), F(0), F(899000)-F(1,8)):
+            self.assertLess(abs(x-int(x)), 1)
+
+
+if __name__ == '__main__':
+    unittest.main()

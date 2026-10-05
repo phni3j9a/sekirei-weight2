@@ -1,0 +1,408 @@
+"""Independent exact numerical proof source; actual artifact entry blocked.
+
+No solver/NumPy import, Z.T@Z computation, fit, PSD LDL or engine. The saved
+Gram's origin is a separate source-pinned producer receipt, not reproved here.
+The independent O(p^2) arithmetic checks three certificates from stored IEEE
+coefficient bytes. Preparation used tiny public synthetic fixtures only.
+"""
+import argparse
+from datetime import datetime, timezone
+from fractions import Fraction
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import stat
+import struct
+
+PROTOTYPE_ONLY = True
+N_ACTUAL = 112681
+DIM_ACTUAL = 254
+RHO = Fraction(161791, 4096)
+SAVED_RADIUS = Fraction(79, 2)
+GAP_PER_SAMPLE = Fraction(1, 1_000_000)
+MODE = 'paired-linear-constrained-ridge1-l1-39p5-v1'
+PLAN_SHA = 'dabad54e419237335fd1f370063a0c6e82ac7b58ac27f0d20fd91ca21d9dd900'
+PRODUCER_SHA = 'ca65fc08248cb4327b1fb0ec733a65af303673010217e952ea49c878498a3b68'
+SOLVER_SHA = '7884f324b73d38bbd2202a6d7518dab81963f6d5453cd0f50fea3c2fc35511d1'
+OLD_SOLVER_SHA = 'ba9c86b37e3ed442db930332f16f3390ff5cd84a98431fcceea84cc4dd9b066b'
+GRAM_SCHEMA = 'sekirei.verified-design-algebraic-gram.source-prototype.v1'
+GRAM_PRODUCER = 'numpy-float64-exact-integer-gram-v1'
+R = Path('/home/server/worktrees/sekirei-weight2/issue-17-autonomous-weight-improvement')
+C = Path('/home/server/.local/share/sekirei-weight2/campaign-17-autonomous-v1')
+Q = C.parent / 'training-17-v1/paired-linear-constrained-ridge1-v1/run-v1'
+RUN = Q / 'run.json'
+SELF = C / 'paired-linear-independent-numeric-audit-worker-v1.py'
+OUT = C / 'paired-linear-independent-numeric-audit-v1.json'
+ORIGINAL_MANIFEST_SHA = 'ecc419da180b86b046e1af507e6de0e218d271a5d9eaa9bff07f19ec072719a6'
+INITIALIZER_SHA = 'bbe9fbea4c943d69d605190f9ef8c6e9c7a4b9aa7c3a6be970d93e3405334e40'
+TEACHER = 'external:suisho11beta-1m-pack:376d4ef6e503d2ebe687f99e873103845b6eddc0c04d0d08e9b9c785ea061b8d'
+
+
+class InvalidProof(ValueError):
+    pass
+
+
+def require(condition, message):
+    if not condition:
+        raise InvalidProof(message)
+
+
+def strict_sha(value):
+    require(type(value) is str and re.fullmatch('[0-9a-f]{64}', value), 'strict SHA256 required')
+    return value
+
+
+def sha(data):
+    require(type(data) is bytes, 'immutable bytes required')
+    return hashlib.sha256(data).hexdigest()
+
+
+def exact(a, b):
+    if type(a) is not type(b):
+        return False
+    if type(a) is dict:
+        return set(a) == set(b) and all(exact(a[k], b[k]) for k in a)
+    if type(a) in (list, tuple):
+        return len(a) == len(b) and all(exact(x, y) for x, y in zip(a, b))
+    return a == b
+
+
+def strict_json(data):
+    require(type(data) is bytes, 'JSON bytes required')
+    def pairs(values):
+        result = {}
+        for k, v in values:
+            require(k not in result, 'duplicate JSON key')
+            result[k] = v
+        return result
+    def nonfinite(_):
+        raise InvalidProof('nonfinite JSON constant')
+    try:
+        return json.loads(data, object_pairs_hook=pairs, parse_constant=nonfinite)
+    except (TypeError, UnicodeError, json.JSONDecodeError) as error:
+        raise InvalidProof('invalid JSON bytes') from error
+
+
+def record(value):
+    q = Fraction(value)
+    return {'numerator': q.numerator, 'denominator': q.denominator}
+
+
+def fraction_record(value):
+    require(type(value) is dict and set(value) == {'numerator', 'denominator'}
+            and type(value['numerator']) is int and type(value['denominator']) is int
+            and value['denominator'] > 0, 'canonical strict rational record required')
+    q = Fraction(value['numerator'], value['denominator'])
+    require(exact(record(q), value), 'fraction not reduced/canonical')
+    return q
+
+
+def canonical_json(value):
+    return (json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+                       allow_nan=False) + '\n').encode('utf-8')
+
+
+def parse_matrix(gram_bytes, rhs_bytes, N, dimension):
+    require(type(N) is int and 1 <= N <= 1_000_000 and type(dimension) is int
+            and 1 <= dimension <= DIM_ACTUAL, 'strict bounded count/dimension, never bool')
+    require(type(gram_bytes) is bytes and len(gram_bytes) == dimension * dimension * 8
+            and type(rhs_bytes) is bytes and len(rhs_bytes) == dimension * 8,
+            'canonical signed64LE Gram/rhs shape required')
+    flat = tuple(x[0] for x in struct.iter_unpack('<q', gram_bytes))
+    G = tuple(flat[i*dimension:(i+1)*dimension] for i in range(dimension))
+    h = tuple(x[0] for x in struct.iter_unpack('<q', rhs_bytes))
+    require(all(abs(x) <= N*1600 for x in flat) and all(abs(x) <= N*40*55779 for x in h),
+            'saved Gram/rhs integer bounds exceeded')
+    require(all(G[i][j] == G[j][i] for i in range(dimension) for j in range(i))
+            and all(G[i][i] >= 0 for i in range(dimension)), 'saved Gram symmetry/diagonal invalid')
+    K = tuple(tuple(G[i][j] + (256 if i == j else 0) for j in range(dimension))
+              for i in range(dimension))
+    return G, K, h
+
+
+def parse_coefficients(data, dimension, dtype):
+    size = 8 if dtype == 'd' else 4 if dtype == 'f' else 0
+    require(size and type(data) is bytes and len(data) == dimension * size,
+            'canonical IEEE little-endian coefficient bytes required')
+    values = tuple(x[0] for x in struct.iter_unpack('<' + dtype, data))
+    require(all(type(x) is float and math.isfinite(x) for x in values), 'nonfinite saved coefficient')
+    if dtype == 'f':
+        require(all(x != 0.0 or data[i*4:(i+1)*4] == b'\0'*4 for i, x in enumerate(values)),
+                'independent f32 zero is not canonical positive zero')
+    return values
+
+
+def independent_certificate(K, h, N, values, radius):
+    """O(p^2) integer products with one shared power-of-two denominator.
+
+    No Fraction matrix elimination, no approximate gradient. Fractions are
+    constructed only for the final O(1) scalar results / coefficient records.
+    """
+    require(type(values) is tuple and len(values) == len(K) == len(h)
+            and all(type(x) is float and math.isfinite(x) for x in values), 'strict finite vector required')
+    ratios = tuple(x.as_integer_ratio() for x in values)
+    Qden = max(den for _, den in ratios)
+    require(Qden > 0 and Qden & (Qden - 1) == 0, 'coefficient denominator is not dyadic')
+    U = tuple(num * (Qden // den) for num, den in ratios)
+    KU = tuple(sum(k*u for k, u in zip(row, U)) for row in K)
+    gn = tuple(ku - 16*Qden*hv for ku, hv in zip(KU, h))
+    gd = 256 * Qden
+    dot_n = sum(g*u for g, u in zip(gn, U))
+    dot_d = 256 * Qden * Qden
+    norm = Fraction(sum(abs(u) for u in U), Qden)
+    max_gradient = Fraction(max(abs(g) for g in gn), gd)
+    gap = Fraction(dot_n, dot_d) + radius * max_gradient
+    delta = Fraction(sum(u*v for u, v in zip(U, KU)), 512 * Qden * Qden) - Fraction(sum(hv*u for hv, u in zip(h, U)), 16*Qden)
+    feasible = norm <= radius
+    require(not feasible or gap >= 0, 'negative exact Frank-Wolfe gap at feasible coefficients')
+    per_sample = gap / N
+    return {'norm': record(norm), 'radius': record(radius), 'feasible': feasible,
+        'fw_gap': record(gap), 'fw_gap_per_sample': record(per_sample),
+        'solver_threshold_met': feasible and 0 <= per_sample <= GAP_PER_SAMPLE,
+        'objective_delta_vs_zero': record(delta), 'gradient_numerators': list(gn),
+        'gradient_denominator': gd, 'coefficient_values': [record(x) for x in values]}
+
+
+def _backend_metadata(value):
+    require(type(value) is list and len(value) == 7
+            and all(type(row) is list and len(row) == 2 and type(row[0]) is str for row in value),
+            'canonical producer metadata rows required')
+    first = value[4][1]
+    require(type(first) is bool, 'producer import state must be bool')
+    expected = [['numpy_version', '1.26.4'], ['dtype', 'float64'], ['design_order', 'C'],
+        ['transpose', 'Z.T@Z;Z.T@d'], ['first_numpy_preimported', first],
+        ['environment_set_before_first_numpy_import', not first],
+        ['existing_import_threadpool_evidence_not_claimed', True]]
+    require(exact(value, expected), 'producer backend/order/transpose metadata changed')
+    return tuple(tuple(row) for row in value)
+
+
+def producer_gram_digest(gram_bytes, rhs_bytes, N, dimension, design_sha256, metadata, producer_sha256):
+    """Rehash saved content binding; does not execute/reprove Z.T@Z."""
+    parts = [GRAM_SCHEMA.encode(), b'\x00gram\x00', GRAM_PRODUCER.encode(), b'\x00',
+        bytes.fromhex(strict_sha(producer_sha256)), repr(metadata).encode('ascii'), b'\x00',
+        bytes.fromhex(strict_sha(design_sha256)), struct.pack('<QQ', N, dimension), gram_bytes, rhs_bytes]
+    digest = hashlib.sha256()
+    for part in parts:
+        digest.update(part)
+    return digest.hexdigest()
+
+
+def audit_numeric_bytes(gram_bytes, rhs_bytes, coefficient_f64_bytes, coefficient_f32_bytes,
+                        solver_bytes, design_receipt_bytes, *, N, dimension,
+                        design_z_sha256, targets_d_sha256, design_sha256,
+                        expected_producer_sha256=PRODUCER_SHA, expected_solver_sha256=SOLVER_SHA):
+    G, K, h = parse_matrix(gram_bytes, rhs_bytes, N, dimension)
+    f64 = parse_coefficients(coefficient_f64_bytes, dimension, 'd')
+    f32 = parse_coefficients(coefficient_f32_bytes, dimension, 'f')
+    require(sum(abs(Fraction(x)) for x in f64) <= RHO, 'f64 solver radius infeasible')
+    require(sum(abs(Fraction(x)) for x in f32) <= SAVED_RADIUS, 'f32 saved radius infeasible')
+    for i, x in enumerate(f64):
+        cast = struct.unpack('<f', struct.pack('<f', x))[0]
+        expected = struct.pack('<f', 0.0 if cast == 0.0 else cast)
+        require(coefficient_f32_bytes[i*4:(i+1)*4] == expected, 'f32 differs from canonical nearest f64 cast')
+    cert = strict_json(solver_bytes)
+    keys = {'status', 'iterations', 'restart_count', 'coefficient_f64', 'coefficient_f32',
+        'certificate_f64', 'certificate_f32_solver_radius', 'certificate_f32_saved_radius',
+        'saved_f32_gap_is_solver_stopping_criterion', 'lipschitz_exact', 'lipschitz_numeric_upper',
+        'fallback_used', 'one_if_needed_f64_correction_used', 'one_if_needed_f64_correction_factor',
+        'lambda', 'loss_is_half_unnormalized_sum', 'verified_design_gram'}
+    require(type(cert) is dict and set(cert) == keys and cert['status'] == 'synthetic-certified',
+            'full unchanged solver-result key contract required')
+    require(type(cert['iterations']) is int and 1 <= cert['iterations'] <= 20000
+            and type(cert['restart_count']) is int and 0 <= cert['restart_count'] <= cert['iterations']
+            and cert['fallback_used'] is False and cert['saved_f32_gap_is_solver_stopping_criterion'] is False
+            and type(cert['lambda']) is int and cert['lambda'] == 1
+            and cert['loss_is_half_unnormalized_sum'] is True
+            and type(cert['one_if_needed_f64_correction_used']) is bool
+            and fraction_record(cert['one_if_needed_f64_correction_factor']) == Fraction(1)-Fraction(1,2**40),
+            'fixed solver recipe/correction/iteration metadata differs')
+    require(exact(cert['coefficient_f64'], [record(x) for x in f64])
+            and exact(cert['coefficient_f32'], [record(x) for x in f32]), 'certificate vectors differ from IEEE artifacts')
+    recomputed = {'certificate_f64': independent_certificate(K, h, N, f64, RHO),
+        'certificate_f32_solver_radius': independent_certificate(K, h, N, f32, RHO),
+        'certificate_f32_saved_radius': independent_certificate(K, h, N, f32, SAVED_RADIUS)}
+    for name, value in recomputed.items():
+        require(exact(cert[name], value), 'independent integer/dyadic certificate mismatch: '+name)
+    require(recomputed['certificate_f64']['solver_threshold_met'] is True
+            and recomputed['certificate_f32_saved_radius']['feasible'] is True
+            and fraction_record(recomputed['certificate_f32_saved_radius']['objective_delta_vs_zero']) <= 0,
+            'mandatory f64 FW / saved-f32 objective gate failed')
+    lipschitz = Fraction(max(sum(abs(x) for x in row) for row in K), 256)
+    upper = math.nextafter(float(lipschitz), math.inf)
+    require(fraction_record(cert['lipschitz_exact']) == lipschitz
+            and fraction_record(cert['lipschitz_numeric_upper']) == Fraction(upper),
+            'exact Gershgorin / upward binary64 bound mismatch')
+    proof = cert['verified_design_gram']
+    require(type(proof) is dict and set(proof) == {'schema', 'producer', 'design_sha256', 'gram_sha256',
+            'producer_source_sha256', 'solver_source_sha256', 'backend_metadata', 'sample_count', 'dimension',
+            'algebraic_psd_proven_from_issued_design', 'runtime_threadpool_proof_claimed',
+            'actual_dataset_provenance_claimed', 'source_prototype_only'}, 'full producer binding required')
+    require(proof['schema'] == GRAM_SCHEMA and proof['producer'] == GRAM_PRODUCER
+            and type(proof['sample_count']) is int and proof['sample_count'] == N
+            and type(proof['dimension']) is int and proof['dimension'] == dimension
+            and proof['design_sha256'] == strict_sha(design_sha256)
+            and proof['producer_source_sha256'] == strict_sha(expected_producer_sha256)
+            and proof['solver_source_sha256'] == strict_sha(expected_solver_sha256)
+            and proof['algebraic_psd_proven_from_issued_design'] is True
+            and proof['runtime_threadpool_proof_claimed'] is False
+            and proof['actual_dataset_provenance_claimed'] is False and proof['source_prototype_only'] is True,
+            'producer source/design/scope binding differs')
+    metadata = _backend_metadata(proof['backend_metadata'])
+    require(proof['gram_sha256'] == producer_gram_digest(gram_bytes, rhs_bytes, N, dimension,
+            design_sha256, metadata, expected_producer_sha256), 'saved Gram/rhs full producer digest mismatch')
+    design = strict_json(design_receipt_bytes)
+    require(type(design) is dict and design.get('schema') == 'sekirei.paired-linear-train-design.v1'
+            and type(design.get('count')) is int and design['count'] == N
+            and type(design.get('dimension')) is int and design['dimension'] == dimension
+            and design.get('z_sha256') == strict_sha(design_z_sha256)
+            and design.get('d_sha256') == strict_sha(targets_d_sha256), 'design receipt/output SHA binding mismatch')
+    return {'schema': 'sekirei.paired-linear-independent-numeric-math.v1', 'status': 'complete',
+        'sample_count': N, 'dimension': dimension, 'recomputed_certificates': recomputed,
+        'all_three_certificates_exactly_recomputed': True, 'saved_f32_nearest_canonical_cast_verified': True,
+        'gershgorin_exact': record(lipschitz), 'gershgorin_numeric_upper': record(upper),
+        'gram_sha256': proof['gram_sha256'], 'design_sha256': design_sha256,
+        'gram_bytes_sha256': sha(gram_bytes), 'rhs_bytes_sha256': sha(rhs_bytes),
+        'coefficient_f64_bytes_sha256': sha(coefficient_f64_bytes),
+        'coefficient_f32_bytes_sha256': sha(coefficient_f32_bytes),
+        'solver_certificate_sha256': sha(solver_bytes), 'design_receipt_sha256': sha(design_receipt_bytes),
+        'design_z_sha256': design_z_sha256, 'targets_d_sha256': targets_d_sha256,
+        'producer_source_sha256': expected_producer_sha256, 'solver_source_sha256': expected_solver_sha256,
+        'producer_backend_metadata': proof['backend_metadata'], 'stored_gradient_matches_Hu_minus_b': True,
+        'objective_definition': 'half unnormalized SSE plus half coefficient L2 squared; delta vs u=0',
+        'raw_design_extraction_replayed': False, 'gram_product_recomputed': False,
+        'gram_psd_independently_reproved': False, 'producer_origin_acknowledged_separately': True,
+        'solver_trajectory_replayed': False, 'second_fit_run': False, 'native_core_proof_claimed': False,
+        'final_used': False, 'adoption_claimed': False}
+
+
+def file_identity(path):
+    path = Path(path)
+    require(path.is_absolute() and path.resolve(strict=True) == path
+            and stat.S_ISREG(path.stat().st_mode), 'canonical regular file required')
+    with path.open('rb') as f:
+        digest = hashlib.file_digest(f, 'sha256').hexdigest()
+    return {'bytes': path.stat().st_size, 'sha256': digest}
+
+
+def read_ref(ref, fixed_path=None):
+    require(type(ref) is dict and set(ref) == {'path', 'bytes', 'sha256'}
+            and type(ref['path']) is str and type(ref['bytes']) is int and ref['bytes'] >= 0,
+            'external fullref required')
+    strict_sha(ref['sha256'])
+    path = Path(ref['path'])
+    if fixed_path is not None:
+        require(path == fixed_path, 'wrong fixed artifact path')
+    require(exact(file_identity(path), {'bytes': ref['bytes'], 'sha256': ref['sha256']}), 'artifact fullref mismatch')
+    data = path.read_bytes()
+    require(len(data) == ref['bytes'] and sha(data) == ref['sha256'], 'artifact changed while read')
+    return data
+
+
+def design_digest_files(N, dimension, zref, dref):
+    require(zref['bytes'] == N*dimension and dref['bytes'] == N*4, 'derived design output byte shapes differ')
+    digest = hashlib.sha256(GRAM_SCHEMA.encode()+b'\x00design\x00'+struct.pack('<QQ', N, dimension))
+    for ref in (zref, dref):
+        require(exact(file_identity(ref['path']), {'bytes': ref['bytes'], 'sha256': ref['sha256']}),
+                'derived design fullref mismatch')
+        # Hash immutable derived files only, never multiply/parse/rebuild Gram.
+        with Path(ref['path']).open('rb') as f:
+            for chunk in iter(lambda: f.read(1024*1024), b''):
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
+def actual_main(args):
+    require(not PROTOTYPE_ONLY, 'source prototype only; actual numerical audit entry blocked')
+    os.umask(0o077)
+    require(Path(__file__) == SELF and file_identity(SELF)['sha256'] == strict_sha(args.expected_worker_sha256),
+            'canonical externally pinned audit worker required')
+    require(not os.path.lexists(OUT) and C.resolve() == C and not C.stat().st_mode & 0o077,
+            'fresh private audit receipt required')
+    runref = {'path': str(RUN), **file_identity(RUN)}
+    require(runref['sha256'] == strict_sha(args.expected_run_sha256), 'completed fit run external SHA differs')
+    run = strict_json(read_ref(runref, RUN))
+    fixed = {'schema': 'sekirei.paired-linear-fit-run.v1', 'status': 'complete', 'candidate': MODE, 'mode': MODE,
+        'positions': N_ACTUAL, 'dimension': DIM_ACTUAL, 'plan_sha256': PLAN_SHA, 'teacher_identity': TEACHER,
+        'original_manifest_sha256': ORIGINAL_MANIFEST_SHA, 'material_initializer_sha256': INITIALIZER_SHA,
+        'seed': 42, 'nnue_output': 'absolute', 'optimizer': 'projected-FISTA', 'adam_used': False, 'epochs': 0,
+        'resume_used': False, 'trainer_used': False, 'inputs_unchanged': True, 'source_unchanged': True,
+        'cleanup_verified': True, 'final_used': False, 'fit_holdout_used': False,
+        'fit_development_used': False, 'fit_final_used': False, 'adoption_claimed': False}
+    require(type(run) is dict and all(exact(run.get(k), v) for k, v in fixed.items()), 'completed fit scope differs')
+    require(exact(run.get('lifecycle'), {'returncode': 0, 'timed_out': False, 'waited': True,
+            'reaped': True, 'process_group_stopped': True}), 'reaped successful fit lifecycle required')
+    require(type(run.get('inputs_before')) is dict and exact(run['inputs_before'], run.get('inputs_after')),
+            'fit unchanged source/input maps required')
+    helpers = run['source_helpers_sha256']
+    expected = {'fit_paired_linear.py': strict_sha(args.expected_driver_sha256),
+        'verified_design_gram.py': PRODUCER_SHA, 'paired_linear_solver_verified_design.py': SOLVER_SHA,
+        'paired_linear_solver.py': OLD_SOLVER_SHA}
+    require(type(helpers) is dict and all(helpers.get(k) == v for k, v in expected.items()), 'fit numeric source binding differs')
+    before = {str(SELF): file_identity(SELF), str(RUN): file_identity(RUN)}
+    for name, digest in helpers.items():
+        require(type(name) is str and name == Path(name).name and name.endswith('.py'), 'invalid source helper')
+        path = R / 'scripts' / name
+        rec = file_identity(path)
+        require(rec['sha256'] == strict_sha(digest), 'fit source helper changed')
+        before[str(path)] = rec
+    outputs = run['outputs']
+    paths = {'gram_z':'gram.z.i64', 'rhs_z':'rhs.z.i64', 'coefficients_f64':'coefficients.f64.bin',
+        'coefficients_f32':'coefficients.f32.bin', 'solver_certificate':'solver-certificate.json',
+        'design_receipt':'design-receipt.json', 'design_z':'design.z.i8', 'targets_d':'targets.d.i32'}
+    require(type(outputs) is dict and set(paths) <= set(outputs)
+            and exact(run['solver_certificate'], outputs['solver_certificate']), 'all numerical artifacts required')
+    raw = {}
+    for key, name in paths.items():
+        ref = outputs[key]
+        require(type(ref) is dict and set(ref) == {'path', 'bytes', 'sha256'}
+                and type(ref['path']) is str and type(ref['bytes']) is int and ref['bytes'] >= 0,
+                'strict numerical output fullref required')
+        strict_sha(ref['sha256'])
+        require(ref['path'] == str(Q / name), 'wrong fixed numerical artifact path')
+        before[ref['path']] = {'bytes': ref['bytes'], 'sha256': ref['sha256']}
+        if key not in ('design_z','targets_d'):
+            raw[key] = read_ref(ref, Q / name)
+    design_sha = design_digest_files(N_ACTUAL, DIM_ACTUAL, outputs['design_z'], outputs['targets_d'])
+    design = strict_json(raw['design_receipt'])
+    require(design.get('teacher_identity') == TEACHER and design.get('original_manifest_sha256') == ORIGINAL_MANIFEST_SHA
+            and design.get('material_initializer_sha256') == INITIALIZER_SHA,
+            'original teacher/material/design provenance differs')
+    for name, expected_value in {'position_order_preserved': True, 'labels_joined_by_exact_sfen': True,
+            'holdout_rows_read': False, 'development_used': False, 'final_used': False,
+            'whole_dataset_replay_proof_claimed': False}.items():
+        require(exact(design.get(name), expected_value), 'design source/scope flag differs')
+    result = audit_numeric_bytes(raw['gram_z'], raw['rhs_z'], raw['coefficients_f64'], raw['coefficients_f32'],
+        raw['solver_certificate'], raw['design_receipt'], N=N_ACTUAL, dimension=DIM_ACTUAL,
+        design_z_sha256=outputs['design_z']['sha256'], targets_d_sha256=outputs['targets_d']['sha256'],
+        design_sha256=design_sha)
+    after = {p: file_identity(p) for p in before}
+    require(exact(before, after), 'fit source/numeric artifact changed during independent audit')
+    receipt = {'schema': 'sekirei.paired-linear-independent-numeric-audit.v1', 'status': 'complete',
+        'created_at': datetime.now(timezone.utc).isoformat(), 'candidate': MODE, 'plan_sha256': PLAN_SHA,
+        'fit_receipt': runref, 'worker_sha256': args.expected_worker_sha256,
+        'fit_driver_sha256': args.expected_driver_sha256, 'source_helpers_sha256': helpers,
+        'numerical_math': result, 'inputs_before': before, 'inputs_after': after, 'inputs_unchanged': True,
+        'source_unchanged': True, 'no_child_process_started': True, 'actual_fit_repeated': False,
+        'gram_psd_and_design_origin_from_external_fit_producer': True,
+        'audit_input_scope': 'completed run, numerical artifacts and source helpers; original dataset replay inherited',
+        'native_core_proof_claimed': False, 'final_used': False, 'adoption_claimed': False}
+    with OUT.open('xb') as f:
+        f.write(canonical_json(receipt)); f.flush(); os.fsync(f.fileno())
+    print(json.dumps({'status':'complete','receipt':{'path':str(OUT),**file_identity(OUT)}}))
+
+
+def parser():
+    p = argparse.ArgumentParser(description=__doc__)
+    for name in ('run','worker','driver'):
+        p.add_argument('--expected-'+name+'-sha256', required=True)
+    return p
+
+
+if __name__ == '__main__':
+    if PROTOTYPE_ONLY:
+        raise RuntimeError('source prototype only; actual numerical audit entry blocked')
+    actual_main(parser().parse_args())

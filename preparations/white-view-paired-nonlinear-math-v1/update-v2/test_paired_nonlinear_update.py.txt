@@ -1,0 +1,162 @@
+import copy
+import math
+from pathlib import Path
+import unittest
+import paired_nonlinear_update as p
+
+
+def one_group(kind="head", sign=1, state=None):
+    master = state or p.Cell(1.0)
+    cells = {"a": master, "b": p.mirrored(master, sign), "fixed": p.Cell(5.0)}
+    groups = (p.Group("a", (("a", 1), ("b", sign)), kind),)
+    return cells, groups, frozenset({"fixed"})
+
+
+class TinyUpdateTests(unittest.TestCase):
+    def test_sum_before_one_adam_and_variance_square(self):
+        cells, groups, fixed = one_group()
+        updated, calls = p.update_once(cells, groups, fixed, {"a": 2.0, "b": 3.0}, 0.001, 1)
+        self.assertEqual(calls, (("a", 5.0),))
+        expected = p.adam_reference(cells["a"], 5.0, 0.001, 1)
+        self.assertEqual(updated["a"], expected)
+        self.assertEqual(p.bits(updated["a"].v), p.bits(p.f32(p.f32(p.f32(1-p.f32(.999))*5)*5)))
+        self.assertNotEqual(updated["a"].v, p.f32(p.f32(1-p.f32(.999)) * 13))
+
+    def test_negative_tie_aggregates_difference_and_mirror_m_not_v(self):
+        cells, groups, fixed = one_group("output", -1)
+        out, calls = p.update_once(cells, groups, fixed, {"a": 2.0, "b": 3.0}, .001, 1)
+        self.assertEqual(calls, (("a", -1.0),))
+        for field in ("param", "m"):
+            self.assertEqual(p.bits(getattr(out["b"],field)), p.bits(p.signed(getattr(out["a"],field),-1)))
+        self.assertEqual(p.bits(out["a"].v), p.bits(out["b"].v))
+
+    def test_negative_zero_mirror_explicit(self):
+        cells, groups, fixed = one_group("output", -1, p.Cell(0.0))
+        p.validate_partition(cells,groups,fixed)
+        self.assertEqual(p.bits(cells["b"].param), b"\x00\x00\x00\x80")
+
+    def test_all_inactive_moments_decay_and_parameter_moves(self):
+        cells, groups, fixed = one_group("ft", state=p.Cell(1.0,p.f32(.2),p.f32(.3)))
+        out, calls = p.update_once(cells,groups,fixed,{},.001,2)
+        self.assertEqual(calls, (("a",0.0),))
+        self.assertEqual(out["a"].m,p.f32(p.f32(.9)*cells["a"].m))
+        self.assertEqual(out["a"].v,p.f32(p.f32(.999)*cells["a"].v))
+        self.assertNotEqual(out["a"].param,cells["a"].param)
+
+    def test_protected_update_call_skipped_even_nonzero_gradient(self):
+        cells,groups,fixed=one_group()
+        cells["fixed"]=p.Cell(5.0,p.f32(.125),p.f32(.25))
+        out,calls=p.update_once(cells,groups,fixed,{"fixed":100.0},.001,1)
+        self.assertIs(out["fixed"],cells["fixed"])
+        self.assertEqual(len(calls),1)
+
+    def test_ft_projection_keeps_moments_and_saved797(self):
+        cells,groups,fixed=one_group("ft",state=p.Cell(p.FT_LIMIT))
+        out,_=p.update_once(cells,groups,fixed,{"a":-100.0},1.0,1)
+        self.assertEqual(out["a"].param,p.FT_LIMIT)
+        self.assertLess(out["a"].m,0)
+        self.assertGreater(out["a"].v,0)
+        self.assertEqual(p.nearest_aux_ft(out["a"].param),797)
+        self.assertEqual(p.nearest_aux_ft(-out["a"].param),-797)
+
+    def test_nearest_even_and_unsafe797_boundary(self):
+        self.assertEqual(p.nearest_aux_ft(2.5/64),2)
+        self.assertEqual(p.nearest_aux_ft(3.5/64),4)
+        self.assertEqual(p.nearest_aux_ft(-2.5/64),-2)
+        with self.assertRaises(ValueError):p.nearest_aux_ft(798/64)
+        lo,hi=p.prefix_bound()
+        self.assertEqual((lo,hi),(-32613,32741))
+        self.assertTrue(-32768<lo<hi<32767)
+
+    def test_bad_partition_and_mirror_rejected(self):
+        cells,groups,fixed=one_group()
+        cells["b"]=p.Cell(2.0)
+        with self.assertRaises(ValueError):p.update_once(cells,groups,fixed,{},.001,1)
+        cells,groups,fixed=one_group()
+        with self.assertRaises(ValueError):p.update_once(cells,groups,fixed|{"a"},{},.001,1)
+
+    def test_nan_bool_and_unknown_gradient_rejected(self):
+        cells,groups,fixed=one_group()
+        for grads in ({"a":math.nan},{"a":math.inf},{"a":True},{"missing":0.0}):
+            with self.assertRaises(ValueError):p.update_once(cells,groups,fixed,grads,.001,1)
+        for step in (True,0,-1,2**64):
+            with self.assertRaises(ValueError):p.update_once(cells,groups,fixed,{},.001,step)
+
+    def test_input_immutable(self):
+        cells,groups,fixed=one_group();before=copy.deepcopy(cells)
+        p.update_once(cells,groups,fixed,{"a":1.0},.001,1)
+        self.assertEqual(cells,before)
+
+    def test_flat_hand_tie_and_pair_index_bindings(self):
+        self.assertEqual(p.ft_alias_features(25),(25,))
+        self.assertEqual(p.ft_alias_features(2268),(2268,2382))
+        self.assertEqual(p.ft_alias_features(2382),(2268,2382))
+        self.assertEqual(p.ft_alias_features(2306),(2306,2344))
+        self.assertEqual(p.ft_alias_features(2344),(2306,2344))
+        head=p.head_index_bindings(0,2)
+        self.assertEqual(head['u'],(68,8261))
+        self.assertEqual(head['v'],(8260,69))
+        self.assertEqual(head['bias'],(4,5))
+        self.assertEqual(head['output'],((4,1),(5,-1)))
+
+    def test_nonstored_f64_cell_rejected(self):
+        cells,groups,fixed=one_group(state=p.Cell(.1))
+        with self.assertRaises(ValueError):p.update_once(cells,groups,fixed,{},.001,1)
+
+    def test_zero_output_has_output_gradient_then_input_gradient(self):
+        args=((1.0,),(0.0,),(1.0,),(0.0,),1.0)
+        initial=p.paired_head_gradient(*args,0.0,10.0,20.0)
+        self.assertEqual(initial["residual"],0)
+        self.assertNotEqual(initial["dq"],0)
+        self.assertEqual(initial["da"],(0.0,))
+        q=p.adam_reference(p.Cell(0.0),initial["dq"],.001,1).param
+        later=p.paired_head_gradient(*args,q,10.0,20.0)
+        self.assertNotEqual(later["da"],(0.0,))
+
+    def test_symmetric_zero_output_is_dead_branch(self):
+        d=p.paired_head_gradient((1.0,),(0.0,),(1.0,),(1.0,),1.0,0.0,10.0,20.0)
+        self.assertEqual(d["dq"],0)
+        self.assertEqual(d["du"],(0.0,))
+
+    def test_pair_swap_odd_and_saturated_backward_zero(self):
+        a=(1.0,);b=(.5,);u=(2.0,);v=(.25,)
+        left=p.paired_head_gradient(a,b,u,v,1.0,3.0,0.0,1.0)
+        right=p.paired_head_gradient(b,a,u,v,1.0,3.0,0.0,1.0)
+        self.assertEqual(left["residual"],-right["residual"])
+        dead=p.paired_head_gradient(a,b,u,v,200.0,3.0,0.0,1.0)
+        self.assertEqual(dead["du"],(0.0,))
+
+    def test_tied_gradients_match_finite_difference_oracle(self):
+        a=(1.0,.5);b=(.25,2.0);u=(2.0,.2);v=(.1,.4);bias=.5;q=.75
+        d=p.paired_head_gradient(a,b,u,v,bias,q,10.0,30.0)
+        def loss(uv,vv,bb,qq):
+            r=p.paired_head_gradient(a,b,uv,vv,bb,qq,10.0,30.0)
+            return (r["score"]-30)**2
+        eps=1e-5
+        for i in range(2):
+            plus=list(u);minus=list(u);plus[i]+=eps;minus[i]-=eps
+            finite=(loss(tuple(plus),v,bias,q)-loss(tuple(minus),v,bias,q))/(2*eps)
+            self.assertAlmostEqual(d["du"][i],finite,places=6)
+        finite=(loss(u,v,bias,q+eps)-loss(u,v,bias,q-eps))/(2*eps)
+        self.assertAlmostEqual(d["dq"],finite,places=6)
+
+    def test_runtime_before_io_and_pending_unchosen(self):
+        self.assertTrue(p.PROTOTYPE_ONLY)
+        self.assertEqual(p.PENDING,{"learning_rate":None,"head_init_width":None,"output_native_l1_budget":None})
+        with self.assertRaisesRegex(RuntimeError,"PROTOTYPE_ONLY"):p.runtime_guard()
+        self.assertNotIn("read_bytes(",Path(p.__file__).read_text())
+
+    def test_finite_inputs_with_residual_overflow_rejected(self):
+        with self.assertRaisesRegex(ValueError,'overflow'):
+            p.paired_head_gradient((127.0,),(0.0,),(1.0,),(0.0,),0.0,1e308,0.0,1.0)
+
+    def test_finite_inputs_with_error_overflow_rejected(self):
+        with self.assertRaisesRegex(ValueError,'overflow'):
+            p.paired_head_gradient((1.0,),(0.0,),(1.0,),(0.0,),1.0,0.0,1e308,-1e308)
+
+    def test_finite_residual_with_gradient_overflow_rejected(self):
+        with self.assertRaisesRegex(ValueError,'score/gradient overflow'):
+            p.paired_head_gradient((1.0,),(1.0,),(1.0,),(0.0,),1.0,1e308,1e300,0.0)
+
+
+if __name__=="__main__":unittest.main()

@@ -1,0 +1,316 @@
+#!/usr/bin/env python3
+"""Private one-shot archive helper; never deletes sources or reuses destinations.
+
+Usage:
+  python3 /tmp/weight15-archive.py --mapping /tmp/archive-mapping.json \
+    --destination /mnt/storage/NAS/sekirei-weight2/archives/DATE/new-run \
+    --receipt-name issue15-new-run --lock /absolute/runtime/.training.lock \
+    --lock /absolute/comparison-runtime/.prepare.lock
+
+Mapping JSON is an object {"/absolute/completed/source-directory": "relative/destination"}.
+The operator must confirm all relevant processes and manual writers are stopped
+and supply every coordinating lock. flock is advisory; this script cannot prove
+that an unrelated writer respects it. Failed/partial copies are retained under
+their new name, never resumed or treated as a successful archive.
+--self-test only uses newly created public fixtures under /tmp and does no rsync.
+"""
+import argparse
+from contextlib import ExitStack
+from datetime import datetime, timezone
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path, PurePosixPath
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+
+MOUNT = Path("/mnt/storage")
+NAS = MOUNT / "NAS/sekirei-weight2"
+
+
+def utc():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def atomic_json(path, value):
+    temporary = path.with_name(path.name + ".tmp")
+    with temporary.open("x") as stream:
+        os.chmod(temporary, 0o600)
+        json.dump(value, stream, ensure_ascii=True, sort_keys=True, indent=2, allow_nan=False)
+        stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(temporary, path)
+    descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def fingerprint(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def inventory(root):
+    """Do not follow symlinks. Reject special files and detect read-time changes."""
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError(f"inventory root must be a real directory: {root}")
+    result = {"files": {}, "directories": ["."], "symlinks": {}}
+    def visit(directory):
+        with os.scandir(directory) as scan:
+            entries = sorted(scan, key=lambda entry: entry.name)
+        for entry in entries:
+            path = Path(entry.path)
+            relative = path.relative_to(root).as_posix()
+            before = path.lstat()
+            if stat.S_ISLNK(before.st_mode):
+                result["symlinks"][relative] = os.readlink(path)
+                if fingerprint(before) != fingerprint(path.lstat()):
+                    raise RuntimeError(f"symlink changed while reading: {path}")
+            elif stat.S_ISDIR(before.st_mode):
+                result["directories"].append(relative)
+                visit(path)
+                if fingerprint(before) != fingerprint(path.lstat()):
+                    raise RuntimeError(f"directory changed while reading: {path}")
+            elif stat.S_ISREG(before.st_mode):
+                digest = hashlib.sha256()
+                descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                with os.fdopen(descriptor, "rb") as stream:
+                    if fingerprint(before) != fingerprint(os.fstat(stream.fileno())):
+                        raise RuntimeError(f"file replaced before reading: {path}")
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                        digest.update(chunk)
+                    after_fd = os.fstat(stream.fileno())
+                if fingerprint(before) != fingerprint(after_fd) or fingerprint(before) != fingerprint(path.lstat()):
+                    raise RuntimeError(f"file changed while reading: {path}")
+                result["files"][relative] = {"bytes": before.st_size, "sha256": digest.hexdigest()}
+            else:
+                raise ValueError(f"special file cannot be archived by this helper: {path}")
+    before_root = root.lstat()
+    visit(root)
+    if fingerprint(before_root) != fingerprint(root.lstat()):
+        raise RuntimeError(f"inventory root changed while reading: {root}")
+    result["directories"].sort()
+    return result
+
+
+def require_same(expected, actual, label):
+    if expected != actual:
+        differences = {}
+        for kind in ("files", "directories", "symlinks"):
+            a, b = expected[kind], actual[kind]
+            missing, extra = sorted(set(a) - set(b)), sorted(set(b) - set(a))
+            changed = sorted(key for key in set(a) & set(b) if isinstance(a, dict) and a[key] != b[key])
+            if missing or extra or changed:
+                differences[kind] = {"missing": missing, "extra": extra, "changed": changed}
+        raise RuntimeError(f"{label} inventory mismatch: {json.dumps(differences, ensure_ascii=True)}")
+
+
+def private_directory(path):
+    if path.resolve() != path or not path.is_dir() or path.is_symlink():
+        raise ValueError(f"not an existing canonical directory: {path}")
+    info = path.stat()
+    if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+        raise ValueError(f"directory must be owned by invoking user and mode 0700: {path}")
+
+
+def check_mount():
+    mounts = []
+    for path in (MOUNT, NAS):
+        data = json.loads(subprocess.check_output(
+            ["findmnt", "--json", "--target", str(path), "--output", "TARGET,SOURCE,FSTYPE,OPTIONS"], text=True))
+        rows = data.get("filesystems", [])
+        if len(rows) != 1 or rows[0].get("target") != str(MOUNT) or "rw" not in rows[0].get("options", "").split(","):
+            raise RuntimeError("/mnt/storage is not the active writable mount covering the project root")
+        mounts.append(rows[0])
+    private_directory(NAS)
+    if not os.access(NAS, os.W_OK | os.X_OK):
+        raise PermissionError("NAS project root is not writable")
+    return mounts
+
+
+def load_mapping(path):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate source mapping key")
+            result[key] = value
+        return result
+    mapping = json.loads(path.read_text(), object_pairs_hook=unique)
+    if not isinstance(mapping, dict) or not mapping:
+        raise ValueError("mapping must be a nonempty source-to-relative-destination object")
+    result = []
+    for source_text, destination_text in mapping.items():
+        if not isinstance(source_text, str) or not isinstance(destination_text, str):
+            raise ValueError("mapping entries must be strings")
+        source, relative = Path(source_text), PurePosixPath(destination_text)
+        if (not source.is_absolute() or source.resolve() != source or not source.is_dir()
+                or source.is_symlink() or source.is_relative_to(NAS)):
+            raise ValueError(f"source must be an existing canonical SSD directory: {source}")
+        if (relative.is_absolute() or not relative.parts or any(p in ("", ".", "..") for p in destination_text.split("/"))):
+            raise ValueError(f"invalid destination relative path: {destination_text}")
+        result.append((source, relative))
+    for index, (source, relative) in enumerate(result):
+        for other_source, other_relative in result[:index]:
+            if (source.is_relative_to(other_source) or other_source.is_relative_to(source)
+                    or relative.is_relative_to(other_relative) or other_relative.is_relative_to(relative)):
+                raise ValueError("overlapping source or destination mappings are not supported")
+    return sorted(result, key=lambda item: str(item[0]))
+
+
+def combined_inventory(mapping, inventories):
+    result = {"files": {}, "directories": {"."}, "symlinks": {}}
+    for source, relative in mapping:
+        result["directories"].update(str(parent) for parent in (relative, *relative.parents))
+        content = inventories[str(source)]
+        for directory in content["directories"]:
+            result["directories"].add(str(relative) if directory == "." else str(relative / directory))
+        for kind in ("files", "symlinks"):
+            result[kind].update((str(relative / name), value) for name, value in content[kind].items())
+    result["directories"] = sorted(result["directories"])
+    return result
+
+
+def archive(args):
+    os.umask(0o077)
+    mounts = check_mount()  # Never mkdir any NAS path before this check.
+    destination = Path(args.destination)
+    if (not destination.is_absolute() or destination.resolve() != destination
+            or not destination.is_relative_to(NAS / "archives") or destination == NAS / "archives"
+            or os.path.lexists(destination)):
+        raise ValueError("destination must be a new canonical directory under NAS project archives")
+    if not args.receipt_name or Path(args.receipt_name).name != args.receipt_name or args.receipt_name in (".", ".."):
+        raise ValueError("receipt-name must be a single new directory name")
+    mapping_path = Path(args.mapping).resolve()
+    mapping_bytes = mapping_path.read_bytes()
+    mapping = load_mapping(mapping_path)
+    receipts_root = NAS / "receipts"
+    private_directory(receipts_root)
+    receipt = receipts_root / args.receipt_name
+    if os.path.lexists(receipt):
+        raise ValueError("receipt directory already exists")
+    if any(receipt.is_relative_to(source) or destination.is_relative_to(source) for source, _ in mapping):
+        raise ValueError("output or receipts would change a source tree")
+    if not args.lock:
+        raise ValueError("at least one existing coordinating lock file is required")
+    with ExitStack() as stack:
+        locks = []
+        for text in sorted(set(args.lock)):
+            path = Path(text)
+            if not path.is_absolute() or path.resolve() != path or path.name not in (".training.lock", ".prepare.lock", ".benchmark.lock", ".run.lock"):
+                raise ValueError(f"invalid explicit lock path: {path}")
+            descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)  # Never create or truncate a source lock.
+            stack.callback(os.close, descriptor)
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise ValueError("lock is not a regular file")
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            locks.append(str(path))
+        receipt.mkdir(mode=0o700)
+        record = {"schema": "sekirei.private-archive.v1", "status": "running", "started": utc(),
+                  "destination": str(destination), "mapping": {str(s): str(d) for s, d in mapping},
+                  "mapping_sha256": hashlib.sha256(mapping_bytes).hexdigest(), "mounts": mounts, "locks": locks,
+                  "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), "sources_deleted": False}
+        def progress(phase):
+            record.update(phase=phase, updated=utc())
+            atomic_json(receipt / "status.json", record)
+        try:
+            progress("inventory-source-before")
+            before = {}
+            for source, _ in mapping:
+                progress(f"inventory-before:{source}")
+                before[str(source)] = inventory(source)
+            atomic_json(receipt / "source-before.json", before)
+            expected = combined_inventory(mapping, before)
+            atomic_json(receipt / "expected-destination.json", expected)
+            total = sum(info["bytes"] for info in expected["files"].values())
+            if shutil.disk_usage(NAS).free < total + 64 * 1024 * 1024:
+                raise RuntimeError("insufficient NAS free space (payload plus 64 MiB margin)")
+            check_mount()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.mkdir(mode=0o700)  # Exclusive creation; no reuse on restart.
+            for index, (source, relative) in enumerate(mapping):
+                check_mount()
+                target = destination / relative
+                target.mkdir(parents=True, mode=0o700)
+                progress(f"rsync:{source}")
+                command = ["rsync", "-a", "--no-owner", "--no-group", "--fsync", "--", str(source) + "/", str(target) + "/"]
+                with (receipt / f"rsync-{index:03d}.log").open("x") as log:
+                    subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
+            progress("inventory-source-after")
+            after = {str(source): inventory(source) for source, _ in mapping}
+            atomic_json(receipt / "source-after.json", after)
+            for source, _ in mapping:
+                require_same(before[str(source)], after[str(source)], f"source {source}")
+            check_mount()
+            progress("inventory-destination")
+            copied = inventory(destination)
+            atomic_json(receipt / "destination.json", copied)
+            require_same(expected, copied, "destination")
+            if mapping_path.read_bytes() != mapping_bytes:
+                raise RuntimeError("mapping changed during archive")
+            check_mount()
+            record.update(status="complete", completed=utc(), files=len(copied["files"]), bytes=total,
+                          directories=len(copied["directories"]), symlinks=len(copied["symlinks"]))
+            progress("verified")
+        except BaseException as error:
+            record.update(status="failed", error=f"{type(error).__name__}: {error}")
+            progress("failed")
+            raise
+        if record["status"] != "complete":
+            raise RuntimeError("archive did not complete")
+        print(json.dumps({key: record[key] for key in ("status", "destination", "files", "bytes", "directories", "symlinks")}, indent=2))
+
+
+def self_test():
+    with tempfile.TemporaryDirectory(prefix="weight15-archive-fixture-", dir="/tmp") as text:
+        root = Path(text)
+        source, copied = root / "source", root / "copied"
+        source.mkdir(); (source / "empty").mkdir(); (source / "payload.txt").write_text("public fixture\n")
+        (source / "absolute-link").symlink_to("/tmp/nonexistent-public-fixture")
+        (source / "dir-link").symlink_to("empty", target_is_directory=True)
+        original = inventory(source)
+        shutil.copytree(source, copied, symlinks=True)
+        require_same(original, inventory(copied), "fixture")
+        archive_fixture = root / "archive-fixture"
+        (archive_fixture / "nested").mkdir(parents=True)
+        shutil.copytree(source, archive_fixture / "nested/data", symlinks=True)
+        expected = combined_inventory([(source, PurePosixPath("nested/data"))], {str(source): original})
+        require_same(expected, inventory(archive_fixture), "combined mapping fixture")
+        changes = [("payload", lambda: (copied / "payload.txt").write_text("different fixture\n")),
+                   ("file-set", lambda: (copied / "extra.txt").write_text("public extra\n")),
+                   ("empty-dir", lambda: (copied / "extra-empty").mkdir()),
+                   ("link", lambda: ((copied / "dir-link").unlink(), (copied / "dir-link").symlink_to("other")))]
+        for name, change in changes:
+            before_change = inventory(copied)
+            change()
+            try:
+                require_same(before_change, inventory(copied), name)
+            except RuntimeError:
+                pass
+            else:
+                raise AssertionError(f"missed fixture difference: {name}")
+        assert original["symlinks"]["absolute-link"] == "/tmp/nonexistent-public-fixture"
+        assert "empty" in original["directories"] and "dir-link" not in original["directories"]
+    print("self-test complete: matching inventory, content/directory/symlink differences, symlink no-follow")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--mapping")
+    parser.add_argument("--destination")
+    parser.add_argument("--receipt-name")
+    parser.add_argument("--lock", action="append", default=[])
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    if args.self_test:
+        self_test()
+    elif not all((args.mapping, args.destination, args.receipt_name)):
+        parser.error("--mapping, --destination and --receipt-name are required")
+    else:
+        archive(args)

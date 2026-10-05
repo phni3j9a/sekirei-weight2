@@ -48,6 +48,8 @@
 
 そこで少量の局面を固定V9.20・同一重み・100万ノードで再評価し、符号、尺度、評価値差、指し手、実ノード数を監査する。この監査は取り違え検出と互換性確認であり、由来の証明や学習データ自体を開発・最終評価データとして使うことではない。
 
+Issue #17で単位と手番の経路を再確認した。固定やねうら王はNNUE出力をFV_SCALEで内部Valueへ換算し、USIで`100*v/90`のcpを表示する。[固定USI実装](https://github.com/yaneurao/YaneuraOu/blob/a81730f47eefa4d53003ed85034715a28d2437ab/source/usi.cpp#L1084)。対象packより前の公開GenSfenはUSIの`score cp`を整数で受け取り、±32000へclampしてsigned16へ保存する。[parserとwriter](https://github.com/yaneurao/YaneuraOu-ScriptCollection/blob/c129c4c850268b0ed478ea9adee9caf12c7acf2f/GenSfen/ShogiCommonLib.py#L195)。今回のdecoder・dataset adapter・teacher cacheはこのcpを保持し、学習器とcoreはともに手番側の出力を`/64`で評価する。追加の倍率変換や符号修正の根拠は見つからなかった。既存の10件監査もexact6件のMAE3.167 cp・最大11 cpで整合するが、配布packの実生成commitや全optionが不明という限界は残る。別形式のclassic PackedSfenValueに使われる内部Valueの扱いを、このgame `.pack`へ適用しない。
+
 ## 評価と分割
 
 - 候補選択に使う開発棋譜と、節目だけで使う最終評価棋譜を分ける。学習・開発・最終評価の間で同一棋譜、変化枝、重複局面の混入を点検する。
@@ -93,6 +95,14 @@ rfkit-rs の Planner → 一つの Issue → Worker → 検証済み PR の骨�
 保存済みcheckpointの静的診断では振幅不足とtrain/holdoutの汎化差を確認した。同じデータをconstant LRで12エポック学習するとholdout MAEは減少したが、正式比較はMAE 1201.084 cp / Top3 29.90%で不採用だった。静的誤差の改善を採用へ読み替えず、現行fallbackを維持する。
 
 駒得からの初期化、同一checkpointのFT最近傍丸め、112,681局面での13駒価値学習まで正式比較を完了した。最近傍丸め候補はMAE 985.098 cp / Top3 53.54%で、同checkpointの切り捨て版より両指標が改善したが、fallbackのTop3 55.39%を維持できなかった。4候補とも採用基準未達で最良fallbackを維持する。旧holdout 5,895局面をバイト単位で固定した追加NNUE学習は静的診断用で、正式未評価の候補は採用しない。Suisho11Plusの17局面×3反復も完了し、参考確認として分離した。初期値のcore一致、量子化差、学習後の静的診断、探索後の正式評価を別々に記録する。[実験条件と結果](WEIGHT_IMPROVEMENT.md)を参照。
+
+## Issue #17 第8候補の正式比較
+
+固定白視点・対非線形epoch3がdevelopment 5局の100万ノード正式比較で、同じ白視点binaryのfallbackに対しMAEとTop3を同時に改善した。MAEは907.671621 cp対1084.478601 cp、Top3は59.951320%対55.388757%。comparison_valid=true、adopt=true、8比較identity一致を確認し、採否は保存された各局の整数から5局等重みの有理数で判定した。学習lossや表示丸めによる判定ではない。
+
+固定3epoch338,043更新、保護駒得parameter/Adam m/vのbyte一致、通常probeによるcore118,591／差分更新8,185観測を確認した。通常probeとcfg(test)内のClone fixture未検証を分ける。原典の探索と正式条件、final未使用を維持し、Suisho11Plusの新しい51回の参考確認は採用後に完了した。一般的棋力の改善は未確認である。前7候補の有効な不採用結果と技術失敗の原本は[自律改善](AUTONOMOUS_WEIGHT_IMPROVEMENT.md)に残す。
+
+停止確認・NAS保存・公開集計の検証・最良モデルへの登録は完了した。[公開比較](validation/autonomous-weight-improvement-2026-10-04/paired-nonlinear/comparison.md)と[採用モデルidentity](validation/autonomous-weight-improvement-2026-10-04/best-model.json)を記録した。コードと知見は[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)にまとめた。Goalは公開PRのCI成功を確認して完了登録した。
 
 ## Issue #9 Sekirei v0.3.39への移行
 

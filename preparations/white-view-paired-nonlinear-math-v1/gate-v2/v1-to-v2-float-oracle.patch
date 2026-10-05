@@ -1,0 +1,51 @@
+--- v1/paired_nonlinear_gate.py
++++ v2/paired_nonlinear_gate.py
+@@ -161,20 +161,40 @@
+ 
+ def up(x):
+     require(math.isfinite(x) and x>=0,'finite positive bound required')
+-    x=math.nextafter(x,math.inf);require(math.isfinite(x),'bound overflow');return x
++    raw=struct.unpack('<Q',struct.pack('<d',x))[0]
++    require(raw>>63==0,'positive-sign finite bound required')
++    y=struct.unpack('<d',struct.pack('<Q',raw+1))[0];require(math.isfinite(y),'bound overflow');return y
++
++def ftz64(x):
++    """Pure bit oracle for 9fc0 DAZ operands / FTZ arithmetic results."""
++    raw=struct.unpack('<Q',struct.pack('<d',x))[0];magnitude=raw&0x7fffffffffffffff
++    if 0<magnitude<0x0010000000000000:
++        return struct.unpack('<d',struct.pack('<Q',raw&0x8000000000000000))[0]
++    return x
++
++def abs32_as64(raw):
++    """Native abs(f32) -> as f64 under DAZ; parameter bits stay untouched."""
++    value=frombits(raw);magnitude=raw&0x7fffffff
++    return 0.0 if 0<magnitude<0x00800000 else abs(value)
++
++def add_up(a,b):return up(ftz64(ftz64(a)+ftz64(b)))
++def mul_up(a,b):return up(ftz64(ftz64(a)*ftz64(b)))
++def div_up(a,b):
++    require(math.isfinite(b) and b>0,'finite positive divisor required')
++    return up(ftz64(ftz64(a)/ftz64(b)))
+ 
+ def forward_bounds(s):
+     q=0.0
+-    for p in range(14):q=up(q+abs(frombits(s['out'][4+2*p])))
++    for p in range(14):q=add_up(q,abs32_as64(s['out'][4+2*p]))
+     require(q<=32768.0,'conservative output L1 exceeds selected budget')
+-    raw=up(1682688.0+up(254.0*q));factor=up(1.0/(1.0-2.0**-18))
+-    upper=up(up(up(raw*factor)/64.0)+1.0);require(upper<899000,'output reaches ordinary/mate boundary')
+-    factor=up(1.0/(1.0-2.0**-14))
++    raw=add_up(1682688.0,mul_up(254.0,q));factor=div_up(1.0,1.0-2.0**-18)
++    upper=add_up(div_up(mul_up(raw,factor),64.0),1.0);require(upper<899000,'output reaches ordinary/mate boundary')
++    factor=div_up(1.0,1.0-2.0**-14)
+     for col in range(4,L2):
+         total=0.0
+-        for row in range(2*L1):total=up(total+abs(frombits(s['l2'][row*L2+col])))
+-        c=up(abs(frombits(s['l2_bias'][col]))+up(127.0*total))
+-        require(up(up(c*factor)+1e-30)<frombits(0x7f7fffff),'L2 partial sum may overflow before clamp')
++        for row in range(2*L1):total=add_up(total,abs32_as64(s['l2'][row*L2+col]))
++        c=add_up(abs32_as64(s['l2_bias'][col]),mul_up(127.0,total))
++        require(add_up(mul_up(c,factor),1e-30)<frombits(0x7f7fffff),'L2 partial sum may overflow before clamp')
+     return {'q_l1_upper':q,'absolute_cp_upper':upper}
+ 
+ def validate_state(s,reference):

@@ -124,7 +124,7 @@ class InitialWeightsTests(unittest.TestCase):
                     (output / "weights.bin").write_bytes(b"SEKIRW01")
                     if mutate:
                         initial.with_suffix(".meta.json").write_text('{}')
-                    return Namespace(wait=lambda timeout: 0)
+                    return Namespace(pid=12345, wait=lambda timeout: 0)
                 with patch.object(train_cpu.subprocess, "Popen", side_effect=fake_popen), patch("builtins.print"):
                     if mutate:
                         with self.assertRaisesRegex(RuntimeError, "validation_failure"):

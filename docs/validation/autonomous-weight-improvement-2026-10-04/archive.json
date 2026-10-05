@@ -1,0 +1,25 @@
+{
+  "archive_result_sha256": "64905659226fbe9a2be228289b0225ba4d8070eeea7fb1a0c98e4c21d6998078",
+  "best_adoption_sha256": "402a2c48b47751d2a6335818513b64f3b54671294fdc9fdcdfa5c5bf306433ef",
+  "candidate": "white-view-paired-nonlinear-adam-e3-v1",
+  "final_used": false,
+  "metadata": {
+    "bytes": 217349120,
+    "files": 322,
+    "ledger_sha256": "891ae53d92874ff1afd437eb7fdfb8d91a20d44777876bc7677f1ed79ad0b430",
+    "source_before_after_copied_equal": true
+  },
+  "model_sha256": "f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042",
+  "schema": "sekirei.public-selected-archive-summary.v1",
+  "selected_archive": {
+    "bytes": 647117529,
+    "directories": 187,
+    "files": 13911
+  },
+  "source_head": "8e07fdafe0ac44db79dd7ef1402fcc530b0e1f4b",
+  "source_originals_preserved": true,
+  "standalone_environment_restore": false,
+  "stop_sha256": "4be0f65efea3580ddd674b374ec5bf37143b3879e9e382a7618a8c522c79f5c9",
+  "symlinks": 0,
+  "whole_source_before_after_destination_equal": true
+}

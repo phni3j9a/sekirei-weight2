@@ -44,6 +44,8 @@ Issue #15も同じ教師packと `suisho11beta-v1/venv/bin/python`（cshogi 1.0.4
 
 Issue #15のcampaign・専用trainer・完了比較16 runは `archives/2026-10-03/issue-15-eight-hour-v1` へ保管した。source-before/source-after/destinationのファイル集合・サイズ・SHA-256、directory集合、symlink文字列を全照合し、20,765 files・757 directories・4 symlinks・2,417,083,627 bytesで一致した。非公開receiptは `receipts/issue15-eight-hour-v1`、[公開集計](validation/weight-improvement-2026-10-03/archive.json)には集約値とhashだけを置く。SSD原本は削除していない。比較バイナリ・旧データ等の既存依存は従来のruntimeと保管記録を併用し、このコピー単体で全環境を独立復元できるとは扱わない。
 
+Issue #17の112k epoch3・FT最近傍候補は、有効な正式比較でMAE改善・Top3低下のため採用未達となった。完了evaluation・4run・モデル/metadata・凍結snapshotを `archives/2026-10-03/issue-17-expanded-e3-nearest-v1` へ保管し、3,726 files・30 directories・0 symlinks・33,657,398 bytesがコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-expanded-e3-nearest-v1`、[公開保存集計](validation/autonomous-weight-2026-10-03/expanded-e3-nearest/archive.json)は集約値とhashのみ。SSD原本を保持し、固定runtime・audit venv・fallback証拠・Issue #15学習archiveへの依存をsnapshotに残した。採用モデルの更新や独立した全環境backupの成功とは扱わない。
+
 コピーと復元は次の手順で手動実行する。
 
 1. `findmnt --target /mnt/storage` と `df -h` でマウントと両保存先の空きを確認する。マウントがない、書き込めない、容量不足の場合は停止し、内蔵SSD側に同名の保管先を作らない。
@@ -55,6 +57,29 @@ Issue #15のcampaign・専用trainer・完了比較16 runは `archives/2026-10-0
 7. 復元時は元のSSDパスに別のデータがないことを確認し、保管コピーからコピーして同じ一覧・サイズ・SHA-256を照合する。資料リンクを実体へ戻す場合も、一時ディレクトリで照合してから切り替える。runtimeのバイナリ・重みを照合し、実機smokeと該当runの検証を行う。保存済みのmanifestやfingerprintを書き換えて検証を通さない。 旧v0.3.36 baselineのreport/exportは、当時の固定版 `ed76730` の専用worktreeで実行する。現行v0.3.39ではtoolchain lock不一致として拒否される。
 
 この配置は保管容量を補うもので、mergerfs自体による複製を意味しない。資料原本を移設した後、SSDの互換リンクは別コピーとして数えない。今回のファイル数・容量・照合結果とSSDの空き容量変化は[移設の検証記録](validation/storage-2026-10-02.md)に残す。
+
+Issue #17のridge=1は正式比較でMAE改善・Top3低下のため採用しない。完了evaluation・4run・model/metadata・凍結snapshotを`archives/2026-10-03/issue-17-material-ridge1-112k-v1`へ保存し、3,737 files / 33 directories / 0 symlinks / 34,969,726 bytesのsource前後と保存先のsize/SHA・集合一致を確認した。private receiptは`receipts/issue17-material-ridge1-112k-v1`、[公開集計](validation/autonomous-weight-2026-10-03/material-ridge1-112k/archive.json)を残す。SSD原本は保持した。
+
+Issue #17の次候補preflightでは、元SSDのdata-400-frozen-holdout/train.labelsだけが固定manifestとhash不一致で停止した。検証済みIssue #15 NAS copyとの差分は1行のteacher identityのみ、cp・SFEN集合・順序は同じ。原因は未特定。元SSDを上書きせず、`campaign-17-autonomous-v1/source-input-recovery-v1/dataset`へmanifestと4ファイル（5 files / 64,444,603 bytes）を新規copyし、元NAS・copy先・manifestのsize/SHA一致、元SSDの前後不変を確認した。次候補ではこの復元inputを使う。詳細receiptと差分記録はprivateに保持し、[自律改善](AUTONOMOUS_WEIGHT_IMPROVEMENT.md#次候補の事前登録と入力復元)にhashと判断を残す。
+
+Issue #17のfunctional-anchor halfも有効な正式比較でMAE改善・Top3維持未達となった。全生成・3epoch・診断・export・core証拠・4run・凍結snapshotを `archives/2026-10-03/issue-17-functional-anchor-half-e3-nearest-v1` へ保管し、3,831 files・43 directories・0 symlinks・415,829,630 bytesの集合・size・SHA-256等がコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-functional-anchor-half-e3-nearest-v1`、[公開集計](validation/autonomous-weight-2026-10-03/functional-anchor-half-e3-nearest/archive.json)を参照。SSD原本・参照パスを保持し、元入力と固定環境等の既存依存も記録した。
+
+Issue #17のbounded-material E3は有効な正式比較でMAE・Top3とも悪化し、不採用とした。成功v3の全3epoch/native/Adam/metadata、metadata名誤りで停止したv2の実epoch1と旧source/helper、元O復元入力・全証拠・4run・凍結completionを `archives/2026-10-03/issue-17-bounded-material-residual-100cp-e3-v1` へ保存し、3,899 files・71 directories・0 symlinks・428,614,972 bytesのsource前後/保存先一致を確認した。private receiptは `receipts/issue17-bounded-material-residual-100cp-e3-v1`、[公開集計](validation/autonomous-weight-2026-10-03/bounded-material-residual-100cp-e3/archive.json)を残す。SSD原本と参照パスを保持し、専用build/venvはSSDに残す。保存helperが許容しないbuild lockを外側で保持した再試行も記録し、partial NAS copyの再利用やguardの緩和はしていない。
+
+
+Issue #17のFanIn509 E3は有効な正式比較でMAE改善・Top3低下のため不採用だった。全3epochのnative/Adam/metadata、元O復元入力、全証拠と4run、固定venvへの起動復旧と失敗snapshotを `archives/2026-10-04/issue-17-bounded-material-fanin509-100cp-e3-v1` へ保存し、3,965 files・77 directories・0 symlinks・355,207,871 bytesのsource前後/保存先一致を確認した。[公開集計](validation/autonomous-weight-2026-10-03/bounded-material-fanin509-100cp-e3/archive.json)を参照。SSD原本・参照パス・専用build/venvを保持した。
+
+Issue #17の対線形補助出力・制約付きridge=1候補も、有効な正式比較でMAE・Top3とも悪化し、不採用とした。単一fitのnative/design/Gram/係数/certificate、元O復元5入力、core/incremental証拠、新四段階のevaluation/run、無効な初回測定の原本とmirror全4,218ファイル、固定control/source/completionを `archives/2026-10-04/issue-17-paired-linear-constrained-ridge1-l1-39p5-v2` へ保存した。archive-supportを含む15 source roots・8,164 files・80 directories・0 symlinks・230,230,076 bytesがコピー前後と保存先で一致した。非公開receiptは `receipts/issue17-paired-linear-constrained-ridge1-l1-39p5-v2`、[公開集計](validation/autonomous-weight-2026-10-04/paired-linear-constrained-ridge1-l1-39p5-v2/archive.json)に集約値とhashだけを残す。初回cleanup failureを有効測定へ混ぜず、新四段階を全て新規取得した。SSD原本と既存runtime/build/venv/教師等への依存を維持する。
+
+### Issue #17 第8候補の保存・実行記録
+
+白視点・対非線形固定E3は、同じ白視点binaryのfallbackに対する有効な正式比較でMAE改善とTop3非低下を満たした。比較executorのRoot native tool session86193/chunk496f7dはexit0/reaped。固定3epoch338,043更新、保護駒得parameter/Adam m/vのbyte一致、通常core118,591／incremental8,185観測は技術検証として別に記録する。通常probeは--testではなく、cfg(test) Clone fixtureの未検証制限を解消したとは扱わない。
+
+保存対象は固定E3 checkpoint／全Adam状態／native03／sidecar、training START・元親failure・子の終了・回収証拠とsource、proof全成果物、旧fallback／新fallback／候補の各4run、独立raw監査・橋・厳密比較、tool・停止・completion等の凍結controlとする。使用中のruntime／build／venvはSSDへ保持し、コピー対象の全immutable履歴と外部依存を明示的に分類する。
+
+Rootによる停止確認はsession75745 / chunk7dbcbd、exit0・reaped、11 locksと二回のプロセス確認。STOP SHA `4be0f65efea3580ddd674b374ec5bf37143b3879e9e382a7618a8c522c79f5c9`、NAS保存先・receipt・公開集計は非公開NASの `archives/2026-10-04/issue-17-white-view-paired-nonlinear-adam-e3-v1`、receipt `issue-17-white-view-paired-nonlinear-adam-e3-v1-20261004`。source-before/source-after/destinationの全ファイル集合・サイズ・SHA-256・directory集合一致、symlink扱い、全input前後一致、helper／親自身のnative0/reap／group停止、別Root metadataの保存照合値は13,911 files / 647,117,529 bytes / 187 directories / symlink0。全source-before・source-after・destination一致、NAS親session39965 / chunk940afbはexit0・reaped。追加metadata 322 files / 217,349,120 bytesもコピー前後・保存先一致、ledger SHA `891ae53d92874ff1afd437eb7fdfb8d91a20d44777876bc7677f1ed79ad0b430`。未確認のfilecountや容量を推定しない。SSD原本と既存参照パスを保持し、このNASコピー単体で全環境を復元できるとは主張しない。
+
+公開物はcomparison JSON/Markdown/2指標集計SVGの3filesとsize/SHA manifestの計4files。raw／SFEN／labels／inputmaps／教師／モデル本体／詳細copy ledgerは非公開に残す。モデルidentity SHAは `f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042`。公開sourceの統合とbest／Goal／PRの状態は[自律改善](AUTONOMOUS_WEIGHT_IMPROVEMENT.md)で別に確定する。
 
 ## 固定ソフト
 
@@ -209,3 +234,7 @@ planはエンジンを起動せず入力集合を確認するため、未凍結�
 planの固定値はpilot 17 positions / 102 attempts / 34 engine-position triples、formal 570 positions / 1,140 attempts、development CSA aggregate SHA-256 `0e02b6319cbf908761dde7326ab6a1bfc4b647e2601ca1e3643fa6a207f48ee2`、分類manifest SHA-256 `a244a2206fd2b25b6fe475a9794c07eb2c5fc99f996e891dbfed1e89a0a89427`、分類を含むcanonical universe SHA-256 `33ce54f3ff9c40687e2304a7dc222ceddc0d6843180020a68262dd1762ec5fa6`。両計画は `go nodes 1000000` と `one-sided-1-percent` v1、`C(1,000,000)=1,010,000` を事前登録する。`reported_nodes_at_score`、`last_reported_nodes`、全有効値の最大 `M` を保存し、`M <= C(N)` をinclusiveに判定する。observed maxがrequested nodes未満でも早期完了として許容するが、各engineに正のnode evidenceが必要で、技術失敗や片側だけの証拠ではgateを通さない。formal gateは同じruntimeの102-attempt pilotについて `pilot_run_id`、`pilot_fingerprint`、全attemptから再計算した observed maximum、policy limit、完全なattempt matrixを要求する。現在のv0.3.39 fallback用設定はIssue #13で凍結済みである。execution identityにはrunner/parser、分類・development hash、requested nodes、node policy id/version/rate、timeout、環境、全option、バイナリ・build/toolchain、教師重み、候補モデル、hostを束縛する。
 
 `benchmark_report.py report` はlocal詳細を書けるが、`export` は空の出力ディレクトリ直下へ `validation.md`、`reviewed.svg`、`validation.json`、`manifest.json` の4 redacted public fileだけを書く。local/や局面別ファイルは作らず、絶対パス、ユーザー名、source game ID、raw position履歴、model path、free-form provenanceを入れない。v0.3.36 formal v2の生成物はMainがSVGを目視レビューし、[`validation/development-baseline-2026-09-19`](validation/development-baseline-2026-09-19/validation.md) に追跡した。v5は同系列の17局面・102 attemptのreviewed/formal launch evidence、formal v2はそのidentityでの初期baselineであり、旧v2/v3/v4 pilotと旧invalid formalから区別する。local/public reportはengine別に全有効値Mのevidence/positive/zero/missing/invalid、p50/p95/p99/max、`>N`、`>C(N)`、最大positive overrun/rateを保持し、quantileはソート済み有限値の `(n-1)*p` 位置を線形補間する。pilotのTeacher exact coverageはサンプル診断に限られ、正式headlineはformal v2の固定Teacher-E 266点が全てSekirei exactになった場合にだけ定義した。final 5局は未アクセスである。
+
+### 採用モデルを使用する既存SSD環境
+
+専用runtimeは `~/.local/share/sekirei-weight2/suisho11beta-sekirei-v0.3.39-white-view-v1`、Sekirei binary SHA-256は `c8818d71c3c3b54684f76ef5c204d56b1f1445e12cf81d22820c69a8c8b0c1c3`。採用weightは `~/.local/share/sekirei-weight2/training-17-v1/white-view-paired-nonlinear-trainer-v1/training-e3-v1/weights.nearest03.bin`（1,305,356 bytes、SHA `f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042`）。USIの `EvalFile` にこのファイルを指定し、`NnueOutput=absolute` とし、重み読込応答を確認する。モデルは白視点native03であり、専用runtimeとの組合せを保存済みGateとidentityで固定している。候補configとbest manifestは非公開campaign runtimeに残した。

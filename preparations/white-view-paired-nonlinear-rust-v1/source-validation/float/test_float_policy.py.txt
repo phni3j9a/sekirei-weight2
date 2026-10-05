@@ -1,0 +1,66 @@
+"""Pure controlword/SOURCE only: never execute real MXCSR or Rust."""
+from pathlib import Path
+import hashlib,re,unittest
+D=Path(__file__).resolve().parent
+SOURCE=(D/'paired_nonlinear_float.rs').read_text()
+PATCH=(D/'integration.patch').read_text()
+MASK=0x3f;CONTROL=0x9fc0
+
+def check(environment,raw):
+    if type(environment) is not str or environment!='1':raise ValueError('exact env')
+    if type(raw) is not int or not 0<=raw<2**32:raise ValueError('u32 word')
+    if raw & ~MASK != CONTROL:raise ValueError('control')
+    return dict(raw=raw,control=raw & ~MASK,status=raw & MASK)
+class Tests(unittest.TestCase):
+    def test_float_policy_all_status_combinations(self):
+        for status in range(64):self.assertEqual(check('1',CONTROL|status),dict(raw=CONTROL|status,control=CONTROL,status=status))
+    def test_float_policy_each_control_bit_mutation(self):
+        for bit in range(6,32):
+            with self.assertRaises(ValueError):check('1',CONTROL^(1<<bit))
+    def test_float_policy_env_exact(self):
+        for value in ('','0','true','TRUE','1 ',' 1','1\n','01','１',True,1,None):
+            with self.assertRaises(ValueError):check(value,CONTROL)
+    def test_float_policy_word_strict(self):
+        for value in (True,float(CONTROL),-1,2**32):
+            with self.assertRaises(ValueError):check('1',value)
+    def test_float_policy_root_config_does_not_repair_rounding(self):
+        self.assertEqual(check('1',0x1f80|0x8040)['control'],CONTROL)
+        for wrong in (0x1f80|0x2000,0x1f80 & ~(1<<7),0x1f80|0x10000):
+            with self.assertRaises(ValueError):check('1',wrong|0x8040)
+    def test_float_policy_source_read_only(self):
+        code=re.sub(r'//[^\n]*','',SOURCE)
+        for forbidden in ('_mm_setcsr','ldmxcsr','std::env::set_var','Command::','std::fs','Popen'):
+            self.assertNotIn(forbidden,code)
+        self.assertIn('raw & !STATUS_MASK',SOURCE)
+        self.assertIn('control!=CONTROL_REQUIRED',SOURCE)
+        self.assertIn('slot=in(reg) &mut raw',SOURCE)
+        self.assertIn('options(nostack,preserves_flags)',SOURCE)
+        self.assertNotRegex(code,r'options\([^)]*\b(?:nomem|readonly|pure)\b')
+    def test_float_policy_arch_closed(self):
+        self.assertIn('#[cfg(target_arch="x86_64")]',SOURCE)
+        self.assertIn('#[cfg(not(target_arch="x86_64"))]',SOURCE)
+        self.assertIn('requires x86_64 actual MXCSR read-back',SOURCE)
+    def test_float_policy_rust_tests_are_pure(self):
+        body=SOURCE.split('#[cfg(test)]mod tests{',1)[1]
+        names=re.findall(r'#\[test\]fn (\w+)\(',body)
+        self.assertEqual(len(names),4)
+        self.assertTrue(all('float_policy' in x for x in names))
+        code=re.sub(r'//[^\n]*','',body)
+        self.assertNotIn('runtime_ready(',code);self.assertNotIn('actual_mxcsr_readback(',code);self.assertNotIn('snapshot(',code)
+    def test_float_policy_guard_patch_and_epoch_boundaries(self):
+        self.assertEqual(PATCH.count('+pub fn runtime_guard()'),1)
+        self.assertGreaterEqual(PATCH.count('runtime_ready()'),4)
+        self.assertIn('let float_before=',PATCH);self.assertIn('let float_after=',PATCH)
+        self.assertIn('"before":float_before,"after":float_after',PATCH)
+        self.assertNotIn('selected_recipe(',PATCH)
+    def test_float_policy_frozen_sources_retained(self):
+        p=D.parent/'sekirei-weight2-white-view-paired-nonlinear-parent-validator-source-v3'
+        for name,expected in [('paired_nonlinear_actual_v3.rs','6b9c32a7f1ee82d18ffe8c717f66258590af7cdae913bbc0483f0d8373b9ffdf'),('paired_nonlinear_cli_v3.rs','2f5739f27bc2902283258aee32630b0a9733b2bc7cc08faa184b866e47f5236c')]:
+            raw=(p/name).read_bytes();self.assertEqual(hashlib.sha256(raw).hexdigest(),expected)
+            self.assertIn('Err("SOURCE ONLY',raw.decode())
+    def test_float_policy_root_source_snippet_identity(self):
+        p=D.parent/'sekirei-weight2-root-training-main-float-config-source-v1.rs';raw=p.read_bytes()
+        self.assertEqual(len(raw),834)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),'23281709dc0955fca2a1905216f8138cfab65a2808c8049a44bf3a90f90a4ffb')
+        self.assertIn('_mm_getcsr() | 0x8040',raw.decode())
+if __name__=='__main__':unittest.main()

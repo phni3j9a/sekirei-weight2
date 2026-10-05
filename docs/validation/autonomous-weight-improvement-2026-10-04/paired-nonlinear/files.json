@@ -1,0 +1,17 @@
+{
+  "files": {
+    "comparison.json": {
+      "bytes": 13976,
+      "sha256": "bf83fc4ab07cb9bc20b5af3584120b334234bf6de804bb93641f1c0387240ead"
+    },
+    "comparison.md": {
+      "bytes": 1334,
+      "sha256": "1d4653afc151f59cd759781c4d8a9b6fb2a74e12c47cd8a1bf2f43d80612005a"
+    },
+    "comparison.svg": {
+      "bytes": 4160,
+      "sha256": "024e8d5f75c9b313a6dba3feb40e084a40d16bf2409c67dd176b0553a8554c78"
+    }
+  },
+  "schema": "sekirei.public-file-manifest.v1"
+}

@@ -1,0 +1,147 @@
+{
+  "schema": "sekirei.white-view-evaluation-source-preparation.v4",
+  "status": "prepared-disabled-ready",
+  "created_at": "2026-10-03T23:05:37.129344+00:00",
+  "directory": "/tmp/sekirei-weight2-white-view-evaluation-runtime-source-v4",
+  "source_bytes_frozen": true,
+  "prototype_only": true,
+  "historical_d3_directory": "/tmp/sekirei-weight2-white-view-evaluation-runtime-source-v3",
+  "historical_d3_preparation": {
+    "path": "/tmp/sekirei-weight2-white-view-evaluation-runtime-source-v3/preparation.json",
+    "bytes": 11746,
+    "sha256": "e2f0a757d435750d905a5ea7b6637ad2feb9f99695db2e86a6f6194a98659c0b"
+  },
+  "source_files": {
+    "README-runtime-v2.md": {
+      "bytes": 9472,
+      "sha256": "f878f3f12e8807ca08e810e55ee252b2e79462d6b3ac57469b691cd615d3c58b"
+    },
+    "README-runtime-v3-entry-historical.md": {
+      "bytes": 836,
+      "sha256": "d511dda1f88a2b82510c512febf4f5bf043d9cd56b6094c931c524a359ca1115"
+    },
+    "README-runtime-v3.md": {
+      "bytes": 11750,
+      "sha256": "a7640fd4f05dd19a9ccd037e063f3ac47c46e000d16efa79bf3d8e24258114dc"
+    },
+    "README-source-v1-historical.md": {
+      "bytes": 10072,
+      "sha256": "58544f9e67474f7b501f7fc923099e03f1495b74607431b3f6020ab52c0727fb"
+    },
+    "README.md": {
+      "bytes": 987,
+      "sha256": "a971abcbf5485e4fdeefbedd725552ec2c3a3d188c5834ea7f1b0ac99f759d7c"
+    },
+    "d2-to-d3.patch": {
+      "bytes": 14778,
+      "sha256": "7d40b07b37b8ee96184b8b30d2bf95c7972d179f196ff00a159145a21e68665f"
+    },
+    "d3-to-d4-wiring.patch": {
+      "bytes": 2256,
+      "sha256": "7f3fcab16cd674ff8b5dd38851d6b530f1312216758a3c31d2990f6a3e8a17da"
+    },
+    "historical-d2-preparation.json": {
+      "bytes": 6517,
+      "sha256": "c7ab10f202ff6e916ee47e8d21e7c1e90a8fc99f1ec847f73b6aa47a6bf25b04"
+    },
+    "historical-d3-preparation.json": {
+      "bytes": 11746,
+      "sha256": "e2f0a757d435750d905a5ea7b6637ad2feb9f99695db2e86a6f6194a98659c0b"
+    },
+    "test_white_view_evaluation.py": {
+      "bytes": 22642,
+      "sha256": "6f10226135ba202db8adb91f2f3afca1a1f236defa244b02917ddb339ecdfe27"
+    },
+    "test_white_view_runtime_ports.py": {
+      "bytes": 25038,
+      "sha256": "1f27005a4ea87a76db858bf4d0fc77f2c2ccd77b7c90bcd2ec58d349512f7d10"
+    },
+    "white_view_evaluation.py": {
+      "bytes": 44570,
+      "sha256": "7da00736bd4c1e2b158765ce1a645676ce2de54894637c67421afe2cdc826a00"
+    },
+    "white_view_operations.py": {
+      "bytes": 17752,
+      "sha256": "b09853d5221978b35fa6d508011cb73c46170025353925060c4cc186abc8030b"
+    },
+    "white_view_production_ports.py": {
+      "bytes": 37985,
+      "sha256": "2aaa25bfd3f09ab6481ccae9be3b45be909343ae0330e52c41b362d0b4459915"
+    },
+    "white_view_runtime_io.py": {
+      "bytes": 12336,
+      "sha256": "61e6186044de56aca7e64bf7d99739ace7ebb937975c226c07fdc0020e11137e"
+    }
+  },
+  "allowed_v2_sources": {
+    "/tmp/sekirei-weight2-white-view-model-proof-source-v2/white_view_proof_common_v2.py": {
+      "bytes": 46768,
+      "sha256": "b96f7cb2954367c6e9932be08bd1e2ab066b3a870f412163270a17c698cfb749"
+    },
+    "/tmp/sekirei-weight2-white-view-model-proof-source-v2/white-view-candidate-core-proof-worker-v2.py": {
+      "bytes": 6904,
+      "sha256": "7cb8b4006a68db25d747bcb8c786ea28c4a4f155b96b46f0e07249753fff5b14"
+    },
+    "/tmp/sekirei-weight2-white-view-model-proof-source-v2/white-view-candidate-incremental-proof-worker-v2.py": {
+      "bytes": 4767,
+      "sha256": "a4bb8c283f80a6419ab9c5b2e7a7c0f1f7240b581f87475674949cfcedeb1a73"
+    },
+    "/tmp/sekirei-weight2-white-view-model-proof-source-v2/white-view-candidate-model-gate-worker-v2.py": {
+      "bytes": 5816,
+      "sha256": "4816a2d9faf34c74799d6fb131ec989211c27aa0104c98db7b9907d8c51f40b2"
+    },
+    "/tmp/sekirei-weight2-white-view-independent-numeric-audit-source-v2/white_view_independent_numeric_audit.py": {
+      "bytes": 40874,
+      "sha256": "ecf16fbb5f2c0c7b95478541cae5b51bbd52491a449826f523195b2730e46919"
+    },
+    "/tmp/sekirei-weight2-white-view-independent-numeric-audit-source-v2/test_white_view_independent_numeric_audit.py": {
+      "bytes": 27279,
+      "sha256": "05edb5460ba31a3def3a89d67db61f2a64be9a8e1ee132b5974254404ccec26f"
+    }
+  },
+  "production_source_delta": [
+    "canonical candidate validator filename white-view-candidate-model-gate-worker-v2.py",
+    "temporary private proof common import cache key white_view_proof_common_v2"
+  ],
+  "inverse_wiring_full_byte_equal_to_d3": true,
+  "other_three_sources_byte_identical_to_d3": true,
+  "semantic_metric_lifecycle_source_body_changed": false,
+  "synthetic_tests": {
+    "command": "python3 -B -m unittest test_white_view_evaluation test_white_view_runtime_ports -q",
+    "count": 43,
+    "pass": true,
+    "wall_seconds": 0.783,
+    "includes": "v2 canonical gate positive/v1 rejection and common2 cache normal/error restoration"
+  },
+  "syntax_ast_pass": true,
+  "whitespace_pass": true,
+  "independent_source_peers": {
+    "numeric_v2": {
+      "definite_blockers": 0,
+      "expected_metadata_only_canonicalization": true,
+      "actual_design_not_normalized": true,
+      "arithmetic_and_lifecycle_unchanged": true
+    },
+    "proof_v2": {
+      "definite_blockers": 0,
+      "inverse_wiring_all_four_sources_byte_identical_to_v1": true,
+      "schema_api_output_paths_math_guards_unchanged": true
+    }
+  },
+  "scope": {
+    "actual_controls_read": false,
+    "actual_model_data_raw_metrics_read": false,
+    "actual_engine_build_fit_probe_execution": false,
+    "public_repository_changed": false,
+    "historical_frozen_sources_changed": false,
+    "final_used": false,
+    "adoption_claimed": false
+  },
+  "runtime_requirements": [
+    "Root supplies exact external v2 numeric/core/incremental/common/gate refs in additive private launch inputs",
+    "Root records separate enabled source SHA; all prototype sources here remain disabled",
+    "Original PR exact public Git HEAD, fit/native/reference and failed v1 evidence remain unchanged",
+    "Output proof paths and schemas retain producer v1 output contracts; no existing failed/completed output overwritten",
+    "All D3 semantics, exact fractions, raw/node/lifecycle guards and external observed terminal remain mandatory"
+  ]
+}

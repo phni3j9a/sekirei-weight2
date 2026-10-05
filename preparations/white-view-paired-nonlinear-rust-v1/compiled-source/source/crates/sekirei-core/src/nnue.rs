@@ -1,0 +1,1370 @@
+//! NNUE-style efficiently-updatable evaluator.
+// Index-based loops are intentional for SIMD-friendly access patterns (LLVM VPADDW/VPSUBW).
+#![allow(clippy::needless_range_loop)]
+//!
+//! # Feature set
+//! PS + hand features:
+//!   Board: piece_sq × 14 × 2  = 2 268  (piece-square × own/opp)
+//!   Hand:  38 thresholds × 4  =   152  (per-count binary flags for each (color, perspective))
+//!   INPUT = 2 420
+//!
+//! The optional `nnue_white_view_aux_tied` feature rotates White's board view
+//! by 180 degrees and requires equal hand FT rows in banks 0/3 and 1/2.
+//! It keeps all four hand banks and uses the distinct `SEKIRW03` magic.
+//! It is mutually exclusive with `king_relative_b_small` (`SEKIRW02`).
+//!
+//! Hand features encode "side C has ≥ N pieces of kind K in hand" for each threshold N,
+//! from both color perspectives. Incremental: capture adds one threshold feature, drop
+//! removes one — O(1) update exactly like board features.
+//!
+//! # Architecture
+//!   Input → FT (L1=256, per perspective) → ClippedReLU → L2 (32) → ClippedReLU → Out
+//!
+//! # Weights
+//! Default weights are generated at first access via an LCG.
+//! Trained weights loaded via `load_weights(path)`.
+//!
+//! # Binary file format (SEKIRW01)
+//!
+//!   Offset        Size           Content
+//!   0             8              Magic: b"SEKIRW01"
+//!   8             INPUT*L1*2     ft_weights: INPUT × L1 × i16 (INPUT=2420)
+//!   +L1*2         L1*2           ft_bias: L1 × i16
+//!   +2*L1*L2*4    2*L1*L2*4     l2_weights: (2×L1) × L2 × f32
+//!   +L2*4         L2*4           l2_bias: L2 × f32
+//!   +L2*4         L2*4           out_weights: L2 × f32
+//!   +4            4              out_bias: f32
+//!   Total: ≈ 1.24 MB
+//!
+//! # SIMD-friendliness
+//! `add_col` / `sub_col` loop over contiguous `[i16; L1]` slices; LLVM emits
+//! VPADDW / VPSUBW (AVX2) or PADDW (SSE2).
+
+use std::io::{self, Error, ErrorKind, Write};
+use std::path::Path;
+use std::sync::OnceLock;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use crate::color::Color;
+use crate::piece::{Piece, PieceKind};
+use crate::square::Square;
+
+#[cfg(all(
+    feature = "nnue_white_view_aux_tied",
+    feature = "king_relative_b_small"
+))]
+compile_error!("nnue_white_view_aux_tied and king_relative_b_small are mutually exclusive");
+
+// ---- Dimensions ----
+
+/// Board features in one king zone: square × piece kind × own/opp perspective.
+const BOARD_FEATURES_PER_ZONE: usize = 81 * 14 * 2;
+
+/// Board-feature input dimension. The optional B-small set adds the
+/// perspective's own king 3x3 zone as an outer feature bucket.
+#[cfg(not(feature = "king_relative_b_small"))]
+pub const BOARD_INPUT: usize = BOARD_FEATURES_PER_ZONE;
+#[cfg(feature = "king_relative_b_small")]
+/// Board features partitioned into nine own-king 3x3 zones.
+pub const BOARD_INPUT: usize = 9 * BOARD_FEATURES_PER_ZONE;
+
+// Hand piece thresholds: "has ≥ N of kind K" binary features.
+// Max counts: Fu:18, Kyou:4, Kei:4, Gin:4, Kin:4, Kaku:2, Hisha:2 → 38 total.
+// Grouped as: 38 thresholds × (2 hand-colors × 2 perspectives) = 152 features.
+/// Number of distinct "has ≥ N of kind K in hand" thresholds across all hand piece kinds.
+pub const HAND_THRESHOLDS: usize = 38;
+/// Hand-feature input dimension: thresholds × (2 hand-colors × 2 perspectives).
+pub const HAND_INPUT: usize = HAND_THRESHOLDS * 4; // 152
+/// Total feature-vector input dimension (board features + hand features).
+pub const INPUT: usize = BOARD_INPUT + HAND_INPUT; // 2 420
+
+/// Feature-transformer (first hidden layer) size, per perspective.
+pub const L1: usize = 256; // feature-transformer neurons per perspective
+/// Second hidden layer size.
+pub const L2: usize = 32; // hidden layer neurons
+
+// Cumulative threshold offsets for each hand kind (Fu=0..Hisha=6):
+// Fu:18 → [0], Kyou:4 → [18], Kei:4 → [22], Gin:4 → [26], Kin:4 → [30], Kaku:2 → [34], Hisha:2 → [36]
+/// Cumulative threshold offset for each hand piece kind, indexed Fu=0..Hisha=6.
+pub const HAND_OFFSETS: [usize; 7] = [0, 18, 22, 26, 30, 34, 36];
+/// Maximum in-hand count for each hand piece kind, indexed Fu=0..Hisha=6.
+pub const HAND_MAX: [u8; 7] = [18, 4, 4, 4, 4, 2, 2];
+
+/// Feature index for "hand_color has ≥ count of kind K from perspective's view".
+/// kind must be a base hand piece (Fu..Hisha, index 0..6); count is 1-indexed.
+#[inline]
+pub fn hand_feature_index(
+    kind: PieceKind,
+    count: u8,
+    hand_color: Color,
+    perspective: Color,
+) -> usize {
+    let ki = kind.index(); // Fu=0..Hisha=6
+    let thres = HAND_OFFSETS[ki] + (count - 1) as usize;
+    let cp = hand_color.index() * 2 + perspective.index();
+    BOARD_INPUT + cp * HAND_THRESHOLDS + thres
+}
+
+// ---- LCG (same parameters as zobrist.rs) ----
+
+const fn lcg(s: u64) -> u64 {
+    s.wrapping_mul(6_364_136_223_846_793_005)
+        .wrapping_add(1_442_695_040_888_963_407)
+}
+
+// ============================================================
+// Weight container
+// ============================================================
+
+/// Loaded (or LCG-default) NNUE weight matrices for all layers.
+pub struct NnueWeights {
+    /// Feature-transformer weights: one `[i16; L1]` row per input feature.
+    pub ft: Vec<[i16; L1]>, // INPUT entries — quantised i16
+    /// Feature-transformer bias, added to every accumulator on init.
+    pub ft_bias: [i16; L1],
+    /// L2 weights: 2×L1 rows (us-perspective first, then them) × L2 outputs.
+    pub l2: Vec<[f32; L2]>, // 2*L1 entries — f32 (us-perspective first, then them)
+    /// L2 layer bias.
+    pub l2_bias: [f32; L2],
+    /// Output layer weights, one per L2 neuron.
+    pub out: [f32; L2],
+    /// Output layer bias.
+    pub out_bias: f32,
+}
+
+impl NnueWeights {
+    /// Default weights generated deterministically via LCG.
+    pub fn default_lcg() -> Self {
+        let mut ft = vec![[0i16; L1]; INPUT];
+        let mut s = 0xfeed_cafe_dead_beef_u64;
+        for row in ft.iter_mut() {
+            for w in row.iter_mut() {
+                s = lcg(s);
+                *w = (s >> 58) as i16 - 32;
+            }
+        }
+
+        // Only this feature's inactive LCG fixture/default is tied. Preserve
+        // every RNG draw, board row, bias and all old-feature default bytes.
+        #[cfg(feature = "nnue_white_view_aux_tied")]
+        for threshold in 0..HAND_THRESHOLDS {
+            ft[BOARD_INPUT + 3 * HAND_THRESHOLDS + threshold] = ft[BOARD_INPUT + threshold];
+            ft[BOARD_INPUT + 2 * HAND_THRESHOLDS + threshold] =
+                ft[BOARD_INPUT + HAND_THRESHOLDS + threshold];
+        }
+
+        let mut ft_bias = [0i16; L1];
+        let mut s2 = 0xcafe_babe_1234_5678_u64;
+        for b in ft_bias.iter_mut() {
+            s2 = lcg(s2);
+            *b = (s2 >> 58) as i16 - 32;
+        }
+
+        // L2 weights: small random f32
+        let mut l2 = vec![[0.0f32; L2]; 2 * L1];
+        let mut s3 = 0xdead_beef_cafe_0001_u64;
+        for row in l2.iter_mut() {
+            for w in row.iter_mut() {
+                s3 = lcg(s3);
+                *w = ((s3 >> 48) as f32 / 65536.0 - 0.5) * 0.02;
+            }
+        }
+
+        let mut out = [0.0f32; L2];
+        let mut s4 = 0xdead_beef_cafe_0002_u64;
+        for w in out.iter_mut() {
+            s4 = lcg(s4);
+            *w = ((s4 >> 48) as f32 / 65536.0 - 0.5) * 0.02;
+        }
+
+        NnueWeights {
+            ft,
+            ft_bias,
+            l2,
+            l2_bias: [0.0; L2],
+            out,
+            out_bias: 0.0,
+        }
+    }
+
+    fn validate_finite(&self) -> io::Result<()> {
+        if self.l2.iter().flatten().all(|value| value.is_finite())
+            && self.l2_bias.iter().all(|value| value.is_finite())
+            && self.out.iter().all(|value| value.is_finite())
+            && self.out_bias.is_finite()
+        {
+            Ok(())
+        } else {
+            Err(Error::new(
+                ErrorKind::InvalidData,
+                "NNUE weights contain a non-finite floating-point value",
+            ))
+        }
+    }
+
+    /// The White-view ABI keeps four hand banks, with exact own/opp ties
+    /// over every i16 channel, including the protected material channels.
+    #[cfg(feature = "nnue_white_view_aux_tied")]
+    fn validate_white_view_hand_ties(&self) -> io::Result<()> {
+        if self.ft.len() != INPUT {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "White-view FT row count mismatch",
+            ));
+        }
+        for threshold in 0..HAND_THRESHOLDS {
+            if self.ft[BOARD_INPUT + threshold]
+                != self.ft[BOARD_INPUT + 3 * HAND_THRESHOLDS + threshold]
+                || self.ft[BOARD_INPUT + HAND_THRESHOLDS + threshold]
+                    != self.ft[BOARD_INPUT + 2 * HAND_THRESHOLDS + threshold]
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "White-view hand FT banks must be exactly tied: 0=3 and 1=2",
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================
+// Global weight store
+// ============================================================
+
+static WEIGHTS: OnceLock<NnueWeights> = OnceLock::new();
+static DEFAULT_WEIGHTS: OnceLock<NnueWeights> = OnceLock::new();
+static NNUE_ACTIVE: AtomicBool = AtomicBool::new(false);
+static SAVE_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// Return the active weight set. Falls back to (separately cached) LCG defaults
+/// until `load_weights()` succeeds.
+///
+/// Kept as a distinct `OnceLock` from `WEIGHTS`: any board constructed before a
+/// real load (e.g. `Board::startpos()` at USI startup, before `isready`/`setoption
+/// EvalFile` are processed) calls this and must not permanently pin `WEIGHTS` to
+/// the LCG garbage — `OnceLock::set` only ever succeeds once, so if `weights()`
+/// itself initialised `WEIGHTS`, a later `load_weights()` would silently no-op.
+#[inline(always)]
+pub fn weights() -> &'static NnueWeights {
+    WEIGHTS
+        .get()
+        .unwrap_or_else(|| DEFAULT_WEIGHTS.get_or_init(NnueWeights::default_lcg))
+}
+
+/// True once `load_weights()` has succeeded.
+#[inline(always)]
+pub fn weights_active() -> bool {
+    NNUE_ACTIVE.load(Ordering::Relaxed)
+}
+
+/// Load weights from a SEKIRW01 binary file and activate NNUE evaluation.
+///
+/// Also accepts the legacy `JANOSW03` magic: the project rename (Janos → Sekirei)
+/// only changed the 8-byte magic string, not the binary layout, so those weights
+/// load and evaluate identically. (Older `JANOSW02` differs in layout and is not
+/// accepted — the size check below also rejects it.)
+pub fn load_weights(path: &Path) -> io::Result<()> {
+    let w = read_weights(path)?;
+    if WEIGHTS.set(w).is_ok() {
+        NNUE_ACTIVE.store(true, Ordering::Relaxed);
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "NNUE weights are already loaded for this process",
+        ))
+    }
+}
+
+/// Parses a SEKIRW01 (or legacy JANOSW03) binary weights file into an
+/// owned `NnueWeights`, without touching the global `WEIGHTS`/`NNUE_ACTIVE`
+/// statics `load_weights` populates.
+///
+/// This distinction matters: `crate::eval::evaluate()` (used by
+/// `Searcher`'s leaf evaluation, including the trainer's label-depth
+/// search) reads `weights_active()`/`weights()` to decide whether to use
+/// NNUE or fall back to material counting. A caller that wants to *inspect
+/// or score with* a checkpoint's weights without redirecting every search
+/// in the process to that checkpoint (e.g. `sekirei-train --eval-only`,
+/// which must keep the teacher search on its normal fixed material-count
+/// baseline while scoring the loaded checkpoint as the candidate) needs
+/// this side-effect-free path instead of `load_weights`.
+pub fn read_weights(path: &Path) -> io::Result<NnueWeights> {
+    #[cfg(not(any(
+        feature = "king_relative_b_small",
+        feature = "nnue_white_view_aux_tied"
+    )))]
+    const MAGIC: &[u8] = b"SEKIRW01";
+    #[cfg(feature = "king_relative_b_small")]
+    const MAGIC: &[u8] = b"SEKIRW02";
+    #[cfg(all(
+        feature = "nnue_white_view_aux_tied",
+        not(feature = "king_relative_b_small")
+    ))]
+    const MAGIC: &[u8] = b"SEKIRW03";
+    #[cfg(not(any(
+        feature = "king_relative_b_small",
+        feature = "nnue_white_view_aux_tied"
+    )))]
+    const MAGIC_LEGACY: &[u8] = b"JANOSW03";
+    let ft_bytes = INPUT * L1 * 2;
+    let bias_bytes = L1 * 2;
+    let l2_bytes = 2 * L1 * L2 * 4;
+    let l2b_bytes = L2 * 4;
+    let out_bytes = L2 * 4;
+    let expected = 8 + ft_bytes + bias_bytes + l2_bytes + l2b_bytes + out_bytes + 4;
+
+    let data = std::fs::read(path)?;
+
+    if data.len() != expected {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            format!(
+                "expected exactly {expected} bytes, got {} (wrong format?)",
+                data.len()
+            ),
+        ));
+    }
+    if &data[..8] != MAGIC && {
+        #[cfg(not(any(
+            feature = "king_relative_b_small",
+            feature = "nnue_white_view_aux_tied"
+        )))]
+        {
+            &data[..8] != MAGIC_LEGACY
+        }
+        #[cfg(any(
+            feature = "king_relative_b_small",
+            feature = "nnue_white_view_aux_tied"
+        ))]
+        {
+            true
+        }
+    } {
+        let expected_magic = if cfg!(feature = "nnue_white_view_aux_tied") {
+            "SEKIRW03"
+        } else {
+            "SEKIRW01 or JANOSW03"
+        };
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            format!(
+                "bad magic — expected {expected_magic}, got {:?}. Weights from an older version need retraining.",
+                &data[..8]
+            ),
+        ));
+    }
+
+    let mut off = 8usize;
+
+    let mut ft = vec![[0i16; L1]; INPUT];
+    for row in ft.iter_mut() {
+        for w in row.iter_mut() {
+            *w = i16::from_le_bytes([data[off], data[off + 1]]);
+            off += 2;
+        }
+    }
+
+    let mut ft_bias = [0i16; L1];
+    for b in ft_bias.iter_mut() {
+        *b = i16::from_le_bytes([data[off], data[off + 1]]);
+        off += 2;
+    }
+
+    let mut l2 = vec![[0.0f32; L2]; 2 * L1];
+    for row in l2.iter_mut() {
+        for w in row.iter_mut() {
+            *w = f32::from_le_bytes([data[off], data[off + 1], data[off + 2], data[off + 3]]);
+            off += 4;
+        }
+    }
+
+    let mut l2_bias = [0.0f32; L2];
+    for b in l2_bias.iter_mut() {
+        *b = f32::from_le_bytes([data[off], data[off + 1], data[off + 2], data[off + 3]]);
+        off += 4;
+    }
+
+    let mut out = [0.0f32; L2];
+    for w in out.iter_mut() {
+        *w = f32::from_le_bytes([data[off], data[off + 1], data[off + 2], data[off + 3]]);
+        off += 4;
+    }
+
+    let out_bias = f32::from_le_bytes([data[off], data[off + 1], data[off + 2], data[off + 3]]);
+
+    let weights = NnueWeights {
+        ft,
+        ft_bias,
+        l2,
+        l2_bias,
+        out,
+        out_bias,
+    };
+    weights.validate_finite()?;
+    #[cfg(feature = "nnue_white_view_aux_tied")]
+    weights.validate_white_view_hand_ties()?;
+    Ok(weights)
+}
+
+/// Serialise weights to a binary file in SEKIRW01 format.
+pub fn save_weights(w: &NnueWeights, path: &Path) -> io::Result<()> {
+    w.validate_finite()?;
+    #[cfg(feature = "nnue_white_view_aux_tied")]
+    w.validate_white_view_hand_ties()?;
+    let capacity = 8 + INPUT * L1 * 2 + L1 * 2 + 2 * L1 * L2 * 4 + L2 * 4 + L2 * 4 + 4;
+    let mut data = Vec::with_capacity(capacity);
+
+    #[cfg(not(any(
+        feature = "king_relative_b_small",
+        feature = "nnue_white_view_aux_tied"
+    )))]
+    data.extend_from_slice(b"SEKIRW01");
+    #[cfg(feature = "king_relative_b_small")]
+    data.extend_from_slice(b"SEKIRW02");
+    #[cfg(all(
+        feature = "nnue_white_view_aux_tied",
+        not(feature = "king_relative_b_small")
+    ))]
+    data.extend_from_slice(b"SEKIRW03");
+    for row in &w.ft {
+        for &v in row {
+            data.extend_from_slice(&v.to_le_bytes());
+        }
+    }
+    for &v in &w.ft_bias {
+        data.extend_from_slice(&v.to_le_bytes());
+    }
+    for row in &w.l2 {
+        for &v in row {
+            data.extend_from_slice(&v.to_le_bytes());
+        }
+    }
+    for &v in &w.l2_bias {
+        data.extend_from_slice(&v.to_le_bytes());
+    }
+    for &v in &w.out {
+        data.extend_from_slice(&v.to_le_bytes());
+    }
+    data.extend_from_slice(&w.out_bias.to_le_bytes());
+
+    // Write beside the destination and rename only after the complete file is
+    // durable in the filesystem namespace. A killed trainer must not leave a
+    // truncated artifact at the path consumed by the engine.
+    let file_name = path.file_name().ok_or_else(|| {
+        Error::new(
+            ErrorKind::InvalidInput,
+            "NNUE weight output path must name a file",
+        )
+    })?;
+    let temp_name = format!(
+        ".{}.tmp-{}-{}",
+        file_name.to_string_lossy(),
+        std::process::id(),
+        SAVE_COUNTER.fetch_add(1, Ordering::Relaxed)
+    );
+    let temp_path = path.with_file_name(temp_name);
+
+    let write_result = (|| -> io::Result<()> {
+        let mut file = std::fs::File::create(&temp_path)?;
+        file.write_all(&data)?;
+        file.sync_all()
+    })();
+    if let Err(error) = write_result {
+        let _ = std::fs::remove_file(&temp_path);
+        return Err(error);
+    }
+    if let Err(error) = std::fs::rename(&temp_path, path) {
+        let _ = std::fs::remove_file(&temp_path);
+        return Err(error);
+    }
+    Ok(())
+}
+
+// ---- Feature index ----
+
+/// Compute the feature index for a piece as seen from `perspective`'s point of view.
+#[inline]
+pub fn feature_index(sq: Square, kind: PieceKind, piece_color: Color, perspective: Color) -> usize {
+    let opp_flag = (piece_color != perspective) as usize;
+    #[cfg(feature = "nnue_white_view_aux_tied")]
+    let square_index = if perspective == Color::White {
+        80 - sq.index() as usize
+    } else {
+        sq.index() as usize
+    };
+    #[cfg(not(feature = "nnue_white_view_aux_tied"))]
+    let square_index = sq.index() as usize;
+    square_index * (14 * 2) + kind.index() * 2 + opp_flag
+}
+
+/// Compute a board feature index with an explicit own-king square.
+///
+/// The flat evaluator deliberately ignores this parameter. B-small uses the
+/// 3x3 king zone to select a separate board-feature bank.
+#[inline]
+pub fn feature_index_with_king(
+    sq: Square,
+    kind: PieceKind,
+    piece_color: Color,
+    perspective: Color,
+    own_king_sq: Square,
+) -> usize {
+    let base = feature_index(sq, kind, piece_color, perspective);
+    #[cfg(feature = "king_relative_b_small")]
+    {
+        own_king_sq.king_zone() * BOARD_FEATURES_PER_ZONE + base
+    }
+    #[cfg(not(feature = "king_relative_b_small"))]
+    {
+        let _ = own_king_sq;
+        base
+    }
+}
+
+// ---- Accumulator ----
+
+/// Two L1-vectors (one per Color perspective), updated incrementally.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NnueAcc {
+    /// Per-perspective (Black, White) accumulator vectors.
+    pub values: [[i16; L1]; 2],
+    /// Own king square for each perspective, set before board features are
+    /// accumulated during a full refresh.
+    pub king_sq: [Square; 2],
+}
+
+impl NnueAcc {
+    /// Initialize from the bias vector (empty board baseline).
+    pub fn new() -> Self {
+        NnueAcc {
+            values: [weights().ft_bias; 2],
+            king_sq: [Square::from_index(0); 2],
+        }
+    }
+
+    /// Initialize from an explicitly supplied weight set.
+    ///
+    /// This is the side-effect-free counterpart to [`NnueAcc::new`].  It is
+    /// used by diagnostic and candidate-comparison callers that loaded a
+    /// checkpoint with [`read_weights`] and must not depend on the process
+    /// global `WEIGHTS` singleton.
+    pub fn new_with(weights: &NnueWeights) -> Self {
+        NnueAcc {
+            values: [weights.ft_bias; 2],
+            king_sq: [Square::from_index(0); 2],
+        }
+    }
+
+    /// Full recompute from a board mailbox + hand counts.
+    /// `hand[color_idx][kind_idx]` = count of that piece in hand.
+    pub fn refresh(&mut self, mailbox: &[Option<(PieceKind, Color)>; 81], hand: &[[u8; 7]; 2]) {
+        self.refresh_with(weights(), mailbox, hand);
+    }
+
+    /// Full recompute using an explicitly supplied weight set.
+    ///
+    /// Unlike [`NnueAcc::refresh`], this never reads the process-global
+    /// weights.  Incremental updates after this refresh still require the
+    /// board's active global weights; use this method for one-shot,
+    /// side-effect-free evaluation of a checkpoint.
+    pub fn refresh_with(
+        &mut self,
+        weights: &NnueWeights,
+        mailbox: &[Option<(PieceKind, Color)>; 81],
+        hand: &[[u8; 7]; 2],
+    ) {
+        self.values = [weights.ft_bias; 2];
+        self.refresh_king_squares_from_tuples(mailbox);
+        for (i, cell) in mailbox.iter().enumerate() {
+            if let Some((kind, color)) = cell {
+                let sq = Square::from_index(i as u8);
+                for p in [Color::Black, Color::White] {
+                    let feat =
+                        feature_index_with_king(sq, *kind, *color, p, self.king_sq[p.index()]);
+                    self.add_col_with(weights, p.index(), feat);
+                }
+            }
+        }
+        // Hand threshold features: for each (color, kind, count 1..=N) add the feature
+        for ci in 0..2usize {
+            let color = if ci == 0 { Color::Black } else { Color::White };
+            for ki in 0..7usize {
+                let kind = PieceKind::from_u8(ki as u8).unwrap();
+                for n in 1..=hand[ci][ki] {
+                    for p in [Color::Black, Color::White] {
+                        self.add_col_with(
+                            weights,
+                            p.index(),
+                            hand_feature_index(kind, n, color, p),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// Full recompute directly from the board mailbox.
+    ///
+    /// This crate-private path avoids materialising a temporary tuple
+    /// snapshot when a `Board` already owns typed `Piece` values. The public
+    /// tuple-based method above remains available for diagnostics and callers
+    /// that already have a detached snapshot.
+    pub(crate) fn refresh_from_board_with(
+        &mut self,
+        weights: &NnueWeights,
+        mailbox: &[Option<Piece>; 81],
+        hand: &[[u8; 7]; 2],
+    ) {
+        self.values = [weights.ft_bias; 2];
+        self.refresh_king_squares_from_pieces(mailbox);
+        for (i, cell) in mailbox.iter().enumerate() {
+            if let Some(piece) = cell {
+                let sq = Square::from_index(i as u8);
+                for p in [Color::Black, Color::White] {
+                    let feat = feature_index_with_king(
+                        sq,
+                        piece.kind,
+                        piece.color,
+                        p,
+                        self.king_sq[p.index()],
+                    );
+                    self.add_col_with(weights, p.index(), feat);
+                }
+            }
+        }
+        for ci in 0..2usize {
+            let color = if ci == 0 { Color::Black } else { Color::White };
+            for ki in 0..7usize {
+                let kind = PieceKind::from_u8(ki as u8).unwrap();
+                for n in 1..=hand[ci][ki] {
+                    for p in [Color::Black, Color::White] {
+                        self.add_col_with(
+                            weights,
+                            p.index(),
+                            hand_feature_index(kind, n, color, p),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    fn refresh_king_squares_from_tuples(&mut self, mailbox: &[Option<(PieceKind, Color)>; 81]) {
+        for (index, cell) in mailbox.iter().enumerate() {
+            if let Some((PieceKind::Ou, color)) = cell {
+                self.king_sq[color.index()] = Square::from_index(index as u8);
+            }
+        }
+    }
+
+    fn refresh_king_squares_from_pieces(&mut self, mailbox: &[Option<Piece>; 81]) {
+        for (index, cell) in mailbox.iter().enumerate() {
+            if let Some(Piece {
+                kind: PieceKind::Ou,
+                color,
+            }) = cell
+            {
+                self.king_sq[color.index()] = Square::from_index(index as u8);
+            }
+        }
+    }
+
+    // --- Incremental hand updates ---
+
+    /// Call when `color`'s hand gains its `count`-th piece of `kind` (count ≥ 1).
+    #[inline(always)]
+    pub fn add_hand(&mut self, kind: PieceKind, count: u8, color: Color) {
+        if count == 0 || count > HAND_MAX[kind.index()] {
+            return;
+        }
+        let weights = weights();
+        for p in [Color::Black, Color::White] {
+            self.add_col_with(
+                weights,
+                p.index(),
+                hand_feature_index(kind, count, color, p),
+            );
+        }
+    }
+
+    /// Call when `color`'s hand loses its `count`-th piece of `kind` (count was ≥ 1 before the drop).
+    #[inline(always)]
+    pub fn remove_hand(&mut self, kind: PieceKind, count: u8, color: Color) {
+        if count == 0 || count > HAND_MAX[kind.index()] {
+            return;
+        }
+        let weights = weights();
+        for p in [Color::Black, Color::White] {
+            self.sub_col_with(
+                weights,
+                p.index(),
+                hand_feature_index(kind, count, color, p),
+            );
+        }
+    }
+
+    // --- Incremental piece updates ---
+
+    /// Incrementally update the accumulator for a piece placed at `sq`.
+    #[inline(always)]
+    pub fn add_piece(&mut self, sq: Square, kind: PieceKind, color: Color) {
+        if kind == PieceKind::Ou {
+            self.king_sq[color.index()] = sq;
+        }
+        let weights = weights();
+        for p in [Color::Black, Color::White] {
+            let feat = feature_index_with_king(sq, kind, color, p, self.king_sq[p.index()]);
+            self.add_col_with(weights, p.index(), feat);
+        }
+    }
+
+    /// Incrementally update the accumulator for a piece removed from `sq`.
+    #[inline(always)]
+    pub fn remove_piece(&mut self, sq: Square, kind: PieceKind, color: Color) {
+        let weights = weights();
+        for p in [Color::Black, Color::White] {
+            let feat = feature_index_with_king(sq, kind, color, p, self.king_sq[p.index()]);
+            self.sub_col_with(weights, p.index(), feat);
+        }
+    }
+
+    /// Move a piece between two squares while visiting each accumulator row
+    /// once. The subtraction remains immediately before the addition for each
+    /// element, matching the saturating arithmetic order of separate updates.
+    #[inline(always)]
+    pub fn move_piece(&mut self, from: Square, to: Square, kind: PieceKind, color: Color) {
+        let weights = weights();
+        for p in [Color::Black, Color::White] {
+            let old =
+                &weights.ft[feature_index_with_king(from, kind, color, p, self.king_sq[p.index()])];
+            let new =
+                &weights.ft[feature_index_with_king(to, kind, color, p, self.king_sq[p.index()])];
+            let accumulator = &mut self.values[p.index()];
+            for i in 0..L1 {
+                accumulator[i] = accumulator[i].saturating_sub(old[i]).saturating_add(new[i]);
+            }
+        }
+        if kind == PieceKind::Ou {
+            self.king_sq[color.index()] = to;
+        }
+    }
+
+    /// Apply a board move, remove the captured piece, and add the captured
+    /// piece to hand in one accumulator traversal. The operation order within
+    /// each element matches the separate updates used by the generic path.
+    #[inline(always)]
+    pub fn capture_piece(
+        &mut self,
+        moved: (Square, Square, PieceKind, Color),
+        captured: (Square, PieceKind, Color),
+        hand: (PieceKind, u8, Color),
+    ) {
+        let (from, to, moved_kind, mover) = moved;
+        let (captured_square, captured_kind, captured_color) = captured;
+        let (hand_kind, hand_count, hand_color) = hand;
+        let weights = weights();
+        for p in [Color::Black, Color::White] {
+            let old_moved = &weights.ft
+                [feature_index_with_king(from, moved_kind, mover, p, self.king_sq[p.index()])];
+            let new_moved = &weights.ft
+                [feature_index_with_king(to, moved_kind, mover, p, self.king_sq[p.index()])];
+            let captured_weights = &weights.ft[feature_index_with_king(
+                captured_square,
+                captured_kind,
+                captured_color,
+                p,
+                self.king_sq[p.index()],
+            )];
+            let hand_weights =
+                &weights.ft[hand_feature_index(hand_kind, hand_count, hand_color, p)];
+            let accumulator = &mut self.values[p.index()];
+            for i in 0..L1 {
+                accumulator[i] = accumulator[i]
+                    .saturating_sub(old_moved[i])
+                    .saturating_add(new_moved[i])
+                    .saturating_sub(captured_weights[i])
+                    .saturating_add(hand_weights[i]);
+            }
+        }
+        if moved_kind == PieceKind::Ou {
+            self.king_sq[mover.index()] = to;
+        }
+    }
+
+    /// Reverse a capture in one accumulator traversal. The order mirrors the
+    /// generic undo path: remove the moved piece at `to`, restore it at `from`,
+    /// restore the captured piece, then remove the hand threshold feature.
+    #[inline(always)]
+    pub fn undo_capture_piece(
+        &mut self,
+        moved: (Square, Square, PieceKind, PieceKind, Color),
+        captured: (Square, PieceKind, Color),
+        hand: (PieceKind, u8, Color),
+    ) {
+        let (from, to, original_kind, current_kind, mover) = moved;
+        let (captured_square, captured_kind, captured_color) = captured;
+        let (hand_kind, hand_count, hand_color) = hand;
+        let weights = weights();
+        for p in [Color::Black, Color::White] {
+            let current = &weights.ft
+                [feature_index_with_king(to, current_kind, mover, p, self.king_sq[p.index()])];
+            let original = &weights.ft
+                [feature_index_with_king(from, original_kind, mover, p, self.king_sq[p.index()])];
+            let captured_weights = &weights.ft[feature_index_with_king(
+                captured_square,
+                captured_kind,
+                captured_color,
+                p,
+                self.king_sq[p.index()],
+            )];
+            let hand_weights =
+                &weights.ft[hand_feature_index(hand_kind, hand_count, hand_color, p)];
+            let accumulator = &mut self.values[p.index()];
+            for i in 0..L1 {
+                accumulator[i] = accumulator[i]
+                    .saturating_sub(current[i])
+                    .saturating_add(original[i])
+                    .saturating_add(captured_weights[i])
+                    .saturating_sub(hand_weights[i]);
+            }
+        }
+        if original_kind == PieceKind::Ou {
+            self.king_sq[mover.index()] = from;
+        }
+    }
+
+    // --- Forward pass ---
+
+    /// Evaluate the position; positive = good for `stm`.
+    /// FT ClippedReLU → L2 (f32) → ClippedReLU → output → centipawn score.
+    #[inline]
+    pub fn evaluate(&self, stm: Color) -> i32 {
+        self.evaluate_with(weights(), stm)
+    }
+
+    /// Evaluate with an explicitly supplied weight set, without touching the
+    /// process-global loader state.
+    #[inline]
+    pub fn evaluate_with(&self, w: &NnueWeights, stm: Color) -> i32 {
+        let us = stm.index();
+        let them = 1 - us;
+
+        // Dequantize FT accumulators directly while feeding L2. FT weights are stored
+        // scaled by 64 (see to_nnue_weights), so accumulator values are also 64× larger.
+        // Keeping the values in registers avoids two temporary L1 arrays and a separate
+        // preprocessing pass on the hot inference path.
+        const FT_SCALE: f32 = 64.0;
+        // L2 forward (input-first loop for cache-friendly access to l2[j]).
+        let mut l2_acc = w.l2_bias;
+        for j in 0..L1 {
+            let a = self.values[us][j].clamp(0, (127.0 * FT_SCALE) as i16) as f32 / FT_SCALE;
+            let b = self.values[them][j].clamp(0, (127.0 * FT_SCALE) as i16) as f32 / FT_SCALE;
+            let row_us = &w.l2[j];
+            let row_them = &w.l2[L1 + j];
+            for o in 0..L2 {
+                l2_acc[o] += a * row_us[o];
+                l2_acc[o] += b * row_them[o];
+            }
+        }
+
+        // ClippedReLU L2 → output
+        let mut out = w.out_bias;
+        for o in 0..L2 {
+            let relu_l2 = l2_acc[o].clamp(0.0, 127.0);
+            out += relu_l2 * w.out[o];
+        }
+        (out / 64.0) as i32
+    }
+
+    // --- Private column helpers (SIMD-vectorised by LLVM) ---
+
+    #[inline(always)]
+    fn add_col_with(&mut self, weights: &NnueWeights, persp: usize, feat: usize) {
+        let w = &weights.ft[feat];
+        let a = &mut self.values[persp];
+        for i in 0..L1 {
+            a[i] = a[i].saturating_add(w[i]);
+        }
+    }
+
+    #[inline(always)]
+    fn sub_col_with(&mut self, weights: &NnueWeights, persp: usize, feat: usize) {
+        let w = &weights.ft[feat];
+        let a = &mut self.values[persp];
+        for i in 0..L1 {
+            a[i] = a[i].saturating_sub(w[i]);
+        }
+    }
+}
+
+impl Default for NnueAcc {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(all(test, feature = "nnue_white_view_aux_tied"))]
+mod white_view_tests {
+    use super::*;
+
+    #[test]
+    fn white_view_exhaustive_board_coordinates_and_physical_color_rotation() {
+        assert_eq!(INPUT, 2420);
+        assert_eq!(BOARD_INPUT, 2268);
+        for square in 0..81 {
+            for ki in 0..14 {
+                let kind = PieceKind::from_u8(ki).unwrap();
+                for color in [Color::Black, Color::White] {
+                    for perspective in [Color::Black, Color::White] {
+                        let sq = Square::from_index(square);
+                        let expected_square = if perspective == Color::White {
+                            80 - square
+                        } else {
+                            square
+                        };
+                        let expected = expected_square as usize * 28
+                            + ki as usize * 2
+                            + (color != perspective) as usize;
+                        assert_eq!(feature_index(sq, kind, color, perspective), expected);
+                        assert_eq!(
+                            feature_index_with_king(
+                                sq,
+                                kind,
+                                color,
+                                perspective,
+                                Square::from_index(0)
+                            ),
+                            expected
+                        );
+                        assert_eq!(
+                            feature_index(sq, kind, color, perspective),
+                            feature_index(
+                                Square::from_index(80 - square),
+                                kind,
+                                color.flip(),
+                                perspective.flip()
+                            )
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn white_view_preserves_all_hand_banks_and_ties_lcg_default() {
+        let weights = NnueWeights::default_lcg();
+        weights.validate_white_view_hand_ties().unwrap();
+        for ki in 0..7 {
+            let kind = PieceKind::from_u8(ki as u8).unwrap();
+            for count in 1..=HAND_MAX[ki] {
+                for color in [Color::Black, Color::White] {
+                    for perspective in [Color::Black, Color::White] {
+                        let cp = color.index() * 2 + perspective.index();
+                        let index = hand_feature_index(kind, count, color, perspective);
+                        assert_eq!(
+                            index,
+                            BOARD_INPUT + cp * HAND_THRESHOLDS + HAND_OFFSETS[ki] + count as usize
+                                - 1
+                        );
+                        assert_eq!(
+                            weights.ft[index],
+                            weights.ft
+                                [hand_feature_index(kind, count, color.flip(), perspective.flip())]
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn white_view_hand_validator_rejects_material_auxiliary_and_shape_mismatch() {
+        for channel in [0, 1, 2, L1 - 1] {
+            let mut weights = NnueWeights::default_lcg();
+            weights.ft[BOARD_INPUT + 3 * HAND_THRESHOLDS + 5][channel] ^= 1;
+            assert_eq!(
+                weights.validate_white_view_hand_ties().unwrap_err().kind(),
+                ErrorKind::InvalidData
+            );
+            let mut weights = NnueWeights::default_lcg();
+            weights.ft[BOARD_INPUT + 2 * HAND_THRESHOLDS + 5][channel] ^= 1;
+            assert_eq!(
+                weights.validate_white_view_hand_ties().unwrap_err().kind(),
+                ErrorKind::InvalidData
+            );
+        }
+        let mut weights = NnueWeights::default_lcg();
+        weights.ft.pop();
+        assert_eq!(
+            weights.validate_white_view_hand_ties().unwrap_err().kind(),
+            ErrorKind::InvalidData
+        );
+    }
+
+    #[test]
+    fn white_view_native_roundtrip_requires_magic03_and_tied_rows() {
+        let path =
+            std::env::temp_dir().join(format!("sekirei_white_view_abi_{}.bin", std::process::id()));
+        let weights = NnueWeights::default_lcg();
+        save_weights(&weights, &path).unwrap();
+        let bytes = std::fs::read(&path).unwrap();
+        assert_eq!(&bytes[..8], b"SEKIRW03");
+        let loaded = read_weights(&path).unwrap();
+        assert_eq!(loaded.ft, weights.ft);
+        assert_eq!(loaded.ft_bias, weights.ft_bias);
+        assert_eq!(loaded.l2, weights.l2);
+        assert_eq!(loaded.l2_bias, weights.l2_bias);
+        assert_eq!(loaded.out, weights.out);
+        assert_eq!(loaded.out_bias.to_bits(), weights.out_bias.to_bits());
+        for magic in [b"SEKIRW01", b"SEKIRW02", b"JANOSW03"] {
+            let mut wrong = bytes.clone();
+            wrong[..8].copy_from_slice(magic);
+            std::fs::write(&path, wrong).unwrap();
+            assert!(read_weights(&path).is_err());
+        }
+        let mut wrong = bytes;
+        let offset = 8 + (BOARD_INPUT + 3 * HAND_THRESHOLDS) * L1 * 2;
+        wrong[offset] ^= 1;
+        std::fs::write(&path, wrong).unwrap();
+        assert!(read_weights(&path).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn white_view_save_rejects_untied_rows_before_replacing_destination() {
+        let path = std::env::temp_dir().join(format!(
+            "sekirei_white_view_invalid_save_{}.bin",
+            std::process::id()
+        ));
+        std::fs::write(&path, b"preserve synthetic sentinel").unwrap();
+        let mut weights = NnueWeights::default_lcg();
+        weights.ft[BOARD_INPUT + 2 * HAND_THRESHOLDS][L1 - 1] ^= 1;
+        assert_eq!(
+            save_weights(&weights, &path).unwrap_err().kind(),
+            ErrorKind::InvalidData
+        );
+        assert_eq!(
+            std::fs::read(&path).unwrap().as_slice(),
+            b"preserve synthetic sentinel"
+        );
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn white_view_physical_color_rotation_refresh_and_static_forward_match() {
+        let weights = NnueWeights::default_lcg();
+        let mut mailbox = [None; 81];
+        mailbox[3] = Some((PieceKind::Hisha, Color::Black));
+        mailbox[17] = Some((PieceKind::Fu, Color::White));
+        mailbox[40] = Some((PieceKind::Gin, Color::Black));
+        let mut rotated = [None; 81];
+        for (square, cell) in mailbox.iter().enumerate() {
+            rotated[80 - square] = cell.map(|(kind, color)| (kind, color.flip()));
+        }
+        let mut hand = [[0; 7]; 2];
+        hand[0][PieceKind::Fu.index()] = 3;
+        hand[1][PieceKind::Gin.index()] = 2;
+        let rotated_hand = [hand[1], hand[0]];
+        let mut first = NnueAcc::new_with(&weights);
+        let mut second = NnueAcc::new_with(&weights);
+        first.refresh_with(&weights, &mailbox, &hand);
+        second.refresh_with(&weights, &rotated, &rotated_hand);
+        assert_eq!(first.values[0], second.values[1]);
+        assert_eq!(first.values[1], second.values[0]);
+        for stm in [Color::Black, Color::White] {
+            assert_eq!(
+                first.evaluate_with(&weights, stm),
+                second.evaluate_with(&weights, stm.flip())
+            );
+        }
+    }
+
+    #[test]
+    fn white_view_incremental_capture_drop_and_undo_match_refresh() {
+        let from = Square::from_index(10);
+        let to = Square::from_index(20);
+        let drop = Square::from_index(35);
+        let mut mailbox = [None; 81];
+        mailbox[10] = Some((PieceKind::Hisha, Color::Black));
+        mailbox[20] = Some((PieceKind::Fu, Color::White));
+        let mut hand = [[0; 7]; 2];
+        let mut acc = NnueAcc::new();
+        acc.refresh(&mailbox, &hand);
+        let initial = acc.clone();
+        acc.capture_piece(
+            (from, to, PieceKind::Hisha, Color::Black),
+            (to, PieceKind::Fu, Color::White),
+            (PieceKind::Fu, 1, Color::Black),
+        );
+        mailbox[10] = None;
+        mailbox[20] = Some((PieceKind::Hisha, Color::Black));
+        hand[0][0] = 1;
+        let mut refreshed = NnueAcc::new();
+        refreshed.refresh(&mailbox, &hand);
+        assert_eq!(acc, refreshed);
+        let captured = acc.clone();
+        acc.remove_hand(PieceKind::Fu, 1, Color::Black);
+        acc.add_piece(drop, PieceKind::Fu, Color::Black);
+        mailbox[35] = Some((PieceKind::Fu, Color::Black));
+        hand[0][0] = 0;
+        refreshed.refresh(&mailbox, &hand);
+        assert_eq!(acc, refreshed);
+        acc.remove_piece(drop, PieceKind::Fu, Color::Black);
+        acc.add_hand(PieceKind::Fu, 1, Color::Black);
+        assert_eq!(acc, captured);
+        acc.undo_capture_piece(
+            (from, to, PieceKind::Hisha, PieceKind::Hisha, Color::Black),
+            (to, PieceKind::Fu, Color::White),
+            (PieceKind::Fu, 1, Color::Black),
+        );
+        assert_eq!(acc, initial);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn feature_index_separates_square_kind_color_and_perspective() {
+        let sq = Square::from_index(10);
+        let other_sq = Square::from_index(11);
+
+        let own = feature_index(sq, PieceKind::Fu, Color::Black, Color::Black);
+        let opponent = feature_index(sq, PieceKind::Fu, Color::White, Color::Black);
+        let other_perspective = feature_index(sq, PieceKind::Fu, Color::Black, Color::White);
+        let other_kind = feature_index(sq, PieceKind::Kyou, Color::Black, Color::Black);
+        let other_square = feature_index(other_sq, PieceKind::Fu, Color::Black, Color::Black);
+
+        assert_ne!(own, opponent);
+        assert_ne!(own, other_perspective);
+        assert_ne!(own, other_kind);
+        assert_ne!(own, other_square);
+        assert!(
+            [own, opponent, other_perspective, other_kind, other_square]
+                .into_iter()
+                .all(|index| index < BOARD_INPUT)
+        );
+    }
+
+    #[test]
+    fn incremental_piece_and_hand_updates_match_full_refresh() {
+        let mut mailbox = [None; 81];
+        let mut hand = [[0u8; 7]; 2];
+        let sq = Square::from_index(40);
+        let piece = (PieceKind::Kaku, Color::Black);
+        mailbox[sq.index() as usize] = Some(piece);
+        hand[Color::White.index()][PieceKind::Fu.index()] = 3;
+
+        let mut incremental = NnueAcc::new();
+        incremental.add_piece(sq, piece.0, piece.1);
+        for count in 1..=3 {
+            incremental.add_hand(PieceKind::Fu, count, Color::White);
+        }
+
+        let mut refreshed = NnueAcc::new();
+        refreshed.refresh(&mailbox, &hand);
+        assert_eq!(incremental, refreshed);
+
+        incremental.remove_hand(PieceKind::Fu, 3, Color::White);
+        incremental.remove_hand(PieceKind::Fu, 2, Color::White);
+        incremental.remove_hand(PieceKind::Fu, 1, Color::White);
+        incremental.remove_piece(sq, piece.0, piece.1);
+        assert_eq!(incremental, NnueAcc::new());
+    }
+
+    #[test]
+    fn board_mailbox_refresh_matches_snapshot_refresh() {
+        let weights = NnueWeights::default_lcg();
+        let mut board_mailbox = [None; 81];
+        board_mailbox[Square::from_shogi(5, 5).index() as usize] =
+            Some(Piece::new(Color::Black, PieceKind::Hisha));
+        board_mailbox[Square::from_shogi(3, 4).index() as usize] =
+            Some(Piece::new(Color::White, PieceKind::Uma));
+        let hand = [[2, 0, 1, 0, 0, 1, 0], [0, 1, 0, 2, 0, 0, 1]];
+
+        let snapshot = board_mailbox.map(|piece| piece.map(|p| (p.kind, p.color)));
+        let mut from_snapshot = NnueAcc::new_with(&weights);
+        from_snapshot.refresh_with(&weights, &snapshot, &hand);
+
+        let mut from_board = NnueAcc::new_with(&weights);
+        from_board.refresh_from_board_with(&weights, &board_mailbox, &hand);
+
+        assert_eq!(from_board, from_snapshot);
+        assert_eq!(
+            from_board.evaluate_with(&weights, Color::Black),
+            from_snapshot.evaluate_with(&weights, Color::Black)
+        );
+        assert_eq!(
+            from_board.evaluate_with(&weights, Color::White),
+            from_snapshot.evaluate_with(&weights, Color::White)
+        );
+    }
+
+    #[test]
+    fn explicit_weights_preserve_piece_sensitivity_and_side_sign() {
+        let mut weights = NnueWeights {
+            ft: vec![[0i16; L1]; INPUT],
+            ft_bias: [0i16; L1],
+            l2: vec![[0.0f32; L2]; 2 * L1],
+            l2_bias: [0.0f32; L2],
+            out: [0.0f32; L2],
+            out_bias: 0.0,
+        };
+
+        // Cover every square so the assertion tests feature plumbing rather
+        // than depending on the SFEN-to-Square coordinate convention.
+        for index in 0..Square::NUM {
+            let square = Square::from_index(index as u8);
+            let black_feature = feature_index(square, PieceKind::Hisha, Color::Black, Color::Black);
+            weights.ft[black_feature][0] = 64;
+        }
+
+        // Two ReLU outputs encode +feature and -feature.  This keeps the
+        // assertion independent of the process-global NNUE singleton.
+        weights.l2[0][0] = 1.0;
+        weights.l2[L1][0] = -1.0;
+        weights.l2[0][1] = -1.0;
+        weights.l2[L1][1] = 1.0;
+        weights.out[0] = 64.0;
+        weights.out[1] = -64.0;
+
+        let mut mailbox = [None; 81];
+        mailbox[Square::from_shogi(5, 5).index() as usize] = Some((PieceKind::Hisha, Color::Black));
+        let mut direct = NnueAcc::new_with(&weights);
+        direct.refresh_with(&weights, &mailbox, &[[0; 7]; 2]);
+        assert_eq!(direct.values[Color::Black.index()][0], 64);
+
+        let black_score = direct.evaluate_with(&weights, Color::Black);
+        let white_score = direct.evaluate_with(&weights, Color::White);
+        assert!(
+            black_score > 0,
+            "black rook must improve the black-side score: {black_score}"
+        );
+        assert_eq!(
+            white_score, -black_score,
+            "side-to-move perspective must invert"
+        );
+        let mut empty = NnueAcc::new_with(&weights);
+        empty.refresh_with(&weights, &[None; 81], &[[0; 7]; 2]);
+        assert_eq!(empty.evaluate_with(&weights, Color::Black), 0);
+    }
+
+    #[test]
+    fn read_weights_rejects_trailing_bytes() {
+        let path = std::env::temp_dir().join(format!(
+            "sekirei_test_nnue_trailing_{}.bin",
+            std::process::id()
+        ));
+        let mut bytes = Vec::new();
+        let weights = NnueWeights::default_lcg();
+        save_weights(&weights, &path).expect("failed to write test weights");
+        bytes.extend(std::fs::read(&path).expect("failed to read test weights"));
+        bytes.push(0);
+        std::fs::write(&path, bytes).expect("failed to append test byte");
+
+        let result = read_weights(&path);
+        let _ = std::fs::remove_file(&path);
+        let error = match result {
+            Ok(_) => panic!("trailing bytes must be rejected"),
+            Err(error) => error,
+        };
+        assert_eq!(error.kind(), ErrorKind::InvalidData);
+        assert!(error.to_string().contains("expected exactly"));
+    }
+
+    #[test]
+    fn read_weights_rejects_non_finite_values() {
+        let path = std::env::temp_dir().join(format!(
+            "sekirei_test_nnue_non_finite_{}.bin",
+            std::process::id()
+        ));
+        let weights = NnueWeights::default_lcg();
+        save_weights(&weights, &path).expect("failed to write test weights");
+        let mut bytes = std::fs::read(&path).expect("failed to read test weights");
+        let last = bytes.len() - std::mem::size_of::<f32>();
+        bytes[last..].copy_from_slice(&f32::NAN.to_le_bytes());
+        std::fs::write(&path, bytes).expect("failed to write malformed test weights");
+
+        let result = read_weights(&path);
+        let _ = std::fs::remove_file(&path);
+        let error = match result {
+            Ok(_) => panic!("non-finite values must be rejected"),
+            Err(error) => error,
+        };
+        assert_eq!(error.kind(), ErrorKind::InvalidData);
+        assert!(error.to_string().contains("non-finite"));
+    }
+
+    #[test]
+    fn save_weights_rejects_non_finite_values_before_writing() {
+        let path = std::env::temp_dir().join(format!(
+            "sekirei_test_nnue_save_non_finite_{}.bin",
+            std::process::id()
+        ));
+        let mut weights = NnueWeights::default_lcg();
+        weights.out_bias = f32::INFINITY;
+
+        let error = save_weights(&weights, &path).expect_err("non-finite weights must be rejected");
+        let _ = std::fs::remove_file(&path);
+        let temp_path = path.with_file_name(format!(
+            ".{}.tmp-{}",
+            path.file_name().unwrap().to_string_lossy(),
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&temp_path);
+
+        assert_eq!(error.kind(), ErrorKind::InvalidData);
+        assert!(error.to_string().contains("non-finite"));
+        assert!(!path.exists());
+        assert!(!temp_path.exists());
+    }
+
+    #[test]
+    fn save_weights_atomically_replaces_existing_file() {
+        let path = std::env::temp_dir().join(format!(
+            "sekirei_test_nnue_atomic_{}.bin",
+            std::process::id()
+        ));
+        let weights = NnueWeights::default_lcg();
+        save_weights(&weights, &path).expect("failed to write initial weights");
+        save_weights(&weights, &path).expect("failed to replace weights");
+
+        let loaded = read_weights(&path).expect("atomically written weights must load");
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(loaded.ft_bias, weights.ft_bias);
+        assert_eq!(loaded.out_bias, weights.out_bias);
+        assert!(
+            !path
+                .with_file_name(format!(
+                    ".{}.tmp-{}",
+                    path.file_name().unwrap().to_string_lossy(),
+                    std::process::id()
+                ))
+                .exists()
+        );
+    }
+
+    #[test]
+    fn save_and_read_weights_are_bitwise_deterministic() {
+        let path = std::env::temp_dir().join(format!(
+            "sekirei_test_nnue_roundtrip_{}.bin",
+            std::process::id()
+        ));
+        let weights = NnueWeights::default_lcg();
+        save_weights(&weights, &path).expect("failed to write test weights");
+        let loaded = read_weights(&path).expect("failed to read test weights");
+        let _ = std::fs::remove_file(&path);
+
+        assert_eq!(loaded.ft, weights.ft);
+        assert_eq!(loaded.ft_bias, weights.ft_bias);
+        assert_eq!(loaded.l2, weights.l2);
+        assert_eq!(loaded.l2_bias, weights.l2_bias);
+        assert_eq!(loaded.out, weights.out);
+        assert_eq!(loaded.out_bias, weights.out_bias);
+    }
+}

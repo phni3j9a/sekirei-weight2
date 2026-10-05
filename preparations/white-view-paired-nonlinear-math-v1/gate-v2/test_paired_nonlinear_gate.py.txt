@@ -1,0 +1,210 @@
+"""Memory-only fixed-shape/small-control fixtures; no real models/artifacts."""
+from array import array
+import copy
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import struct
+import sys
+import unittest
+
+R=Path('/home/server/worktrees/sekirei-weight2/issue-17-autonomous-weight-improvement')
+sys.path.insert(0,str(R/'scripts'))
+import paired_nonlinear_gate as g
+
+def raw(v):return (json.dumps(v,separators=(',',':'),allow_nan=False)+'\n').encode()
+def ref(path,b):return {'path':path,**g.digest(b)}
+def snapshot(status=0):
+    return {'schema':'sekirei.white-view-paired-nonlinear-float-snapshot.v1','float_policy':'x86-ftz-daz',
+        'environment_variable':'SEKIREI_TRAIN_FTZ_DAZ','environment_value':'1','mxcsr_raw_bits':0x9fc0|status,
+        'mxcsr_control_bits':0x9fc0,'mxcsr_status_bits':status,'mxcsr_status_mask':0x3f,'required_control_bits':0x9fc0}
+def life():
+    return {'command':['/tmp/source-fixture/trainer','train-paired-nonlinear'],'pid':11,'pgid':11,'returncode':0,
+        'waited':True,'reaped':True,'timed_out':False,'group_empty_scans':[True,True],
+        'log':ref('/tmp/source-fixture/log',b'fixture\n'),'wall_seconds':1.0}
+
+class Gate(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.reference=g.canonical_reference()
+        cls.state={}
+        for name,count in g.VECTORS.items():
+            vals=cls.reference[name]
+            cls.state[name]=[g.bits(float(x)/64.0 if name.startswith('ft') else float(x)) for x in vals]
+            for k in g.MOMENTS[name]:cls.state[k]=[0]*count
+        for row in range(512):
+            for col in range(4,32):cls.state['l2'][row*32+col]=0
+        for p in range(14):
+            a=4+2*p;b=a+1
+            cls.state['out'][a]=0;cls.state['out'][b]=0x80000000
+            cls.state['out_m'][b]=0x80000000
+        cls.state.update(out_bias=0,obias_m=0,obias_v=0,step=g.STEPS)
+        cls.native=g.nearest_from_state(cls.state)
+    def changed(self,key,index,value):
+        s=dict(self.state);s[key]=list(s[key]);s[key][index]=value;return s
+    def test_reference_matches_public_initializer_memory_only(self):
+        import material_init as m
+        w=m.build_weights(42)
+        for donor in range(2):
+            for t in range(38):
+                a=(2268+donor*38+t)*256;b=(2268+(3-donor)*38+t)*256
+                w['ft'][b:b+256]=w['ft'][a:a+256]
+        self.assertEqual(g.encode_native(w),g.encode_native(self.reference))
+    def test_full19_fields_state_and_native_positive(self):
+        self.assertEqual(len(g.STATE_KEYS),19)
+        result=g.validate_state(self.state,self.reference)
+        self.assertLess(result['absolute_cp_upper'],899000)
+        self.assertEqual(len(self.native),1305356)
+        self.assertEqual(self.native[:8],b'SEKIRW03')
+    def test_complete_checkpoint_vs_initialized_and_fullbytes_reexport(self):
+        context={};cp={'schema':g.CHECKPOINT_SCHEMA,'version':1,'feature_schema':g.FEATURE,'encoding':'all-f32-u32-bits-le-values',
+            'resume_allowed':False,'epochs_completed':3,'positions_per_epoch':g.N,'context':context,'state':self.state}
+        self.assertLess(g.checkpoint(raw(cp),context,g.encode_native(self.reference),self.native)['absolute_cp_upper'],899000)
+        cp=dict(cp,epochs_completed=0)
+        with self.assertRaises(ValueError):g.checkpoint(raw(cp),context,g.encode_native(self.reference),self.native)
+        with self.assertRaises(ValueError):g.checkpoint(raw(dict(cp,epochs_completed=3)),context,g.encode_native(self.reference),self.native[:-1]+b'x')
+    def test_protected_ft_moment_and_bias(self):
+        for key,index,value in [('ft',0,g.bits(2.0)),('ft_m',0,g.bits(-0.0)),('bias_v',0,g.bits(1.0))]:
+            with self.assertRaises(ValueError):g.validate_state(self.changed(key,index,value),self.reference)
+    def test_shape_bool_nonfinite_and_negative_variance(self):
+        for key,index,value in [('ft',2,True),('out',4,0x7f800000),('ft_v',2,g.bits(-1.0))]:
+            with self.assertRaises(ValueError):g.validate_state(self.changed(key,index,value),self.reference)
+        s=dict(self.state,ft=self.state['ft'][:-1])
+        with self.assertRaises(ValueError):g.validate_state(s,self.reference)
+    def test_aux797_and_material_exact_protection(self):
+        with self.assertRaises(ValueError):g.validate_state(self.changed('ft',2,g.bits(798.0/64.0)),self.reference)
+        with self.assertRaises(ValueError):g.validate_state(self.changed('l2',0,g.bits(0.0)),self.reference)
+    def test_hand_fullchannel_and_head_moment_ties(self):
+        for key,index in [('ft_m',(2268+3*38)*256+2),('l2_m',256*32+5),('out_m',5),('out_v',5)]:
+            with self.assertRaises(ValueError):g.validate_state(self.changed(key,index,g.bits(0.5)),self.reference)
+    def test_explicit_negative_zero_output_slave(self):
+        with self.assertRaises(ValueError):g.validate_state(self.changed('out',5,0),self.reference)
+    def test_output_budget_and_preclamp_overflow_bounds(self):
+        s=self.changed('out',4,g.bits(32769.0));s['out'][5]=g.bits(-32769.0)
+        with self.assertRaises(ValueError):g.forward_bounds(s)
+        s=self.changed('l2',2*32+4,0x7f7fffff)
+        with self.assertRaises(ValueError):g.forward_bounds(s)
+    def test_ftz_daz_bound_oracle_zero_subnormal_and_smallnormal(self):
+        tiny=struct.unpack('<d',struct.pack('<Q',1))[0]
+        q=0.0
+        for _ in range(14):q=g.add_up(q,0.0)
+        self.assertEqual(struct.pack('<d',q),struct.pack('<Q',1))
+        self.assertEqual(g.forward_bounds(self.state)['q_l1_upper'],tiny)
+        self.assertEqual(g.abs32_as64(1),0.0)
+        self.assertEqual(g.abs32_as64(0x80000001),0.0)
+        self.assertEqual(g.abs32_as64(0x00800000),2.0**-126)
+        self.assertEqual(struct.pack('<d',g.ftz64(-tiny)),struct.pack('<Q',0x8000000000000000))
+        self.assertEqual(g.mul_up(2.0**-1022,0.5),tiny)
+        s=self.changed('out',4,1);s['out'][5]=0x80000001
+        self.assertEqual(g.forward_bounds(s)['q_l1_upper'],tiny)
+        normal=self.changed('out',4,0x00800000);normal['out'][5]=0x80800000
+        self.assertGreater(g.forward_bounds(normal)['q_l1_upper'],2.0**-126)
+        bounds=g.forward_bounds(self.state)
+        stderr=(b'float_subnormal_policy=x86-ftz-daz; mxcsr_control=0x9fc0; mxcsr_status=0x0\n'+
+            ('nonlinear_native_structure=verified; mode='+g.MODE+'; epochs=3; q_l1_upper='+repr(bounds['q_l1_upper'])+'; absolute_cp_upper='+repr(bounds['absolute_cp_upper'])+'\n').encode()+
+            b'complete count=15; nonlinear absolute STM; both stored-native float bridges, FT prefixes, every L2/output product/add finite before clamp\n')
+        g.core_stderr(stderr,15,bounds)
+    def test_nearest_ties_even_signed_zero(self):
+        s=self.changed('ft',2,g.bits(1.5/64.0));n=g.nearest_from_state(s)
+        self.assertEqual(struct.unpack_from('<h',n,8+4)[0],2)
+        s=self.changed('ft',2,g.bits(-0.0));n=g.nearest_from_state(s)
+        self.assertEqual(struct.unpack_from('<h',n,8+4)[0],0)
+    def test_float_snapshot_status_and_exact_types(self):
+        for status in range(64):g.float_snapshot(snapshot(status))
+        for field,value in [('environment_value','01'),('mxcsr_control_bits',True),('mxcsr_raw_bits',0x1f80),('mxcsr_status_bits',True)]:
+            with self.assertRaises(ValueError):g.float_snapshot(dict(snapshot(),**{field:value}))
+    def test_epoch_log_reparse_order_missing_and_raw_sha(self):
+        events=[];observations=[]
+        for e in range(1,4):
+            a={'epoch':e,'start_step':(e-1)*g.N,'float':snapshot()};b={'epoch':e,'positions':g.N,'end_step':e*g.N,'float':snapshot(1)}
+            events += [b'PAIRED_EPOCH_BEGIN '+raw(a),b'PAIRED_EPOCH_COMPLETE '+raw(b)]
+            observations.append({'epoch':e,'start_step':a['start_step'],'positions':g.N,'end_step':b['end_step'],'before':a['float'],'after':b['float']})
+        log=b''.join(events);lr=ref('/tmp/source-fixture/epoch.log',log);sr=ref('/tmp/source-fixture/float.rs',b'source\n')
+        def validate(data):
+            r=g.Bytes({lr['path']:data,sr['path']:b'source\n'},{lr['path']:g.digest(log),sr['path']:g.digest(b'source\n')})
+            v={'schema':'sekirei.white-view-paired-nonlinear-float-policy-evidence.v1','guard_source':sr,'epoch_log':lr,'epoch_observations':observations,'export':snapshot()}
+            g.float_evidence(v,r,lr,snapshot())
+        validate(log)
+        with self.assertRaises(ValueError):validate(log[:-1])
+        observations[2]['end_step']=False
+        with self.assertRaises(ValueError):validate(log)
+    def test_lifecycle_needs_parent_not_child_success(self):
+        g.lifecycle(life(),limit=86400)
+        g.lifecycle(dict(life(),wall_seconds=0),limit=86400)
+        for field,value in [('reaped',False),('group_empty_scans',[True,False]),('pid',True),('returncode',True),('wall_seconds',86400.0)]:
+            with self.assertRaises(ValueError):g.lifecycle(dict(life(),**{field:value}),limit=86400)
+        with self.assertRaises(ValueError):g.lifecycle(dict(life(),wall_seconds=True))
+    def test_raw_inventory_fullref_and_strict_json(self):
+        b=b'{}\n';r=ref('/tmp/source-fixture/a',b);x=g.Bytes({r['path']:b},{r['path']:g.digest(b)})
+        self.assertEqual(x.json(r),{})
+        with self.assertRaises(ValueError):x.read(dict(r,bytes=True))
+        with self.assertRaises(ValueError):x.refs_in({'source':r},{})
+        with self.assertRaises(ValueError):g.strict_json(b'{"x":1,"x":2}')
+        with self.assertRaises(ValueError):g.strict_json(b'{"x":NaN}')
+        for p in ['/tmp/a/./b','/tmp//a','/tmp/a/../b','/tmp/a/','a']:
+            with self.assertRaises(ValueError):g.absolute(p)
+    def test_dedicated_core_stderr_contract(self):
+        b=(b'float_subnormal_policy=x86-ftz-daz; mxcsr_control=0x9fc0; mxcsr_status=0x0\n'+
+           ('nonlinear_native_structure=verified; mode='+g.MODE+'; epochs=3; q_l1_upper=1.0; absolute_cp_upper=30000.0\n').encode()+
+           b'complete count=15; nonlinear absolute STM; both stored-native float bridges, FT prefixes, every L2/output product/add finite before clamp\n')
+        g.core_stderr(b,15)
+        with self.assertRaises(ValueError):g.core_stderr(b,14)
+        for old,new in [(b'mxcsr_status=0x0',b'mxcsr_status=0x100'),(b'q_l1_upper=1.0',b'q_l1_upper=nan'),(b'absolute_cp_upper=30000.0',b'absolute_cp_upper=899000.0')]:
+            with self.assertRaises(ValueError):g.core_stderr(b.replace(old,new),15)
+        with self.assertRaises(ValueError):g.core_stderr(b,15,{'q_l1_upper':0.0,'absolute_cp_upper':30000.0})
+    def test_typed_prior_parent_checks_no_phantom_complete(self):
+        # Full Root producer/original replay validation is deliberately not run.
+        # Exact-key/type failures must reject before using that proposed body.
+        class Reader:
+            expected={}
+            def read(self,_):raise AssertionError('must reject malformed body before raw references')
+        refs={k:ref('/tmp/source-fixture/'+k,b'x') for k in ('recipe','source_binding','parent_preflight')}
+        with self.assertRaises(ValueError):g.prior_parent_bodies(Reader(),{'status':'complete'},{},refs)
+        self.assertFalse(g.exact({'ok':True},{'ok':1}))
+        self.assertFalse(g.exact({'stage':g.STEPS},{'stage':True}))
+    def test_training_command_contract_matches_frozen_parent_route(self):
+        base=['/tmp/source-fixture/cargo','--release','--offline','--locked','--jobs','2','--features','nnue_white_view_aux_tied']
+        good=[base+['test'],base+['build']];g.training_commands(good)
+        for bad in [[base+['test']], [base+['build','test']], [[x for x in cmd if x!='--locked'] for cmd in good],
+                    [[x.replace('nnue_white_view_aux_tied','unknown') for x in cmd] for cmd in good]]:
+            with self.assertRaises(ValueError):g.training_commands(bad)
+    def test_embedded_compile_links_fixed_engine_core_and_enabled_source(self):
+        d=Path('/tmp/sekirei-weight2-white-view-paired-nonlinear-proof-source-v2')
+        source=(d/'paired_nonlinear_core_pair_probe.rs').read_bytes().replace(b'const PROTOTYPE_ONLY:bool=true;',b'const PROTOTYPE_ONLY:bool=false;',1)
+        native=(d/'paired_nonlinear_native_contract.rs').read_bytes()
+        data={};base='/tmp/source-fixture/'
+        def add(name,b):
+            p=base+name;data[p]=b;return ref(p,b)
+        compiler=add('rustc',b'synthetic compiler');rlib=add('deps/libcore.rlib',b'synthetic rlib')
+        src=add('paired_nonlinear_core_pair_probe.rs',source);nc=add('paired_nonlinear_native_contract.rs',native)
+        binary=add('probe',b'synthetic binary');log=add('compile.log',b'synthetic successful compilation\n')
+        deps={rlib['path']:{k:rlib[k] for k in ('bytes','sha256')}}
+        manifest=add('engine.manifest.json',raw({'core_link':{'rlib':rlib},'release_dependencies_after_probes':deps}))
+        identity=add('engine.identity.json',raw({'compiler_files':{compiler['path']:{k:compiler[k] for k in ('bytes','sha256')}}}))
+        command=[compiler['path'],'--edition=2024','-C','target-cpu=x86-64-v3','-C','opt-level=3','-C','panic=abort',
+            '--extern','sekirei_core='+rlib['path'],'-L','dependency='+base+'deps',src['path'],'-o',binary['path']]
+        inputs={r['path']:{k:r[k] for k in ('bytes','sha256')} for r in (compiler,rlib,src,nc,manifest,identity)}
+        value={'engine_manifest':manifest,'engine_identity':identity,'core_rlib':rlib,'release_dependencies_before':deps,'release_dependencies_after':deps,
+            'sources':{'probe':src,'native_contract':nc},'compiler':compiler,'binary':binary,'command':command,
+            'execution':dict(life(),command=command,log=log),'inputs_before':inputs,'inputs_after':inputs}
+        reader=g.Bytes(data,{p:g.digest(b) for p,b in data.items()});refs={'engine_manifest':manifest,'engine_identity':identity};body={'probe':binary,'probe_source':src}
+        g.proof_compilation(value,'core',reader,refs,body)
+        with self.assertRaises(ValueError):g.proof_compilation(dict(value,command=command+['--cfg','unfrozen']),'core',reader,refs,body)
+        with self.assertRaises(ValueError):g.proof_compilation(dict(value,execution=dict(value['execution'],reaped=False)),'core',reader,refs,body)
+    def test_reference_native_is_separate_from_initialized_candidate(self):
+        ref_raw=g.encode_native(self.reference)
+        self.assertNotEqual(self.native,ref_raw) # paired heads were initialized separately
+        self.assertEqual(g.fnv(self.native),g.fnv(bytes(self.native)))
+    def test_before_io_barrier_and_old_schema_not_promoted(self):
+        with self.assertRaises(RuntimeError):g.actual_entry('/forbidden/actual')
+        with self.assertRaises(ValueError):g.reconstruct_gate({},b'{}\n','0'*64)
+        self.assertTrue(g.PROTOTYPE_ONLY)
+        self.assertNotIn('solver_certificate',g.ROLES)
+    def test_source_scope_no_files_processes_or_actual_reader(self):
+        import ast
+        src=Path(g.__file__).read_text();tree=ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node,ast.Call) and isinstance(node.func,ast.Attribute):self.assertNotIn(node.func.attr,{'read_bytes','write_bytes','open','Popen','run','system'})
+
+if __name__=='__main__':unittest.main()

@@ -1,0 +1,46 @@
+{
+  "schema": "sekirei.white-view-public-export-manifest.v1",
+  "status": "complete",
+  "files": {
+    "comparison.json": {
+      "bytes": 12952,
+      "sha256": "6f6c37caf2e641a4701bda1f7a6262ccae01b39d43872d817a3d2e4031c466ae"
+    },
+    "comparison.md": {
+      "bytes": 1372,
+      "sha256": "c9ee5f266f426092298cf4c014bd74850e98c168f888bbf884bc026b74b53687"
+    },
+    "comparison.svg": {
+      "bytes": 4157,
+      "sha256": "861c45f1847c7bc3a64f8a517439d3c19d641dabe5c8cde20f68bbedd4e89876"
+    }
+  },
+  "source_projection": {
+    "publisher_sha256": "0f136f525d819067e2b273ecab26f35f9b9ea2d0f3e4c857d7dd8ca6efce41ab",
+    "original_svg": {
+      "bytes": 3717,
+      "sha256": "81097b177d51a1aaeba65c99069d5f13ccbfc5dd6dace5f9425b51f8ad1db96c"
+    }
+  },
+  "visual_review": {
+    "numeric_text_and_bar_geometry_preserved": true,
+    "numeric_labels": 20,
+    "font_size_px": 9,
+    "candidate_label_raise_px": 12
+  },
+  "archive_summary": {
+    "source_roots": 16,
+    "files": 13340,
+    "directories": 79,
+    "bytes": 448847736,
+    "source_destination_size_sha256_equal": true,
+    "standalone_environment_restore": false,
+    "archive_result_sha256": "3175ed4b730fbcd863a3072d79fce9a1d3e0d7b2e7d8b8d19b00746ce443da71",
+    "root_metadata_files": 11,
+    "root_metadata_bytes": 28251586,
+    "root_metadata_ledger_sha256": "eeef7ec2011e059c2d561795982409b8999e7ffee21ba9ac354a341bd049dfd5"
+  },
+  "adopt": false,
+  "best_model_updated": false,
+  "goal_completed": false
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "sekirei.public-archive-summary.v1",
+  "status": "complete",
+  "archive_id": "issue-17-material-ridge1-112k-v1",
+  "candidate": "112k 13 piece values ridge=1",
+  "files": 3737,
+  "bytes": 34969726,
+  "directories": 33,
+  "symlinks": 0,
+  "source_before_after_destination_file_sets_sizes_sha256_equal": true,
+  "directory_sets_symlink_strings_equal": true,
+  "ssd_sources_preserved": true,
+  "mapping_sha256": "4e115f243fe26a317a3975320e99d2c1424ad0676a3ded97980bf7ae939a99a7",
+  "archiver_sha256": "5520a647ed77f25e47cd7208fd13ee9b6ae10d619a836c8b36709d33308a2816",
+  "private_status_receipt_sha256": "bbdd04ed1a3b60f16f361412c6460aef16f1cd77b68cb289a8d69dc9ecef2598",
+  "private_destination_inventory_sha256": "ed888134c8230efae53fdef3a46b904e4fc771f1fa1ea6e3cb20fafca4b44857",
+  "measurement_commit": "ca14934be8871074dda10165960830a8a7d35924",
+  "public_helpers_commit": "772188c8ad7ce1f22957f795306e14fb478c926b",
+  "final_used": false,
+  "model_adopted": false,
+  "standalone_environment_restore": false,
+  "scope": "completed candidate evaluation, four runs, model and metadata, frozen code/receipts/publication snapshot; fixed runtime, audit venv, fallback and training archives required"
+}

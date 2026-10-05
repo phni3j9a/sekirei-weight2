@@ -22,6 +22,8 @@
 - 現採用E3を明示的なincumbentとして、候補対候補の正式証拠を比較するconsumerを追加する。
 - 教師packの各400ゲームprefixという抽出規則を見直す。最初はpack全体のゲーム境界から固定hash順位でゲームを選び、モデル構造・学習量を維持してデータの多様化を検証する案を準備する。固定holdout、独立1000局の全盤面除外、ゲーム分離、盤面重複除外を維持する。候補の選択規則は生成と正式比較前に固定する。
 
+学習済みbestを明示する `scripts/compare_incumbent.py` を追加し、公開16 fixtureと保存済みE3の4段階rawの再検証に成功した。E3対E3の自己比較は8 identityが一致し、入力前後不変、MAE `1446737797/1593900`、Top3 `321208691/535782520` を再確認した。同一モデルなのでadopt=falseであり、新しい改善や採用ではない。最初のconsumer実機確認はcanonical occurrence IDと教師metric keyの表記差で失敗し、回帰fixtureと対応付けを修正した。失敗原本を保持し、新しいv2出力で成功を確認した。[公開再検証集計](validation/weekly-weight-improvement-2026-10-05/incumbent-revalidation.json)にはrawやローカルパスを含めない。
+
 ## 計算と保存
 
 現在のMac mini CPU・32 GiB RAM・既存SSD/NASだけを使う。解析jobs=1、Threads=1、build jobs=2、重い実験は直列。開始時SSD空き約27 GiB、NAS空き約5.9 TiB。初期の追加SSD作業領域は8 GiBを目安とし、各候補前に空き容量と時間を再確認する。

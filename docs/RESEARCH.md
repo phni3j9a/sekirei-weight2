@@ -102,7 +102,7 @@ rfkit-rs の Planner → 一つの Issue → Worker → 検証済み PR の骨�
 
 固定3epoch338,043更新、保護駒得parameter/Adam m/vのbyte一致、通常probeによるcore118,591／差分更新8,185観測を確認した。通常probeとcfg(test)内のClone fixture未検証を分ける。原典の探索と正式条件、final未使用を維持し、Suisho11Plusの新しい51回の参考確認は採用後に完了した。一般的棋力の改善は未確認である。前7候補の有効な不採用結果と技術失敗の原本は[自律改善](AUTONOMOUS_WEIGHT_IMPROVEMENT.md)に残す。
 
-停止確認・NAS保存・公開集計の検証・最良モデルへの登録は完了した。[公開比較](validation/autonomous-weight-improvement-2026-10-04/paired-nonlinear/comparison.md)と[採用モデルidentity](validation/autonomous-weight-improvement-2026-10-04/best-model.json)を記録した。コードと知見はPR #18へ提出し、未マージでレビューを待つ。Goalの終了登録は公開PRの検証後に行う。
+停止確認・NAS保存・公開集計の検証・最良モデルへの登録は完了した。[公開比較](validation/autonomous-weight-improvement-2026-10-04/paired-nonlinear/comparison.md)と[採用モデルidentity](validation/autonomous-weight-improvement-2026-10-04/best-model.json)を記録した。コードと知見は[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)にまとめた。Goalは公開PRのCI成功を確認して完了登録した。
 
 ## Issue #9 Sekirei v0.3.39への移行
 

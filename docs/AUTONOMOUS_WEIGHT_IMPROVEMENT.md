@@ -6,7 +6,7 @@
 
 Issue #15 / PR #16の実装と実験記録はマージ済みで、今回の専用worktreeは最新mainから開始した。実験コードの統合とモデル採用を区別し、今回のPRは別途許可があるまでマージしない。
 
-第8候補の固定白視点・対非線形epoch3は有効な正式比較で共同採用条件を満たした。前7候補の有効な不採用結果と当時の最良fallback維持の判断は履歴として保持する。最新の数値と後処理の状態は末尾の「第八候補の固定E3と正式結果」を参照。停止確認・NAS保存・公開集計検証・最良モデルへの登録は完了した。コードと記録はPR #18へ提出し、未マージでレビューを待つ。Goalは達成条件に到達しており、公開PRの検証後に終了登録する。
+第8候補の固定白視点・対非線形epoch3は有効な正式比較で共同採用条件を満たした。前7候補の有効な不採用結果と当時の最良fallback維持の判断は履歴として保持する。最新の数値と後処理の状態は末尾の「第八候補の固定E3と正式結果」を参照。停止確認・NAS保存・公開集計検証・最良モデルへの登録は完了した。コードと記録はPR #18にまとめ、Goalは公開PRのCI成功を確認して完了登録した。
 
 ## 最初の候補
 
@@ -180,7 +180,7 @@ Pythonの新規fixtureはactual full-shape AdamのFT 1ULP改変（native/nearest
 
 原因は`save_checkpoint_meta`の引数が`weights.epoch1.meta.json`なのに、追加処理が単純な`with_extension("bin")`で`weights.epoch1.meta.bin`を参照したこと。実際のnativeは`weights.epoch1.bin`であり、NNUE保存は済んでいた。失敗runの6 files・89,422,337 bytes、元のsource/build・事前登録・logを保持し、private erratumへhashを凍結した。metadataの厳密なsuffix解釈と実保存の回帰fixtureを追加して新source/buildを作る。学習math・CLI・mask・99cp・LR・seed・3epoch/E3は変えず、初期materialとfresh Adamから新runを始める。失敗epoch1を採点候補やresumeに流用しない。
 
-関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)（下書き・未マージ）、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。
+関連: [Issue #17](https://github.com/phni3j9a/sekirei-weight2/issues/17)、[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)、[前回の実験](WEIGHT_IMPROVEMENT.md)、[研究方針](RESEARCH.md)、[環境](ENVIRONMENT.md)。
 
 metadataパスの修正版v3は、二つの正確なsuffixを確認して実`*.bin`を参照し、不正な名を拒否する。公開synthetic NNUEを実serializerで保存して`save_checkpoint_meta`全経路を通す回帰testを追加し、複数ドット・親dirのsuffix・FNV・教師identity・非zero補助予算・native bytes保持を確認した。新専用source/buildのRust 10 testsとrelease buildが成功した。追加patch SHAは`ee819bd80c41301ee78a0d3ce29efd976c3d762c1ddf07bf6cc259703d38933b`、binary SHAは`86a17aa6fd75ddf76f4679b05d072ca0d930662aa7fb6b9dadd2647e79ab7ee3`。v2のtrainer数学はbyte一致で保持し、元の失敗source/helper/事前登録も別snapshotへ凍結した。旧失敗runの再開や採用判定には使わず、新事前登録とfresh Adamで同じ3epoch/E3を再実行する。
 
@@ -358,7 +358,7 @@ candidate MAEは `1446737797/1593900`、Top3は `321208691/535782520`。baseline
 
 公開比較はvalidation/autonomous-weight-improvement-2026-10-04/paired-nonlinear/comparison.md、技術gate・監査・比較・tool参照は公開comparison JSONのverification_sha256とsupplemental_evidence、およびbest-model.jsonに完全SHAを記録。公開するのはcomparison JSON/Markdown/2指標集計SVGの3filesとRootが別に照合するsize/SHA manifestの計4filesで、private SFEN・labels・raw・inputmaps・教師／モデル内容は出さない。集計SVGは既存runの5panel report.svgの代替ではない。
 
-停止はsession75745 / chunk7dbcbd、exit0・reaped、11 locksと二回のプロセス確認。STOP SHA `4be0f65efea3580ddd674b374ec5bf37143b3879e9e382a7618a8c522c79f5c9`、NASの全ファイル集合／サイズ／SHA／directory前後と保存先の一致は13,911 files / 647,117,529 bytes / 187 directories / symlink0。全source-before・source-after・destination一致、NAS親session39965 / chunk940afbはexit0・reaped。追加metadata 322 files / 217,349,120 bytesもコピー前後・保存先一致、ledger SHA `891ae53d92874ff1afd437eb7fdfb8d91a20d44777876bc7677f1ed79ad0b430`。最良モデルへの実反映はsession71288 / chunka9b68e、exit0・reaped。best更新はverified。採用記録SHA `402a2c48b47751d2a6335818513b64f3b54671294fdc9fdcdfa5c5bf306433ef`、Goalの最終状態は採用可能モデルというGoalの達成条件に到達。Goalの終了登録は公開PRの検証後に行う、PR #18のコード統合／マージ状態はOPEN・未マージ。実装と記録を提出し、レビューを待つ。原本・既存参照パス・失敗履歴を保持した後処理までRootが確認してから各欄を確定する。採用条件を満たした結果と、これらの完了を混同しない。
+停止はsession75745 / chunk7dbcbd、exit0・reaped、11 locksと二回のプロセス確認。STOP SHA `4be0f65efea3580ddd674b374ec5bf37143b3879e9e382a7618a8c522c79f5c9`、NASの全ファイル集合／サイズ／SHA／directory前後と保存先の一致は13,911 files / 647,117,529 bytes / 187 directories / symlink0。全source-before・source-after・destination一致、NAS親session39965 / chunk940afbはexit0・reaped。追加metadata 322 files / 217,349,120 bytesもコピー前後・保存先一致、ledger SHA `891ae53d92874ff1afd437eb7fdfb8d91a20d44777876bc7677f1ed79ad0b430`。最良モデルへの実反映はsession71288 / chunka9b68e、exit0・reaped。best更新はverified。採用記録SHA `402a2c48b47751d2a6335818513b64f3b54671294fdc9fdcdfa5c5bf306433ef`。原本・実行用runtimeの既存参照パス・失敗履歴を保持し、後処理を確認した。Goalは公開PRのCI成功を確認して完了登録した。実装と実験記録は[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)にまとめ、コードの統合状態はPRに記録する。
 
 採用後の[Suisho11Plus参考確認](validation/autonomous-weight-improvement-2026-10-04/plus-reference/reference.md)は51/51成功し、既存β・Sekirei pilotの102回を再検証して再利用した。新規Plusはbound_cp30、exact_cp12、mate9、17/17局面で3反復の型付き結果が一致した。参考量を正式MAEや採用条件へ使っていない。[保存集計](validation/autonomous-weight-improvement-2026-10-04/archive.json)、[公開best identity](validation/autonomous-weight-improvement-2026-10-04/best-model.json)、[compiled sourceとpatch](../preparations/white-view-paired-nonlinear-rust-v1/README.md)も保持する。
 

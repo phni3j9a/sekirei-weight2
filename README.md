@@ -12,7 +12,7 @@ Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の第8候補�
 
 固定3epoch・338,043更新とepoch3の技術検証は完了し、保護駒得のparameterとAdam m/vのbyte一致、118,591局面のcoreと8,185差分更新観測を確認した。これらprobeは通常compileの実行であり、native fixtureのcfg(test) Clone不整合を解消・実行した証拠とは区別する。final 5局は未使用。採用後のSuisho11Plus参考確認は17局面×3反復を完了し、採用判断から分けて記録した。
 
-停止確認・NAS保存・公開集計の検証・最良モデルへの登録まで完了した。コードと記録は[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)へ提出し、レビューを待つ。PRは未マージ。モデル改善のGoalは達成条件に到達し、公開PRの検証後に終了登録する。採用モデルは白視点専用runtimeで `EvalFile` を指定し、`NnueOutput=absolute` で使用する。標準configはfallback基準の記録として保持している。重み本体・model用configは非公開runtimeにある。[公開比較](docs/validation/autonomous-weight-improvement-2026-10-04/paired-nonlinear/comparison.md)に各局の集計と検証SHAを記録した。
+停止確認・NAS保存・公開集計の検証・最良モデルへの登録まで完了した。コードと記録は[PR #18](https://github.com/phni3j9a/sekirei-weight2/pull/18)にまとめ、モデル改善のGoalは公開PRのCI成功を確認して完了登録した。採用モデルは白視点専用runtimeで `EvalFile` を指定し、`NnueOutput=absolute` で使用する。標準configはfallback基準の記録として保持している。重み本体・model用configは非公開runtimeにある。[公開比較](docs/validation/autonomous-weight-improvement-2026-10-04/paired-nonlinear/comparison.md)に各局の集計と検証SHAを記録した。
 
 [採用後のSuisho11Plus参考確認](docs/validation/autonomous-weight-improvement-2026-10-04/plus-reference/reference.md)と[保存集計](docs/validation/autonomous-weight-improvement-2026-10-04/archive.json)を記録した。学習に使った[ソース・パッチ](preparations/white-view-paired-nonlinear-rust-v1/README.md)も公開している。[準備ソースと履歴fixtureの扱い](preparations/white-view-paired-nonlinear-archive.md)を別に記録した。
 

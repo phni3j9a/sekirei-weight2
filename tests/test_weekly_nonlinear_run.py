@@ -6,12 +6,26 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import weekly_nonlinear_run as w
 
 
 class WeeklySupervisorTests(unittest.TestCase):
+    def test_launch_scans_keep_bound_allowlist_and_propagate_unobserved_process_failure(self):
+        import weekly_nonlinear_preflight as preflight
+        allowlist = {"schema": "sekirei.weekly-nonlinear-heavy-process-allowlist.v1",
+                     "status": "frozen-before-preflight", "services": []}
+        clear = {"conflicts": [], "excluded_preexisting_services": []}
+        with patch.object(preflight, "observe_processes", return_value=clear) as observe:
+            self.assertEqual(w.require_clear_processes(allowlist), [clear, clear])
+            self.assertEqual(observe.call_count, 2)
+            self.assertTrue(all(call.args == (allowlist,) for call in observe.call_args_list))
+        with patch.object(preflight, "observe_processes", side_effect=ValueError("unobserved process")):
+            with self.assertRaisesRegex(ValueError, "unobserved process"):
+                w.require_clear_processes(allowlist)
+
     def test_success_receipt_binds_actual_log_and_reaped_process(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

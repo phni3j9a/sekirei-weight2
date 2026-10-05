@@ -140,12 +140,14 @@ def scan_heavy_processes():
     return records
 
 
-def require_clear_processes():
+def require_clear_processes(allowlist=None):
+    from weekly_nonlinear_preflight import observe_processes
+    if allowlist is None:
+        allowlist = {"schema": "sekirei.weekly-nonlinear-heavy-process-allowlist.v1",
+                     "status": "frozen-before-preflight", "services": []}
     scans = []
     for _ in range(2):
-        conflicts = scan_heavy_processes()
-        scans.append({"conflicts": conflicts})
-        require(not conflicts, "another heavy experiment process is running")
+        scans.append(observe_processes(allowlist))
         time.sleep(0.05)
     return scans
 
@@ -349,7 +351,8 @@ def run(args, state):
         # Revalidate after acquiring locks; an earlier successful preflight is
         # not authorization to accept changed physical inputs at launch time.
         bound = validate_source_binding(recipe_ref)
-        process_scans = require_clear_processes()
+        allowlist = strict_json(read_ref(parent["process_evidence"]["allowlist"]))
+        process_scans = require_clear_processes(allowlist)
         require(source_map(source_root) == sb["training_source_files"], "source membership differs")
         gate, gate_sources = load_numeric_gate(args.numeric_build_contract)
         expected = dict(parent["source_inputs"])
@@ -413,7 +416,7 @@ def run(args, state):
         require(source_map(source_root) == sb["training_source_files"], "source membership changed")
         require(physical_ref(Path(sb["training_binary"]["path"])) == sb["training_binary"],
                 "training binary changed")
-        after_scans = require_clear_processes()
+        after_scans = require_clear_processes(allowlist)
         require(state["signal"] is None, "cancelled before completion publication")
         body = {"schema": "sekirei.weekly-nonlinear-training-completion.v1", "status": "complete",
                 "mode": recipe["mode"], "plan": sb["selected_plan"], "source_binding": recipe["source_binding"],

@@ -32,6 +32,12 @@
 
 専用trainerのCargo testは33件（failure/ignoreとも0）、buildは成功した。test 43.39秒・build 40.69秒、両childのwait/reapとgroup空、538 source・compiler2・dependency2,268件の前後不変を確認した。[公開build集計](validation/weekly-weight-improvement-2026-10-05/trainer-build.json)を残した。別agentの読取レビューでも、旧snapshotのnumeric update/Adam/native/export/floatと固定white coreのbyte維持を確認した。学習とモデル採用の成功はまだ主張しない。
 
+新しい入力証明の実作者runは59.66秒で成功した。全packの境界と選択順位、固定holdoutの全byte、独立1000局の全盤面除外、完全label join、reference03の独立再構成、4,435件の入力、source/compiler/dependency集合を再照合した。[公開preflight集計](validation/weekly-weight-improvement-2026-10-05/preflight.json)を残した。選択ゲームの合法手再生は固定producer側で行い、このconsumerはraw境界・順位・入力と出力のprovenanceを再確認する。preflight公開fixture13件と、launch親の公開fixture9件、全体549件が通過した。独立レビューで見つかったlaunch時のprocess読取不能の見逃しを修正し、同じallowlist検査を起動前と完了後にも維持する。
+
+候補自身の実input routeと初期状態codec検査を通過し、3エポックCPU学習を開始した。FTZ/DAZ未設定の負例はI/O前にexit=1で拒否し、正例では全state bits、nearest03全byte、compiled native readerの読込一致、child wait/reapとgroup停止を確認した。[公開学習開始集計](validation/weekly-weight-improvement-2026-10-05/training-start.json)を記録した。実fit childの起動と実command一致を確認している。学習完了、全量core/incremental検証、候補自身の4段階比較、モデル採用はまだ未達である。
+
+正式評価helperはruntime・base config・モデルSHAを明示できるようにした。固定development 5局と整数100万ノードを要求し、候補自身のpilotを用いる。各段階の前後の実重みと、MAE/Top3の実manifestに記録された全4件のモデルidentityを同じpinへ照合する。公開7 fixtureと、既存bestの保存済み4件の実manifestを使った読取smokeが通過した。白視点runtimeを省略せず指定して使用する。
+
 ## 計算と保存
 
 現在のMac mini CPU・32 GiB RAM・既存SSD/NASだけを使う。解析jobs=1、Threads=1、build jobs=2、重い実験は直列。開始時SSD空き約27 GiB、NAS空き約5.9 TiB。初期の追加SSD作業領域は8 GiBを目安とし、各候補前に空き容量と時間を再確認する。

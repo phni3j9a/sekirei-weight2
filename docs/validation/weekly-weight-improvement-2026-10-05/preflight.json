@@ -1,0 +1,63 @@
+{
+  "schema": "sekirei.weekly-nonlinear-preflight-public.v1",
+  "status": "actual-inputs-verified",
+  "mode": "white-view-diverse-games-seed42-e3-v1",
+  "preflight_artifacts": {
+    "dataset-origin.json": {
+      "bytes": 752260,
+      "sha256": "7dab0fc0c297bfb0f886cbf01625490db30761a8bd2462d011ca80d2176152b8"
+    },
+    "parent-preflight.json": {
+      "bytes": 3209204,
+      "sha256": "1a7598fd1ddb29899507295b76c2f871a91ff975c29786a964f085f99bb8f7e6"
+    },
+    "source-binding.json": {
+      "bytes": 144799,
+      "sha256": "8987325a78fff816f6cf4b1758a77be48f0f82724c2cb8f528fbce58028d98a3"
+    },
+    "recipe.json": {
+      "bytes": 1908,
+      "sha256": "c774cfb908b8ecf9775eb5047517ec257004ab571282ff4e83bcce7fa0cf8a34"
+    }
+  },
+  "parent_outcome": {
+    "bytes": 3408,
+    "sha256": "486034de1680f0e9dd20f4912b13115830347109064f113a2b9d990829249a34"
+  },
+  "counts": {
+    "train": 112681,
+    "holdout": 5895,
+    "acquired_pool_games": 1000,
+    "selected_pack_games": 6392
+  },
+  "parent_input_files": 4435,
+  "origin_checks": {
+    "whole_pack_index_membership_valid": true,
+    "frozen_holdout_bytes_preserved": true,
+    "split_and_boards_disjoint": true,
+    "exact_train_label_join_valid": true,
+    "complete_pool_excluded": true,
+    "raw_input_hashes_unchanged": true,
+    "selection_profile_hash_body_valid": true,
+    "selected_replay_producer_source_bound": true
+  },
+  "parent_checks": {
+    "fixed_white_view_engine_unchanged": true,
+    "new_training_source_build_compiler_abi_bound": true,
+    "reference03_fullbytes_reconstructed": true,
+    "no_conflicting_heavy_process": true,
+    "source_membership_equal": true,
+    "fresh_dataset_origin_raw_and_transitive_refs_valid": true,
+    "fresh_dataset_schema_semantics_and_join_valid": true,
+    "inputs_before_after_equal": true,
+    "frozen_holdout_and_pool_exclusion_verified": true
+  },
+  "wall_seconds": 59.65690042125061,
+  "inputs_before_after_equal": true,
+  "all_children_waited_reaped_and_groups_empty": true,
+  "actual_replay_repeated_by_verifier": false,
+  "public_fixture_tests": 13,
+  "training_success_claimed": false,
+  "model_adopted": false,
+  "final_used": false
+}

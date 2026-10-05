@@ -8,7 +8,7 @@
 
 ## 現在の段階
 
-Issue [#19](https://github.com/phni3j9a/sekirei-weight2/issues/19)で、**2026-10-05 18:52:22〜10-12 18:52:22 JSTの1週間**、採用モデルを起点に継続する改善Goalを開始した。採用のたびに比較基準を更新し、期間内は次の改善へ進む。学習済みbestの再検証、全packからの新データ生成、専用trainerのCargo33件とbuildまで成功した。現在は学習前の入力照合と実行補助の接続を進めており、新しいモデル採用はまだない。[期間・採用条件・NAS保存と進行状態](docs/WEEKLY_WEIGHT_IMPROVEMENT.md)を記録する。
+Issue [#19](https://github.com/phni3j9a/sekirei-weight2/issues/19)で、**2026-10-05 18:52:22〜10-12 18:52:22 JSTの1週間**、採用モデルを起点に継続する改善Goalを開始した。採用のたびに比較基準を更新し、期間内は次の改善へ進む。学習済みbestの再検証、全packからの新データ生成、専用trainerのCargo33件とbuild、実入力証明と候補自身の初期状態I/O検証が成功した。**112,681局面の新規3エポックCPU学習を実行中**。NAS小fixtureの保存・物理復元も確認した。新しいモデル採用はまだない。[期間・採用条件・NAS保存と進行状態](docs/WEEKLY_WEIGHT_IMPROVEMENT.md)を記録する。
 
 Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の第8候補、白視点・対非線形headの固定epoch3は、規定のdevelopment 5局・100万ノード正式比較で**採用条件を満たした**。MAEは **907.671621 cp**（同じ白視点binaryのfallbackは1084.478601 cp、16.303409%改善）、Top3入り率は **59.951320%**（基準55.388757%、4.562562ポイント改善）。8項目の比較identityが一致し、5局等重みの有理数でMAEの厳密低下とTop3の非低下を同時に確認した。探索実装と比較条件は維持している。過去7候補の有効な不採用結果は[自律改善の記録](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)に残す。
 

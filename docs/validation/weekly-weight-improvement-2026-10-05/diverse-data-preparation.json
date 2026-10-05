@@ -1,0 +1,69 @@
+{
+  "schema": "sekirei.weekly-diverse-data-preparation-public.v1",
+  "status": "data-prepared-training-not-started",
+  "source_pack_count": 13,
+  "selection_seed": "issue19-diverse-v1",
+  "split_seed": "42",
+  "training_seed": 42,
+  "explicit_selection_counts": {
+    "pack_count_selecting_500": 12,
+    "pack_count_selecting_392": 1,
+    "total_games": 6392
+  },
+  "positions": {
+    "holdout": 5895,
+    "train": 112681
+  },
+  "selected_training_games": 4537,
+  "old_train_board_overlap": 14782,
+  "holdout_bytes_preserved": true,
+  "inputs_unchanged": true,
+  "train_histogram": {
+    "abs-cp100-999": 59120,
+    "abs-cp1000-4999": 27577,
+    "abs-cp5000+": 1029,
+    "abs-cp<100": 24955,
+    "ply128+": 20561,
+    "ply16-63": 30616,
+    "ply64-127": 61504
+  },
+  "old_train_histogram": {
+    "abs-cp100-999": 58438,
+    "abs-cp1000-4999": 27888,
+    "abs-cp5000+": 970,
+    "abs-cp<100": 25385,
+    "ply128+": 20329,
+    "ply16-63": 31142,
+    "ply64-127": 61210
+  },
+  "failed_attempt": {
+    "fixed_games_per_pack": 500,
+    "status": "failed-before-training",
+    "reason": "one complete pack contains 392 games",
+    "supervisor": {
+      "bytes": 1589,
+      "sha256": "0ad6ecc73b5d21d3f6c0997f08ef9d0c7bd532ca3d0ad68014399732fd527c18"
+    }
+  },
+  "successful_attempt": {
+    "wall_seconds": 53.84638474602252,
+    "manifest": {
+      "bytes": 3921670,
+      "sha256": "59bb51b46d7b886099442bb8df93d7ba224f6c213b8cc903d668bd6d38f676d8"
+    },
+    "profile": {
+      "bytes": 5482,
+      "sha256": "f49ff28c6ff16001c3c54ec3f4679a6bbcf4a38d086f439751c029c66f7efceb"
+    },
+    "preregistration": {
+      "bytes": 3809,
+      "sha256": "f611e067dab05d60d6199580178c3d5354581dbb18be0cc4638b2c3a4ca677a5"
+    },
+    "plan": {
+      "bytes": 3868,
+      "sha256": "4f967395c42205dd9639b75b681f6a62732625005ba8d757f3b501189d03b722"
+    }
+  },
+  "model_adopted": false,
+  "final_used": false
+}

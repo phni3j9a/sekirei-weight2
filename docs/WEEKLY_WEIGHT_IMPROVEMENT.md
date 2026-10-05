@@ -24,6 +24,14 @@
 
 学習済みbestを明示する `scripts/compare_incumbent.py` を追加し、公開16 fixtureと保存済みE3の4段階rawの再検証に成功した。E3対E3の自己比較は8 identityが一致し、入力前後不変、MAE `1446737797/1593900`、Top3 `321208691/535782520` を再確認した。同一モデルなのでadopt=falseであり、新しい改善や採用ではない。最初のconsumer実機確認はcanonical occurrence IDと教師metric keyの表記差で失敗し、回帰fixtureと対応付けを修正した。失敗原本を保持し、新しいv2出力で成功を確認した。[公開再検証集計](validation/weekly-weight-improvement-2026-10-05/incumbent-revalidation.json)にはrawやローカルパスを含めない。
 
+教師データの抽出は実機で完了した。最初に固定した各pack500局は、1個のpackが全392局のため31.87秒で失敗し、学習を開始しなかった。全13packの境界索引を確認し、12個各500局・短い1個392局、計6,392局を明記した新profileと事前登録v3を生成前に固定した。選択数を暗黙で縮めず、全局数・選択数・pack集合・source closureを検証するv2 producerへ改めた。
+
+再生成は53.85秒で成功し、112,681学習局面とbyte一致の5,895 holdout局面を維持した。実際に学習行へ使ったゲームは4,537局、旧学習盤面との重複は14,782局面。手数と評価値帯の分布は旧データと近く、pack内prefix限定による偏りの有無や改善効果は未検証である。[公開データ準備集計](validation/weekly-weight-improvement-2026-10-05/diverse-data-preparation.json)は失敗と成功のreceipt SHAを含み、生局面・ラベルを含めない。
+
+固定upstreamと旧complete patchを全postimageで確認し、専用trainer sourceを新runtimeへ展開した。新Readerは実manifestのmetadata検査を通過した。数値更新・scalar Adam・export・initialized I/O本体と旧snapshotを維持し、Python親にはgateを明示注入する。新親の小実プロセスfixtureで正常終了、exit失敗、timeout、SIGTERM時のwait/reapとgroup停止を確認した。長時間学習の前に、この候補自身の読込・初期状態保存/読込とFTZ未設定時のI/O前拒否を実行する。
+
+専用trainerのCargo testは33件（failure/ignoreとも0）、buildは成功した。test 43.39秒・build 40.69秒、両childのwait/reapとgroup空、538 source・compiler2・dependency2,268件の前後不変を確認した。[公開build集計](validation/weekly-weight-improvement-2026-10-05/trainer-build.json)を残した。別agentの読取レビューでも、旧snapshotのnumeric update/Adam/native/export/floatと固定white coreのbyte維持を確認した。学習とモデル採用の成功はまだ主張しない。
+
 ## 計算と保存
 
 現在のMac mini CPU・32 GiB RAM・既存SSD/NASだけを使う。解析jobs=1、Threads=1、build jobs=2、重い実験は直列。開始時SSD空き約27 GiB、NAS空き約5.9 TiB。初期の追加SSD作業領域は8 GiBを目安とし、各候補前に空き容量と時間を再確認する。
@@ -31,6 +39,8 @@
 前回の非線形3epoch学習は、保存済みchild outcomeとcompletionの一致するwall timeで13,200.321秒（約3時間40分）。旧sparse trainerの時間は流用しない。正式4段階の過去実測は約66〜72分だが、新候補の実測で見積りを更新する。
 
 Git/worktree・build・venv・使用中データと重み・実行中出力はSSDに置く。今回新規の完了runは、停止、ファイル集合・size・SHA-256一致、参照依存の復元可能性、元パスからの参照を確認して `/mnt/storage/NAS/sekirei-weight2` に保管する。確認済みの今回のSSD重複は整理できる。過去原本と既存runの参照を保持し、単なるsymlink置換でvalidatorが通るとは仮定しない。詳細receipt、モデル、教師、生局面・ラベル・ログは非公開に保持する。
+
+NASの小fixture保存は初回のpublishで失敗した。実mergerfsが `renameat2(RENAME_NOREPLACE)` をEINVALで拒否したため、SSD原本とNAS stageを保持し、archive成功として扱わなかった。既存先を上書きしない排他mkdir・全集合物理コピー・manifest最終公開の別方式を準備し、実機で再検証する。
 
 ## 記録と終了
 

@@ -1,0 +1,21 @@
+{
+  "schema": "sekirei.white-view-paired-nonlinear-runtime-repair.v2",
+  "base": {
+    "path": "preparations/white-view-paired-nonlinear-proof-v1/paired_nonlinear_native_contract.rs",
+    "bytes": 8291,
+    "sha256": "95507c5360cdd1b0929369b8a15ebaf3ea621c2c1ffaf50f69f2580c9e27a5b3"
+  },
+  "files": {
+    "paired_nonlinear_native_contract.rs": {
+      "bytes": 8976,
+      "sha256": "90077033eb0bad08ae1d3fe54eb8e70430c325bdab45b4e566aa77c683d7c188"
+    },
+    "native-contract-fixture-copy.patch": {
+      "bytes": 2022,
+      "sha256": "4be84b67419a4d0110310b9344ad788f7ec016a67f7877fb2efc2eb38e80f712"
+    }
+  },
+  "production_contract_bytes_preserved": true,
+  "training_started": false,
+  "model_adoption_claimed": false
+}

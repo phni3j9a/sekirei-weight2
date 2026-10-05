@@ -1,0 +1,35 @@
+{
+  "schema": "sekirei.weekly-nonlinear-training-build-public.v1",
+  "status": "trainer-built-training-not-started",
+  "mode": "white-view-diverse-games-seed42-e3-v1",
+  "upstream_commit": "f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9",
+  "source_preparation": {
+    "bytes": 142796,
+    "sha256": "45bf7eecbe43701d3732ef7f7c6f5f2d6020b48c43110271b84fce4de283b2e5"
+  },
+  "training_build": {
+    "bytes": 1970160,
+    "sha256": "87fcd8f3ee38aadf62241b5de67a74cead219fb9381d5a12dc1fb947998b2694"
+  },
+  "training_binary": {
+    "bytes": 3523568,
+    "sha256": "84a1150653067e0731ac641250ad6d841f5fc3eeeefdf5efecb432ea0498a090"
+  },
+  "source_files": 538,
+  "compiler_files": 2,
+  "dependency_files": 2268,
+  "cargo_tests": {
+    "passed": 33,
+    "failed": 0,
+    "ignored": 0
+  },
+  "step_wall_seconds": [
+    43.386750099249184,
+    40.68560535693541
+  ],
+  "all_children_waited_reaped_and_groups_empty": true,
+  "inputs_unchanged": true,
+  "scalar_power_cache_used": false,
+  "model_adopted": false,
+  "final_used": false
+}

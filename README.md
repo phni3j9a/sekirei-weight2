@@ -8,6 +8,8 @@
 
 ## 現在の段階
 
+Issue [#19](https://github.com/phni3j9a/sekirei-weight2/issues/19)で、**2026-10-05 18:52:22〜10-12 18:52:22 JSTの1週間**、採用モデルを起点に継続する改善Goalを開始した。採用のたびに比較基準を更新し、期間内は次の改善へ進む。現在は実行補助の修復、学習済みbestとの比較経路、データ選定の多様化を準備中で、新しいモデル採用はまだない。[期間・採用条件・NAS保存と進行状態](docs/WEEKLY_WEIGHT_IMPROVEMENT.md)を記録する。
+
 Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の第8候補、白視点・対非線形headの固定epoch3は、規定のdevelopment 5局・100万ノード正式比較で**採用条件を満たした**。MAEは **907.671621 cp**（同じ白視点binaryのfallbackは1084.478601 cp、16.303409%改善）、Top3入り率は **59.951320%**（基準55.388757%、4.562562ポイント改善）。8項目の比較identityが一致し、5局等重みの有理数でMAEの厳密低下とTop3の非低下を同時に確認した。探索実装と比較条件は維持している。過去7候補の有効な不採用結果は[自律改善の記録](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)に残す。
 
 固定3epoch・338,043更新とepoch3の技術検証は完了し、保護駒得のparameterとAdam m/vのbyte一致、118,591局面のcoreと8,185差分更新観測を確認した。これらprobeは通常compileの実行であり、native fixtureのcfg(test) Clone不整合を解消・実行した証拠とは区別する。final 5局は未使用。採用後のSuisho11Plus参考確認は17局面×3反復を完了し、採用判断から分けて記録した。

@@ -29,11 +29,12 @@ from pack_dataset import game_identity, independent_position_exclusions, jsonl, 
 from prepare import sha256
 
 
-SAMPLING = "whole-pack SHA256(seed:pack-sha:index) rank; ply>=16/every4/max32"
+SAMPLING = "whole-pack SHA256(seed:pack-sha:index) rank; explicit per-pack game counts; ply>=16/every4/max32"
 ORDERING = "hash-ordered packs round-robin by selected game rank; truncate final game rows"
 DEFAULT_SEED = "issue19-diverse-v1"
 DEFAULT_TRAIN_COUNT = 112681
-PROFILE_KIND = "whole-pack-hash-ranked-frozen-holdout-profile-v1"
+PROFILE_KIND = "whole-pack-hash-ranked-frozen-holdout-profile-v2"
+DERIVATION_KIND = "whole-pack-hash-ranked-frozen-holdout-v2"
 ROW_FILTER = {"min_game_ply": 16, "ply_stride": 4, "per_game_cap": 32,
               "max_abs_cp_exclusive": 30000, "max_decoded_game_length": 2048}
 
@@ -65,16 +66,36 @@ def producer_sources():
             for path in sorted(visited)}
 
 
-def selection_profile(args, frozen, corpus_manifest, corpus_hash):
-    """Expected preregistration body; source refs carry no final split identity."""
+def selection_profile(args, frozen, corpus_manifest, corpus_hash, pack_selections):
+    """Construct a declaration from explicit, previously fixed census/counts.
+
+    The constructor does not scan packs or choose a count from their length.
+    Callers must supply every pack's full game census and selected game count.
+    games_per_pack is a declared upper bound, not a per-pack fallback rule.
+    """
+    if type(args.games_per_pack) is not int or not 1 <= args.games_per_pack <= 1000:
+        raise ValueError("games-per-pack cap must be an integer in 1..1000")
+    packs = corpus_manifest["unique_files"]
+    hashes = {p["sha256"] for p in packs}
+    if len(hashes) != len(packs) or type(pack_selections) is not dict or pack_selections.keys() != hashes:
+        raise ValueError("explicit pack selection membership differs from the corpus")
+    declared = []
+    for pack in packs:
+        choice = pack_selections[pack["sha256"]]
+        if (type(choice) is not dict or choice.keys() != {"games", "selected_games"}
+                or type(choice["games"]) is not int or choice["games"] < 1
+                or type(choice["selected_games"]) is not int
+                or not 1 <= choice["selected_games"] <= args.games_per_pack
+                or choice["selected_games"] > choice["games"]):
+            raise ValueError("explicit pack census/count is invalid or exceeds the declared cap")
+        declared.append({"sha256": pack["sha256"], "bytes": pack["bytes"], **choice})
     return {"schema_version": 1, "kind": PROFILE_KIND,
             "sampling": SAMPLING, "ordering": ORDERING, "row_filter": ROW_FILTER,
             "selection_seed": args.selection_seed, "games_per_pack": args.games_per_pack,
             "train_budget": args.train_count, "split_seed": frozen["manifest"]["seed"],
             "split": frozen["manifest"]["split"],
             "corpus_manifest_sha256": corpus_hash,
-            "packs": sorted(({"sha256": p["sha256"], "bytes": p["bytes"]}
-                             for p in corpus_manifest["unique_files"]), key=lambda p: p["sha256"]),
+            "packs": sorted(declared, key=lambda p: p["sha256"]),
             "frozen_dataset_manifest_sha256": args.expected_frozen_manifest_sha256,
             "frozen_holdout_files": {name: frozen["manifest"]["files"][name]
                                      for name in sorted(FILES) if name.startswith("holdout.")},
@@ -108,11 +129,37 @@ def typed_equal(actual, expected):
     return actual == expected
 
 
-def verify_profile(path, digest, expected):
+def read_pinned_profile(path, digest):
     data = path.read_bytes()
     if hashlib.sha256(data).hexdigest() != digest:
         raise ValueError("selection profile differs from the externally pinned SHA")
     profile = strict_json_bytes(data)
+    if type(profile) is not dict:
+        raise ValueError("selection profile must be a JSON object")
+    return profile
+
+
+def profile_pack_selections(profile):
+    """Read only typed declarations after the external profile SHA is checked."""
+    packs = profile.get("packs")
+    if type(packs) is not list or not packs:
+        raise ValueError("profile pack census/count declarations are missing")
+    choices = {}
+    for pack in packs:
+        if (type(pack) is not dict or pack.keys() != {"sha256", "bytes", "games", "selected_games"}
+                or not checked_sha(pack["sha256"])
+                or type(pack["bytes"]) is not int or pack["bytes"] <= 0
+                or type(pack["games"]) is not int or pack["games"] <= 0
+                or type(pack["selected_games"]) is not int or pack["selected_games"] <= 0):
+            raise ValueError("profile pack census/count declaration is not strictly typed")
+        if pack["sha256"] in choices:
+            raise ValueError("profile declares the same pack more than once")
+        choices[pack["sha256"]] = {"games": pack["games"], "selected_games": pack["selected_games"]}
+    return choices
+
+
+def verify_profile(path, digest, expected):
+    profile = read_pinned_profile(path, digest)
     if not typed_equal(profile, expected):
         raise ValueError("selection profile/body does not match the fixed source and arguments")
     return profile
@@ -157,8 +204,9 @@ def rank_key(seed, pack_hash, game_index):
 def select_spans(data, pack_hash, seed, count):
     """Fixed size, without replacement; content labels do not affect selection."""
     if type(count) is not int or not 1 <= count <= 1000:
-        raise ValueError("games-per-pack must be an integer in 1..1000")
-    census = Counter()
+        raise ValueError("selected game count must be an integer in 1..1000")
+    census = Counter({key: 0 for key in ("games", "positions", "prefix_400_positions",
+                                        "after_prefix_positions", "selected_prefix_400_games")})
     def ranked():
         for span in iter_game_spans(data):
             census["games"] += 1
@@ -341,8 +389,11 @@ def prepare(args):
         if sha256(frozen_root / "manifest.json") != args.expected_frozen_manifest_sha256:
             raise ValueError("frozen manifest differs from the pinned SHA")
         frozen = load_dataset(frozen_root)
+        pinned_profile = read_pinned_profile(profile_path, args.expected_profile_sha256)
+        pack_selections = profile_pack_selections(pinned_profile)
         profile = verify_profile(profile_path, args.expected_profile_sha256,
-                                 selection_profile(args, frozen, corpus_manifest, corpus_hash))
+                                 selection_profile(args, frozen, corpus_manifest, corpus_hash,
+                                                   pack_selections))
         files = sorted(files, key=lambda p: p.stem)
         pack_hashes = {item["sha256"] for item in corpus_manifest["unique_files"]}
         if len(pack_hashes) != len(files) or any(p.stem not in pack_hashes for p in files):
@@ -356,12 +407,19 @@ def prepare(args):
         excluded, exclusion_meta = independent_position_exclusions(quest_root, cshogi)
         validate_frozen(frozen, corpus_hash, pack_hashes, dependencies, exclusion_meta)
         games_by_pack, indexes = [], []
+        declarations = {pack["sha256"]: pack for pack in profile["packs"]}
         for path in files:
+            declaration = declarations[path.stem]
+            if path.stat().st_size != declaration["bytes"]:
+                raise ValueError("pack size differs from the pinned profile declaration")
             with path.open("rb") as stream:
                 if path.stat().st_size == 0:
                     raise ValueError("empty pack")
                 with mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ) as data:
-                    spans, census = select_spans(data, path.stem, args.selection_seed, args.games_per_pack)
+                    spans, census = select_spans(data, path.stem, args.selection_seed,
+                                                 declaration["selected_games"])
+            if census["games"] != declaration["games"]:
+                raise ValueError("actual whole-pack game census differs from the pinned profile declaration")
             decoded, subset_hash = decode_selected(path, path.stem, spans, cshogi, numpy, output.parent)
             # Complete SFEN/move sequences still define each game ID. Histories
             # used only by the decoder need not occupy RAM across all 13 packs.
@@ -405,7 +463,7 @@ def prepare(args):
                     "label_depth": "0 is an external-cache sentinel, not a search depth claim",
                     "files": {name: {"sha256": sha256(output / name), "bytes": (output / name).stat().st_size}
                               for name in sorted(FILES)},
-                    "derivation": {"kind": "whole-pack-hash-ranked-frozen-holdout-v1",
+                    "derivation": {"kind": DERIVATION_KIND,
                                    "profile": profile, "profile_sha256": args.expected_profile_sha256,
                                    "producer_sources": profile["producer_sources"],
                                    "input_sha256": source_hashes, "script_sha256": sha256(Path(__file__)),

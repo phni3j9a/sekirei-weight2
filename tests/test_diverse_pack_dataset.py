@@ -91,6 +91,15 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(len(result), 32)
         self.assertEqual(result[0]["sfen"], "kept-0 b - 28")
 
+    def test_short_pack_uses_only_the_explicit_count_and_census_has_all_five_keys(self):
+        data = pack_bytes([0] * 392)
+        selected, census = diverse.select_spans(data, "a" * 64, "fixed-seed", 392)
+        self.assertEqual(len(selected), 392)
+        self.assertEqual(census, {"games": 392, "positions": 0, "prefix_400_positions": 0,
+                                  "after_prefix_positions": 0, "selected_prefix_400_games": 392})
+        with self.assertRaisesRegex(ValueError, "fewer games"):
+            diverse.select_spans(data, "a" * 64, "fixed-seed", 500)
+
     def test_complete_game_and_board_separation_include_new_reserved_games(self):
         frozen, held = simple_frozen()
         training = split_rows("train", "first")
@@ -211,8 +220,10 @@ class ProducerTests(unittest.TestCase):
                          expected_corpus_manifest_sha256=source_hash, selection_seed="fixture-selection",
                          games_per_pack=2, train_count=2, output=root / "output",
                          profile=root / "profile.json", expected_profile_sha256="")
+        pack_selections = {p.stem: {"games": 3, "selected_games": 2} for p in paths}
         args.profile.write_text(json.dumps(diverse.selection_profile(args, freeze.load_dataset(frozen),
-                                                                    corpus_manifest, source_hash)))
+                                                                    corpus_manifest, source_hash,
+                                                                    pack_selections)))
         args.expected_profile_sha256 = diverse.sha256(args.profile)
         return args, source_manifest, corpus_manifest, paths, dependencies, exclusion
 
@@ -235,7 +246,15 @@ class ProducerTests(unittest.TestCase):
                 manifest = diverse.prepare(args)
             self.assertEqual(manifest["positions"], {"train": 2, "holdout": 1})
             self.assertEqual(manifest["derivation"]["profile_sha256"], args.expected_profile_sha256)
+            self.assertEqual(manifest["derivation"]["kind"], "whole-pack-hash-ranked-frozen-holdout-v2")
+            self.assertEqual(manifest["derivation"]["profile"]["kind"],
+                             "whole-pack-hash-ranked-frozen-holdout-profile-v2")
             self.assertEqual(len(manifest["derivation"]["indexes"]), 2)
+            for indexed in manifest["derivation"]["indexes"]:
+                self.assertEqual(set(indexed["census"]), {"games", "positions", "prefix_400_positions",
+                                                        "after_prefix_positions", "selected_prefix_400_games"})
+                self.assertEqual(indexed["census"]["games"], 3)
+                self.assertEqual(len(indexed["selected_spans"]), 2)
             self.assertEqual(len(verified_split(args.output, "train")[1]), 2)
             for kind in ("positions", "labels"):
                 name = f"holdout.{kind}.jsonl"
@@ -245,6 +264,72 @@ class ProducerTests(unittest.TestCase):
                                 for name in [*freeze.FILES, "manifest.json"]))
             self.assertEqual(args.output.stat().st_mode & 0o777, 0o700)
             self.assertFalse(list(args.output.parent.glob(".diverse-pack-*")))
+
+    def test_profile_constructor_requires_complete_explicit_typed_census_and_counts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args, _, manifest, paths, *_ = self.setup_inputs(Path(directory))
+            frozen = freeze.load_dataset(args.frozen_holdout_dataset)
+            good = {p.stem: {"games": 3, "selected_games": 2} for p in paths}
+            for mutation in ("missing", "extra", "boolgames", "boolcount", "cap", "insufficient", "extra-key"):
+                choices = json.loads(json.dumps(good))
+                if mutation == "missing":
+                    choices.pop(paths[0].stem)
+                elif mutation == "extra":
+                    choices["f" * 64] = {"games": 3, "selected_games": 2}
+                elif mutation == "boolgames":
+                    choices[paths[0].stem]["games"] = True
+                elif mutation == "boolcount":
+                    choices[paths[0].stem]["selected_games"] = True
+                elif mutation == "cap":
+                    choices[paths[0].stem]["selected_games"] = 3
+                elif mutation == "insufficient":
+                    choices[paths[0].stem]["games"] = 1
+                else:
+                    choices[paths[0].stem]["extra"] = 0
+                with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                    diverse.selection_profile(args, frozen, manifest,
+                                              args.expected_corpus_manifest_sha256, choices)
+
+    def test_generation_rechecks_declared_census_count_membership_size_and_types(self):
+        for mode in ("games", "count", "missing", "duplicate", "bytes", "bool", "old-kind"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                args, *inputs = self.setup_inputs(Path(directory))
+                profile = json.loads(args.profile.read_bytes())
+                if mode == "games":
+                    profile["packs"][0]["games"] = 4
+                elif mode == "count":
+                    args.games_per_pack = profile["games_per_pack"] = 5
+                    profile["packs"][0]["games"] = 5
+                    profile["packs"][0]["selected_games"] = 5
+                elif mode == "missing":
+                    profile["packs"].pop()
+                elif mode == "duplicate":
+                    profile["packs"].append(profile["packs"][0])
+                elif mode == "bytes":
+                    profile["packs"][0]["bytes"] += 1
+                elif mode == "bool":
+                    profile["packs"][0]["selected_games"] = True
+                else:
+                    profile["kind"] = "whole-pack-hash-ranked-frozen-holdout-profile-v1"
+                args.profile.write_text(json.dumps(profile))
+                args.expected_profile_sha256 = diverse.sha256(args.profile)
+                with self.producer_mocks(*inputs), redirect_stdout(io.StringIO()), self.assertRaises(ValueError):
+                    diverse.prepare(args)
+                self.assertFalse(args.output.exists())
+
+    def test_generation_accepts_explicit_short_pack_count_without_implicit_minimum(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args, *inputs = self.setup_inputs(Path(directory))
+            profile = json.loads(args.profile.read_bytes())
+            args.games_per_pack = profile["games_per_pack"] = 500
+            profile["packs"][0]["selected_games"] = 3
+            args.profile.write_text(json.dumps(profile))
+            args.expected_profile_sha256 = diverse.sha256(args.profile)
+            with self.producer_mocks(*inputs), redirect_stdout(io.StringIO()):
+                manifest = diverse.prepare(args)
+            indexes = {p["pack_sha256"]: p for p in manifest["derivation"]["indexes"]}
+            declared = profile["packs"][0]
+            self.assertEqual(len(indexes[declared["sha256"]]["selected_spans"]), 3)
 
     def test_pinned_profile_and_input_mutation_fail_before_output_creation(self):
         for mode in ("profile", "frozen", "corpus", "during"):

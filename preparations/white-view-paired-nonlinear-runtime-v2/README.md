@@ -61,6 +61,12 @@ buildの成功後に新fresh-origin/parent-preflight/source-binding/recipeを作
 `verify-paired-nonlinear-inputs`と`train-paired-nonlinear`を順に実行する。
 正式候補のcore/incremental proof・own pilot・100万node comparisonは別途必要。
 
+週次post-training technical proofの専用helperとraw consumerは
+`scripts/weekly_nonlinear_proof.py`。旧Rust numerical probeのSOURCEを全SHAで固定し、
+新completion/contextへ束縛して、全118591 core行・incremental8185・absolute sidecarを検証する。
+CLI/receipt/activation条件は[weekly-proof-contract.md](weekly-proof-contract.md)を参照する。
+このhelperの実装fixture成功は、実candidateのprobe成功を意味しない。
+
 ## 実施済みの小検証
 
 標準ライブラリのPython fixtureはgate明示注入、改変/JSON重複/epoch欠落/型/MXCSR拒否、

@@ -40,7 +40,9 @@
 
 Git/worktree・build・venv・使用中データと重み・実行中出力はSSDに置く。今回新規の完了runは、停止、ファイル集合・size・SHA-256一致、参照依存の復元可能性、元パスからの参照を確認して `/mnt/storage/NAS/sekirei-weight2` に保管する。確認済みの今回のSSD重複は整理できる。過去原本と既存runの参照を保持し、単なるsymlink置換でvalidatorが通るとは仮定しない。詳細receipt、モデル、教師、生局面・ラベル・ログは非公開に保持する。
 
-NASの小fixture保存は初回のpublishで失敗した。実mergerfsが `renameat2(RENAME_NOREPLACE)` をEINVALで拒否したため、SSD原本とNAS stageを保持し、archive成功として扱わなかった。既存先を上書きしない排他mkdir・全集合物理コピー・manifest最終公開の別方式を準備し、実機で再検証する。
+NASの小fixture保存は初回のpublishで失敗した。実mergerfsが `renameat2(RENAME_NOREPLACE)` をEINVALで拒否したため、SSD原本とNAS stageを保持し、archive成功として扱わなかった。非対応filesystemの場合だけ、既存先を上書きしない排他mkdir・全集合物理コピー・manifest最終公開へ切り替える方式を追加した。この方式はdirectory全体のatomic renameではなく、完全なmanifest SHAと全集合の照合を成功条件とし、コピー元stageも保持する。
+
+新しい実機v2試験では44 bytesの1ファイルと空directoryをNASへ保存し、独立したverifyとSSDへの物理復元を通過した。集合・mode・size・SHA一致と、SSD復元inodeが原本と異なることを確認した。公開15 fixtureでは破損、集合差、特殊file、出力競合、途中コピー失敗などの拒否も確認した。[公開NAS疎通集計](validation/weekly-weight-improvement-2026-10-05/nas-copy-smoke.json)を残す。これは小fixtureの保存・復元確認であり、実験run全体や依存環境の復元検証は今後の完了runで行う。SSD原本と過去資料の削除は行っていない。
 
 ## 記録と終了
 

@@ -1,0 +1,78 @@
+{
+  "schema": "sekirei.weekly-nonlinear-technical-proof-public.v1",
+  "status": "technical-proof-complete-not-adopted",
+  "mode": "white-view-diverse-games-seed42-e3-v1",
+  "technical_proof": {
+    "bytes": 21776969,
+    "sha256": "c5f02e8d03252eda31bf201ed28577e328f38cfb132f5894443e706b0c8aed92"
+  },
+  "training_completion": {
+    "bytes": 2151476,
+    "sha256": "f3a5182695c7b927b81353c6c94971190926150d3dbe91d595fdefd9788d2632"
+  },
+  "native03": {
+    "bytes": 1305356,
+    "sha256": "44d1b412da22688542a406599dd40b40bc3243285aaaeae67b21d003db9a0429"
+  },
+  "fullstate_checkpoint": {
+    "bytes": 16720510,
+    "sha256": "7c2f9793bc1e3660f0202631cce2c3ae1c85b6cf7293e9285e16e60a60772f88"
+  },
+  "core": {
+    "train": {
+      "count": 112681,
+      "maximum_stored_float_core_bridge_cp": 0.9999847412109375
+    },
+    "holdout": {
+      "count": 5895,
+      "maximum_stored_float_core_bridge_cp": 0.999755859375
+    },
+    "fixtures": {
+      "count": 15,
+      "maximum_stored_float_core_bridge_cp": 0.71044921875
+    }
+  },
+  "total_core_rows": 118591,
+  "stored_float_core_bridge_scope": "Stored candidate nearest03 dequantized float versus the same native integer core; not raw master float versus quantized float.",
+  "core_fullrows_verified_on_new_candidate": true,
+  "incremental": {
+    "positions_checked": 8185,
+    "fixtures": 15,
+    "walks": 16,
+    "search_walks": 8,
+    "captures": 632,
+    "promotions": 186,
+    "drops": 577,
+    "undos": 3837,
+    "null_undos": 240,
+    "incremental_refresh_error_cp": 0,
+    "accumulator_refresh_equal": true,
+    "parent_restoration_equal": true,
+    "all_preclamp_intermediates_finite": true,
+    "mxcsr_control": "9fc0"
+  },
+  "incremental_verified_on_new_candidate": true,
+  "proof_children": {
+    "count": 6,
+    "compile_children": 2,
+    "core_children": 3,
+    "incremental_children": 1,
+    "all_returncodes_zero": true,
+    "all_waited_reaped": true,
+    "all_groups_empty_in_two_scans": true,
+    "any_timeout": false
+  },
+  "inputs_before_after_equal": true,
+  "original_inputs_before_after_equal": true,
+  "source_unchanged": true,
+  "build_unchanged": true,
+  "protected_material_ft_bits_preserved": true,
+  "whole_board_ft_preservation_claimed": false,
+  "universal_integer_bound_claimed": false,
+  "native_bitexact_covariance_claimed": false,
+  "resume_used": false,
+  "shuffle_used": false,
+  "model_adopted": false,
+  "adoption_claimed": false,
+  "final_used": false
+}

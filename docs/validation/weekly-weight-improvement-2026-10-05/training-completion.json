@@ -1,0 +1,58 @@
+{
+  "schema": "sekirei.weekly-nonlinear-training-completion-public.v1",
+  "status": "training-complete-not-adopted",
+  "mode": "white-view-diverse-games-seed42-e3-v1",
+  "completion": {
+    "bytes": 2151476,
+    "sha256": "f3a5182695c7b927b81353c6c94971190926150d3dbe91d595fdefd9788d2632"
+  },
+  "epochs_completed": 3,
+  "positions_per_epoch": 112681,
+  "global_step": 338043,
+  "seed": 42,
+  "resume_used": false,
+  "shuffle_used": false,
+  "execution": {
+    "returncode": 0,
+    "waited": true,
+    "reaped": true,
+    "timed_out": false,
+    "group_empty_scans": [
+      true,
+      true
+    ],
+    "wall_seconds": 13189.706349422224
+  },
+  "outputs": {
+    "fullstate_checkpoint": {
+      "bytes": 16720510,
+      "sha256": "7c2f9793bc1e3660f0202631cce2c3ae1c85b6cf7293e9285e16e60a60772f88"
+    },
+    "native03": {
+      "bytes": 1305356,
+      "sha256": "44d1b412da22688542a406599dd40b40bc3243285aaaeae67b21d003db9a0429"
+    },
+    "export_stage": {
+      "bytes": 2848672,
+      "sha256": "c0c1073853a2c7938b95f4c2acb632d751ad29e6ad3caab7a1526299c54cdd3f"
+    }
+  },
+  "floating_point": {
+    "policy": "x86-ftz-daz",
+    "epoch_boundary_observations": 6,
+    "export_observations": 1,
+    "required_mxcsr_control_bits": 40896,
+    "required_mxcsr_control_hex": "9fc0",
+    "all_observed_control_bits_match": true,
+    "every_optimizer_step_individually_observed": false
+  },
+  "inputs_before_after_equal": true,
+  "source_unchanged": true,
+  "build_unchanged": true,
+  "poisoned": false,
+  "training_completed": true,
+  "core_and_incremental_proof_record": "technical-proof.json",
+  "model_adopted": false,
+  "adoption_claimed": false,
+  "final_used": false
+}

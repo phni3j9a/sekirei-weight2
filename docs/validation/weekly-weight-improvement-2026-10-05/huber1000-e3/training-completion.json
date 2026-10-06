@@ -1,0 +1,60 @@
+{
+  "adoption_claimed": false,
+  "build_unchanged": true,
+  "completion": {
+    "bytes": 2165535,
+    "sha256": "7fcbed98cb1e528a3b50727390eb6962896988285fc394d0e28f63d067103bf5"
+  },
+  "core_and_incremental_proof_record": "technical-proof.json",
+  "delta_cp": 1000,
+  "epochs_completed": 3,
+  "execution": {
+    "group_empty_scans": [
+      true,
+      true
+    ],
+    "reaped": true,
+    "returncode": 0,
+    "timed_out": false,
+    "waited": true,
+    "wall_seconds": 13466.2342213667
+  },
+  "final_used": false,
+  "floating_point": {
+    "all_observed_control_bits_match": true,
+    "epoch_boundary_observations": 6,
+    "every_optimizer_step_individually_observed": false,
+    "export_observations": 1,
+    "policy": "x86-ftz-daz",
+    "required_mxcsr_control_bits": 40896,
+    "required_mxcsr_control_hex": "9fc0"
+  },
+  "global_step": 338043,
+  "inputs_before_after_equal": true,
+  "mode": "white-view-diverse-games-seed42-huber1000-e3-v1",
+  "model_adopted": false,
+  "objective": "absolute-cp-twice-huber",
+  "outputs": {
+    "export_stage": {
+      "bytes": 2869183,
+      "sha256": "91168bb85ce9e75a14674fa5dea4467f0bd237f342a082a6dca2689dddbf2cc6"
+    },
+    "fullstate_checkpoint": {
+      "bytes": 16705598,
+      "sha256": "3d18a23d14d98339bef1202757c0425c53b78cdfab5c0458abfcbe14652b04dd"
+    },
+    "native03": {
+      "bytes": 1305356,
+      "sha256": "1713bdf5e0002468e87e860ba252bee42182c71db50bfbc453bafb74c4c2df11"
+    }
+  },
+  "poisoned": false,
+  "positions_per_epoch": 112681,
+  "resume_used": false,
+  "schema": "sekirei.weekly-nonlinear-training-completion-public.v1",
+  "seed": 42,
+  "shuffle_used": false,
+  "source_unchanged": true,
+  "status": "training-complete-not-adopted",
+  "training_completed": true
+}

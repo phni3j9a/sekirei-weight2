@@ -1,0 +1,40 @@
+{
+  "schema": "sekirei.nas-copy-smoke-public.v1",
+  "status": "technical-storage-fixture-verified",
+  "inventory": {
+    "bytes": 2606,
+    "sha256": "eb2b6c7c98e5ed2b02411f65e456bcfcae952fa98aacc7c7858f30169eb3f3b3"
+  },
+  "result": {
+    "bytes": 1954,
+    "sha256": "d96f112bff1582a3fe8cac8fb350fcee1c60148e1c260e68ed9baa774d6b1562"
+  },
+  "previous_publish_failure": {
+    "bytes": 458,
+    "sha256": "4325f56ab2dd1e04a480a1eaa950f9a76050a8dc97d438689768f7830b72ab1c"
+  },
+  "fixture_summary": {
+    "roots": 1,
+    "files": 1,
+    "directories": 4,
+    "bytes": 44
+  },
+  "archive_publication": {
+    "method": "exclusive-directory-copy-manifest-last",
+    "whole_directory_atomic": false,
+    "source_stage_retained": true
+  },
+  "restoration_publication": {
+    "method": "atomic-rename-noreplace",
+    "whole_directory_atomic": true,
+    "source_stage_retained": false
+  },
+  "archive_independently_verified": true,
+  "restoration_verified": true,
+  "independent_ssd_inode_verified": true,
+  "source_originals_preserved": true,
+  "old_inputs_deleted": false,
+  "full_environment_restored": false,
+  "experiment_run_archived": false,
+  "model_adopted": false
+}

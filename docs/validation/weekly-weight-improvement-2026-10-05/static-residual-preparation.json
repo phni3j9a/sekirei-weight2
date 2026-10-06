@@ -1,0 +1,35 @@
+{
+  "schema": "sekirei.weekly-static-residual-preparation-public.v1",
+  "status": "prepared-not-executed-on-new-trained-candidate",
+  "mode": "white-view-diverse-games-seed42-e3-v1",
+  "helper": {
+    "bytes": 17064,
+    "sha256": "c3abbe810914e91d9c70b1eff7c8981d34e7aa4da9f0d6b8a853773213624055"
+  },
+  "tests": {
+    "bytes": 14622,
+    "sha256": "16c97dd4b9f761f0aa7188d8d5fcfe6c4327d01ed895942ff158896b41e2837e"
+  },
+  "fixture_tests_passed": 12,
+  "independent_ownership_read_review_complete": true,
+  "requires_complete_own_technical_proof": true,
+  "uses_saved_core_outputs_only": true,
+  "groups": [
+    "pack",
+    "ply_band",
+    "absolute_teacher_cp_band",
+    "previous_train_board_overlap",
+    "side_to_move"
+  ],
+  "train_squared_error_concentration_percent": [
+    1,
+    5,
+    10,
+    20
+  ],
+  "diagnostic_on_new_candidate_complete": false,
+  "adoption_claimed": false,
+  "development_used": false,
+  "final_used": false,
+  "initial_rejection_preserves_existing_output_directory": true
+}

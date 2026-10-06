@@ -1,0 +1,119 @@
+{
+  "NAS_closure_included": false,
+  "actual_stop": {
+    "bytes": 6030,
+    "sha256": "913726cc29e3cacfeda539349023e0a64a3192d5790007a05d916fabc941c172"
+  },
+  "adoption_gate_met": false,
+  "all_own_stage_model_identities_before_after_recorded_equal": true,
+  "candidate": "white-view-diverse-games-seed42-huber1000-e3-v1",
+  "children": {
+    "comparison": {
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "echild_observed": true,
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "reaped": true,
+      "residual_descendants_detected": false,
+      "returncode": 0,
+      "source_input_pins_before_after_verified": true,
+      "timed_out": false,
+      "waited": true,
+      "wall_seconds": 18.65856970427558
+    },
+    "evaluation": {
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "echild_observed": true,
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "reaped": true,
+      "residual_descendants_detected": false,
+      "returncode": 0,
+      "source_input_pins_before_after_verified": true,
+      "timed_out": false,
+      "waited": true,
+      "wall_seconds": 4459.613167383708
+    },
+    "guard": {
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "echild_observed": true,
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "reaped": true,
+      "residual_descendants_detected": false,
+      "returncode": 0,
+      "source_input_pins_before_after_verified": true,
+      "timed_out": false,
+      "waited": true,
+      "wall_seconds": 2.520269503351301
+    },
+    "proof-consumer": {
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "echild_observed": true,
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "reaped": true,
+      "residual_descendants_detected": false,
+      "returncode": 0,
+      "source_input_pins_before_after_verified": true,
+      "timed_out": false,
+      "waited": true,
+      "wall_seconds": 132.61662709712982
+    }
+  },
+  "coordination_locks_reacquired_and_released": true,
+  "decision": "reject",
+  "final_used": false,
+  "formal_release": {
+    "bytes": 577,
+    "sha256": "ea8ae85e311e78b7a8d8bc0e61255b2d5e324d1b520665a45b42a3791e610b2c"
+  },
+  "formal_terminal": {
+    "bytes": 2649646,
+    "sha256": "30678124f89b80617de86cfd5cfcd9e812d88657998b7a392fb2eac561710d2d"
+  },
+  "latest_best_registry_unchanged": true,
+  "latest_best_revision": 0,
+  "measurement_created_at": "2026-10-05T23:38:52+00:00",
+  "measurement_finished_at": "2026-10-06T00:53:11+00:00",
+  "measurement_wall_seconds": 4459.320124010555,
+  "new_model_adopted": false,
+  "originals_preserved": true,
+  "own_stage_attempts": {
+    "mae": 1140,
+    "mae_pilot": 102,
+    "top3": 551,
+    "top3_pilot": 36
+  },
+  "own_stage_model_sha256": "1713bdf5e0002468e87e860ba252bee42182c71db50bfbc453bafb74c4c2df11",
+  "restore_reader_completion_claimed": false,
+  "returncode": 0,
+  "schema": "sekirei.weekly-candidate-formal-terminal-public.v1",
+  "status": "formal-executor-complete-rejected",
+  "stop_lock_probe_count": 10,
+  "stopped_writers": true
+}

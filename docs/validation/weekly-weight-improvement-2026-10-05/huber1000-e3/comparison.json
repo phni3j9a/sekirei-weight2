@@ -1,0 +1,222 @@
+{
+  "candidate": "white-view-diverse-games-seed42-huber1000-e3-v1",
+  "conditions": {
+    "aggregation": "equal mean of five per-game metrics",
+    "candidate_top3_multipv": 3,
+    "compile_feature": "nnue_white_view_aux_tied",
+    "final_used": false,
+    "games": 5,
+    "hash_mib": 128,
+    "mae_multipv": 1,
+    "max_reported_nodes": 1010000,
+    "nnue_output": "absolute",
+    "occurrences": 570,
+    "requested_nodes": 1000000,
+    "sekirei": "v0.3.39",
+    "teacher": "Suisho Concerto 202512 (Suisho11beta)",
+    "teacher_exact_count": 266,
+    "threads": 1,
+    "top3_eligible_count": 551
+  },
+  "decision": {
+    "adopt": false,
+    "comparison_valid": true,
+    "decision": "reject",
+    "mae_improved": false,
+    "top3_preserved": false
+  },
+  "headline": {
+    "candidate_exact": {
+      "mae": {
+        "denominator": 1062600,
+        "numerator": 1086513377
+      },
+      "top3": {
+        "denominator": 1607347560,
+        "numerator": 941756597
+      }
+    },
+    "incumbent_exact": {
+      "mae": {
+        "denominator": 1593900,
+        "numerator": 1446737797
+      },
+      "top3": {
+        "denominator": 535782520,
+        "numerator": 321208691
+      }
+    },
+    "mae_delta_cp": 114.83296850492502,
+    "top3_delta_percentage_points": -1.3605940957785134
+  },
+  "incumbent": "white-view-paired-nonlinear-adam-e3-v1",
+  "models": {
+    "candidate": {
+      "bytes": 1305356,
+      "kind": "nnue",
+      "sha256": "1713bdf5e0002468e87e860ba252bee42182c71db50bfbc453bafb74c4c2df11"
+    },
+    "incumbent": {
+      "bytes": 1305356,
+      "kind": "nnue",
+      "sha256": "f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042"
+    }
+  },
+  "per_game": [
+    {
+      "candidate_error_sum_cp": 9606,
+      "candidate_mae": {
+        "denominator": 7,
+        "numerator": 1601
+      },
+      "candidate_top3_hits": 51,
+      "game": "G1",
+      "incumbent_error_sum_cp": 17434,
+      "incumbent_mae": {
+        "denominator": 21,
+        "numerator": 8717
+      },
+      "incumbent_top3_hits": 52,
+      "teacher_exact_count": 42,
+      "top3_denominator": 84
+    },
+    {
+      "candidate_error_sum_cp": 88263,
+      "candidate_mae": {
+        "denominator": 8,
+        "numerator": 9807
+      },
+      "candidate_top3_hits": 85,
+      "game": "G2",
+      "incumbent_error_sum_cp": 79585,
+      "incumbent_mae": {
+        "denominator": 72,
+        "numerator": 79585
+      },
+      "incumbent_top3_hits": 85,
+      "teacher_exact_count": 72,
+      "top3_denominator": 122
+    },
+    {
+      "candidate_error_sum_cp": 98225,
+      "candidate_mae": {
+        "denominator": 66,
+        "numerator": 98225
+      },
+      "candidate_top3_hits": 62,
+      "game": "G3",
+      "incumbent_error_sum_cp": 76537,
+      "incumbent_mae": {
+        "denominator": 66,
+        "numerator": 76537
+      },
+      "incumbent_top3_hits": 66,
+      "teacher_exact_count": 66,
+      "top3_denominator": 127
+    },
+    {
+      "candidate_error_sum_cp": 36834,
+      "candidate_mae": {
+        "denominator": 20,
+        "numerator": 18417
+      },
+      "candidate_top3_hits": 59,
+      "game": "G4",
+      "incumbent_error_sum_cp": 25861,
+      "incumbent_mae": {
+        "denominator": 40,
+        "numerator": 25861
+      },
+      "incumbent_top3_hits": 57,
+      "teacher_exact_count": 40,
+      "top3_denominator": 104
+    },
+    {
+      "candidate_error_sum_cp": 57446,
+      "candidate_mae": {
+        "denominator": 23,
+        "numerator": 28723
+      },
+      "candidate_top3_hits": 65,
+      "game": "G5",
+      "incumbent_error_sum_cp": 55740,
+      "incumbent_mae": {
+        "denominator": 23,
+        "numerator": 27870
+      },
+      "incumbent_top3_hits": 70,
+      "teacher_exact_count": 46,
+      "top3_denominator": 114
+    }
+  ],
+  "recoveries": {},
+  "reference_checks": {
+    "execution_except_model": {
+      "baseline_sha256": "6359b0bb4e45d1a440e754005ddaf5563c603d73315322f01b42eebcd4478ce4",
+      "candidate_sha256": "6359b0bb4e45d1a440e754005ddaf5563c603d73315322f01b42eebcd4478ce4",
+      "equal": true,
+      "mismatch_count": 0
+    },
+    "occurrences": {
+      "baseline_sha256": "25862b6e170093b6f15674465b4f4ead89399c7a52029d4678f8090930d9964d",
+      "candidate_sha256": "25862b6e170093b6f15674465b4f4ead89399c7a52029d4678f8090930d9964d",
+      "equal": true
+    },
+    "teacher_E_cp": {
+      "baseline_sha256": "1a188135ed62c9672c71368ab778a7352cf716f3631a0e2df4e97450599a127f",
+      "candidate_sha256": "1a188135ed62c9672c71368ab778a7352cf716f3631a0e2df4e97450599a127f",
+      "equal": true,
+      "mismatch_count": 0
+    },
+    "teacher_results": {
+      "baseline_sha256": "5f0fc5489e9a6e643e220dd64892a12c9c8597b2b4bc3286538f19fecb26c665",
+      "candidate_sha256": "5f0fc5489e9a6e643e220dd64892a12c9c8597b2b4bc3286538f19fecb26c665",
+      "equal": true,
+      "mismatch_count": 0
+    },
+    "top3_denominators": {
+      "baseline_sha256": "eb7b988257a97b8afe5fb1bea99c58c2921fe3787aaa72d5551349ba3382b46a",
+      "candidate_sha256": "eb7b988257a97b8afe5fb1bea99c58c2921fe3787aaa72d5551349ba3382b46a",
+      "equal": true,
+      "mismatch_count": 0
+    },
+    "top3_legal_moves_sha256": {
+      "baseline_sha256": "fe1f83479f039ffe4596bd655399445404234e9e6fa3cb60f362a20c88ddf47b",
+      "candidate_sha256": "fe1f83479f039ffe4596bd655399445404234e9e6fa3cb60f362a20c88ddf47b",
+      "equal": true
+    },
+    "top3_occurrences": {
+      "baseline_sha256": "a741334ccfa9eea52bf8c04e787503edfdb607a7c8166bc4fa32517f6c221ced",
+      "candidate_sha256": "a741334ccfa9eea52bf8c04e787503edfdb607a7c8166bc4fa32517f6c221ced",
+      "equal": true
+    },
+    "top3_teacher_bestmoves": {
+      "baseline_sha256": "2b16df792f3d910497b70572fca23efb4d017509ec98ed30ef3c09cb7e2b657d",
+      "candidate_sha256": "2b16df792f3d910497b70572fca23efb4d017509ec98ed30ef3c09cb7e2b657d",
+      "equal": true,
+      "mismatch_count": 0
+    }
+  },
+  "schema": "sekirei.weekly-candidate-public-comparison.v1",
+  "scope": {
+    "all_eight_comparison_identities_equal": true,
+    "candidate_own_four_stage_evidence_revalidated": true,
+    "comparison_inputs_rehashed_unchanged": true,
+    "exact_equal_game_rationals_checked": true,
+    "final_data_used": false,
+    "general_playing_strength_proven": false,
+    "incumbent_own_four_stage_evidence_revalidated": true,
+    "latest_best_registry_before_after_unchanged": true,
+    "latest_best_revision": 0,
+    "new_model_adopted": false
+  },
+  "source_head": "8ba82004c50a6029d3cf83d8ab4ff8aebfbc52be",
+  "status": "complete",
+  "verification_sha256": {
+    "comparison": "1df54927d94c160ced82220e33a473d66512848d5113d8859769b8806fea8283",
+    "comparison_time_best": "18e9946bdf508ec1ffd9637731d27fc884b9aad23bac2fda1f96f619045be36b",
+    "formal_release": "ea8ae85e311e78b7a8d8bc0e61255b2d5e324d1b520665a45b42a3791e610b2c",
+    "formal_terminal": "30678124f89b80617de86cfd5cfcd9e812d88657998b7a392fb2eac561710d2d",
+    "latest_best_guard": "be76fc396a3c1ad5e189964516577f45c712aa2ad9b02df335c5a37945e740e0"
+  }
+}

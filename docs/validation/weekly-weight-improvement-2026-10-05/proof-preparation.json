@@ -1,0 +1,38 @@
+{
+  "schema": "sekirei.weekly-nonlinear-proof-preparation-public.v1",
+  "status": "prepared-not-executed-on-new-trained-candidate",
+  "mode": "white-view-diverse-games-seed42-e3-v1",
+  "helper": {
+    "bytes": 52940,
+    "sha256": "9e34ba60bff9e16f8f348f4fbe3fb0bcbbc28cc2c60dd322cc1597d7928224e7"
+  },
+  "tests": {
+    "bytes": 38593,
+    "sha256": "e401d6303908f8edd63aed95ed89d14e17726e48b512891049dc28b159992bcb"
+  },
+  "contract": {
+    "bytes": 8494,
+    "sha256": "0ad44e7f87f67d7719bd3b0f4f946c370bafdecd11b0a54891aa5f6b1f0bb147"
+  },
+  "fixture_tests_passed": 18,
+  "independent_read_review_complete": true,
+  "historical_engine_input_inventory": 1161,
+  "current_engine_input_inventory": 1161,
+  "same_byte_public_reference_bindings": 8,
+  "missing_physical_inputs_after_binding": 0,
+  "historical_engine_manifest_preserved": true,
+  "historical_engine_identity_preserved": true,
+  "legacy_outer_gate_prototype_barrier_preserved": true,
+  "intended_core_rows": {
+    "train": 112681,
+    "holdout": 5895,
+    "fixtures": 15,
+    "total": 118591
+  },
+  "intended_incremental_observations": 8185,
+  "full_core_rows_verified_on_new_candidate": false,
+  "incremental_verified_on_new_candidate": false,
+  "model_adopted": false,
+  "final_used": false,
+  "initial_rejection_preserves_existing_output_directory": true
+}

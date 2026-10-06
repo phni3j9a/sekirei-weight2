@@ -1,0 +1,198 @@
+{
+  "SSD_physical_restore": {
+    "complete": true,
+    "publication": "atomic-rename-noreplace",
+    "regular_bytes_modes_membership_verified": true,
+    "whole_directory_atomic": true
+  },
+  "base_archive": {
+    "copied_and_verified": true,
+    "directories": 803,
+    "independent_verify_complete": true,
+    "inventory": {
+      "bytes": 6508754,
+      "sha256": "4b4021e04c1e293fe744d0b4ff6d2b01f6636226dfa3f7d282ededa89c960ad2"
+    },
+    "originals_preserved": true,
+    "publication": "exclusive-directory-copy-manifest-last",
+    "regular_bytes": 2325993562,
+    "regular_files": 14994,
+    "source_stage_retained": true,
+    "whole_directory_atomic": false
+  },
+  "best_registry_revision": 0,
+  "candidate": "white-view-diverse-games-seed42-e3-v1",
+  "candidate_adopted": false,
+  "cleanup_performed": false,
+  "completed_recovery_record_supplement": {
+    "all_source_and_saved_bytes_modes_membership_verified": true,
+    "base_archive_modified": false,
+    "manifest": {
+      "bytes": 44487,
+      "mode": 384,
+      "sha256": "202ef9d6f190cffc348a6f5c5fa293e45e70693e078e30c5c23f5237bfbc77f9"
+    },
+    "regular_bytes": 30918032,
+    "regular_files": 71
+  },
+  "copied_environment": {
+    "children": [
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "rust-identity",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      },
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "rust-sysroot",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      },
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "rust-std-link",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      },
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "rust-std-run",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      },
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "python-cshogi-numpy",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      }
+    ],
+    "imports_from_copied_venv_verified": true,
+    "recreated_symlinks": 4,
+    "regular_bytes": 1027715260,
+    "regular_bytes_modes_membership_verified": true,
+    "regular_files": 2473,
+    "restored_environment_subset_manifest_and_closure_unchanged": true,
+    "same_platform_prerequisites_required": true,
+    "standalone_OS_or_stdlib_restore_proved": false,
+    "symbolic_link_recreation_two_pass": true
+  },
+  "copy_only_reaggregation": {
+    "adoption_replayed": false,
+    "comparison_valid": true,
+    "decision": "reject",
+    "eight_comparison_identities_equal": true,
+    "engine_rerun_performed": false,
+    "frozen_parser_count": 8,
+    "live_original_fallback_allowed": false,
+    "receipt_exactly_reproduced": true,
+    "restored_consumed_bytes": 180568115,
+    "restored_consumed_file_count": 7371,
+    "restored_consumed_inputs_unchanged": true,
+    "restored_input_inventory_equal": true
+  },
+  "failure_history": [
+    {
+      "cause": "A Python link was resolved before its target link was created.",
+      "children_started": false,
+      "corrected_in_separate_source_and_output": true,
+      "phase": "copied-environment-v1",
+      "preserved": true
+    },
+    {
+      "cause": "Root supplied an invalid truncated comparison SHA.",
+      "corrected_in_separate_output": true,
+      "phase": "copy-only-recount-command-v1",
+      "preserved": true
+    },
+    {
+      "cause": "A four-key file metadata reference was compared to a three-key file identity reference.",
+      "corrected_in_separate_source_and_output": true,
+      "phase": "original-canonical-readers-v1",
+      "preserved": true
+    }
+  ],
+  "final_used": false,
+  "original_canonical_readers": {
+    "actual_fit_started": false,
+    "compile_started": false,
+    "coordination_locks_released": true,
+    "engine_inference_or_search_started": false,
+    "final_used": false,
+    "latest_revision_zero_exact_metrics_reproduced": true,
+    "optimizer_updates": 0,
+    "original_compiled_initialized_reader_verified": true,
+    "original_eight_stage_raw_comparison_verified": true,
+    "original_input_pins_unchanged": true,
+    "original_source_binding_actual_raw_verified": true,
+    "source_membership_unchanged": true,
+    "trained_candidate_quantization_difference_proved": false
+  },
+  "private_receipts": {
+    "archive_copy": {
+      "bytes": 653,
+      "sha256": "3caff3d3165214bbe9d90db614e9c839039d087a677e24e2feba44bc724c2ee5"
+    },
+    "copied_environment_v2": {
+      "bytes": 9480,
+      "sha256": "a8808844c0ee73e03d04883b6370b53893c0ae3a4d7c45fa192a2036eb8338ab"
+    },
+    "copy_only_recount_v2": {
+      "bytes": 3359,
+      "sha256": "a9f89e3342fa5ec253cf62f67b30463967e184ba65523ae872b4e79182483663"
+    },
+    "independent_archive_verify": {
+      "bytes": 246,
+      "sha256": "314ccc081b132bf4132593bf44c3e9a2a315dd15de834dc0fbd16fe34e0df3fa"
+    },
+    "independent_metadata_audit_v3": {
+      "bytes": 74519,
+      "sha256": "1e0c8ca91dd17fc86265fce1bb2896a00e01a8ea66cb8aec2c21c706076a63e1"
+    },
+    "original_canonical_readers_v2": {
+      "bytes": 6530,
+      "sha256": "fc1bcf9d40bb7684911df0c470045958732a62072bb9f8276960676f48a444c4"
+    },
+    "physical_restore": {
+      "bytes": 551,
+      "sha256": "43963cc55e4521580c024f2a675b52b032f614c199aae02ca144feb5dfa66755"
+    },
+    "post_recovery_record_copy": {
+      "bytes": 781,
+      "sha256": "8a5a858350b6e809e0b9caee15b0e9aa14d7ffd176de64709a470acfed0f4204"
+    }
+  },
+  "recovery_controller_supplement": {
+    "NAS_and_SSD_control_copies_verified": true,
+    "manifest": {
+      "bytes": 2915,
+      "mode": 384,
+      "sha256": "a4575895a84255f527169e70bc866f21674d8b10ea0d16b87f5417d8dacee214"
+    },
+    "regular_bytes": 54670,
+    "regular_files": 7
+  },
+  "schema": "sekirei.weekly-candidate-nas-recovery-public.v1",
+  "status": "complete"
+}

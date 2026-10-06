@@ -1,0 +1,216 @@
+{
+  "NAS_retention": {
+    "cleanup_performed": false,
+    "complete": false,
+    "status": "pending"
+  },
+  "candidate": "white-view-diverse-games-seed42-e3-v1",
+  "candidate_scope": "First MSE candidate raw master and its own nearest03; neither Huber nor current incumbent quantization.",
+  "failure_history": [
+    {
+      "actual_numerical_consumer_started": false,
+      "attempt": "v1",
+      "cargo_exit_code": 101,
+      "cause": "E0583: diagnostic module path missing in trainer.rs.",
+      "cleanup_verified": true,
+      "diagnostic_values_available": false,
+      "locks_reacquired_and_released": true,
+      "originals_and_failed_runtime_preserved": true,
+      "overall_exit_code": 1,
+      "phase": "rust4-fixtures",
+      "private_failure_audit": {
+        "bytes": 1787,
+        "sha256": "30b42b5ff566345a2cf70ea96b019085676e416b187b9895c8a70c6b0cf89e53"
+      },
+      "status": "failed"
+    },
+    {
+      "attempt": "v2",
+      "cause": "The strict aggregator rejected the exact existing FTZ/DAZ startup banner.",
+      "child_returncodes": {
+        "aggregate": 1,
+        "diagnostic": 0,
+        "original-reader": 0,
+        "prepare-request": 0,
+        "release-build": 0,
+        "rust4-fixtures": 0
+      },
+      "cleanup_verified": true,
+      "complete_research_result_claimed": false,
+      "diagnostic_rows_observed": 512,
+      "failure_preserved": true,
+      "locks_reacquired_and_released": true,
+      "overall_exit_code": 1,
+      "private_failure_audit": {
+        "bytes": 2222,
+        "sha256": "fd88906a2ff983e255c2a03d89ee124b945d2b9275f7d4ee1f53e735feff587e"
+      },
+      "status": "failed-aggregation",
+      "strict_aggregate_completed": false
+    }
+  ],
+  "limitations": {
+    "adoption_claimed": false,
+    "development_used": false,
+    "final_used": false,
+    "formal_1millionnode_search_metric_proved": false,
+    "incumbent_or_Huber_gap_not_measured": true,
+    "model_updated": false,
+    "optimizer_updates": 0,
+    "same_platform_and_fixed_source_model_runtime_settings_required": true,
+    "sampled_512_not_universal_bound": true,
+    "standalone_OS_or_system_stdlib_restore_proved": false,
+    "teacher_queried": false
+  },
+  "model_pair": {
+    "master": {
+      "bytes": 16720510,
+      "sha256": "7c2f9793bc1e3660f0202631cce2c3ae1c85b6cf7293e9285e16e60a60772f88"
+    },
+    "nearest03": {
+      "bytes": 1305356,
+      "sha256": "44d1b412da22688542a406599dd40b40bc3243285aaaeae67b21d003db9a0429"
+    }
+  },
+  "sampling": {
+    "holdout_population": 5895,
+    "holdout_selected": 256,
+    "policy": "ascending floor(i*(N-1)/255), i=0..255, original split row order",
+    "selection_uses_label_values_or_predictions": false,
+    "total_selected": 512,
+    "train_population": 112681,
+    "train_selected": 256
+  },
+  "schema": "sekirei.raw-master-quantization-public-result.v1",
+  "source_snapshot": "../../../../preparations/raw-master-quantization-diagnostic-v1/README.md",
+  "status": "complete-sampled-diagnostic-not-adopted",
+  "three_gap_names": [
+    "raw_master_minus_native_dequant",
+    "native_dequant_minus_native_core",
+    "raw_master_minus_native_core"
+  ],
+  "v3": {
+    "Root_independent_model_computation_repeated": false,
+    "Root_reaggregation_exact_equal": true,
+    "Root_terminal_and_reaggregation_audit": {
+      "bytes": 4145,
+      "sha256": "ae48109b894bee2ac321dd9416c3b254f7fea60abf4b8c87e7361574e321541d"
+    },
+    "Rust_computation_source_exact_v2": true,
+    "all_eleven_locks_reacquired_and_released": true,
+    "all_six_children_actual_exit0_cleanup_verified": true,
+    "all_state_bits_unchanged": true,
+    "calling_thread_FP_verified": true,
+    "compiled_sample_count": 512,
+    "completion": {
+      "bytes": 1559,
+      "sha256": "515adb9d49fac11df128260cd4a05d9bb9b4e3ded7fb3d7410f9e2f3ba94d0f4"
+    },
+    "current_best_unchanged": true,
+    "final_process_scans": [
+      {
+        "conflicts": [],
+        "excluded_preexisting_services": []
+      },
+      {
+        "conflicts": [],
+        "excluded_preexisting_services": []
+      }
+    ],
+    "float_observations": {
+      "float_after": {
+        "environment_value": "1",
+        "environment_variable": "SEKIREI_TRAIN_FTZ_DAZ",
+        "float_policy": "x86-ftz-daz",
+        "mxcsr_control_bits": 40896,
+        "mxcsr_raw_bits": 40928,
+        "mxcsr_status_bits": 32,
+        "mxcsr_status_mask": 63,
+        "required_control_bits": 40896,
+        "schema": "sekirei.white-view-paired-nonlinear-float-snapshot.v1"
+      },
+      "float_before": {
+        "environment_value": "1",
+        "environment_variable": "SEKIREI_TRAIN_FTZ_DAZ",
+        "float_policy": "x86-ftz-daz",
+        "mxcsr_control_bits": 40896,
+        "mxcsr_raw_bits": 40928,
+        "mxcsr_status_bits": 32,
+        "mxcsr_status_mask": 63,
+        "required_control_bits": 40896,
+        "schema": "sekirei.white-view-paired-nonlinear-float-snapshot.v1"
+      }
+    },
+    "fullbyte_native_reexport_matches": true,
+    "immutable_final_verified": true,
+    "narrow_parser_repair": "Require the exact startup banner once as the first line, retain every other strict guard.",
+    "overall_exit_code": 0,
+    "release": {
+      "bytes": 755,
+      "sha256": "b700075830b8353eeae0194c32e130d4be4230e71ef4501c178728bf83a96e35"
+    },
+    "request_row_set_equal": true,
+    "sampled_summary": {
+      "bytes": 2569,
+      "record": "sampled-summary.json",
+      "sha256": "dc70765d48ec905be41a34fdbd026b711c6d65f011dfcf5d6126b646c66bde97"
+    },
+    "sampled_values": {
+      "holdout": {
+        "native_dequant_minus_native_core": {
+          "count": 256,
+          "max_absolute_cp": 0.998382568359375,
+          "mean_absolute_cp": 0.49928559735417366,
+          "mean_signed_cp": -0.031077120453119278
+        },
+        "raw_master_minus_native_core": {
+          "count": 256,
+          "max_absolute_cp": 9.29766845703125,
+          "mean_absolute_cp": 1.392100501805544,
+          "mean_signed_cp": -0.1173434890806675
+        },
+        "raw_master_minus_native_dequant": {
+          "count": 256,
+          "max_absolute_cp": 9.78533935546875,
+          "mean_absolute_cp": 1.1985713988542557,
+          "mean_signed_cp": -0.08626636862754822
+        }
+      },
+      "train": {
+        "native_dequant_minus_native_core": {
+          "count": 256,
+          "max_absolute_cp": 0.9963226318359375,
+          "mean_absolute_cp": 0.49323010444641113,
+          "mean_signed_cp": 0.005252271890640259
+        },
+        "raw_master_minus_native_core": {
+          "count": 256,
+          "max_absolute_cp": 9.996826171875,
+          "mean_absolute_cp": 1.2937958911061287,
+          "mean_signed_cp": -0.03144261986017227
+        },
+        "raw_master_minus_native_dequant": {
+          "count": 256,
+          "max_absolute_cp": 10.28094482421875,
+          "mean_absolute_cp": 1.0415136888623238,
+          "mean_signed_cp": -0.03669489175081253
+        }
+      }
+    },
+    "six_child_returncodes": {
+      "aggregate": 0,
+      "diagnostic": 0,
+      "original-reader": 0,
+      "prepare-request": 0,
+      "release-build": 0,
+      "rust4-fixtures": 0
+    },
+    "source_and_input_pins_before_after_verified": true,
+    "status": "complete",
+    "terminal": {
+      "bytes": 9935828,
+      "sha256": "4477957fc02fe1875e35929a16098b84f6e2fffa84079c31c15cfef21bfd50ec"
+    },
+    "wait_reap_ECHILD_two_empty_scans_no_residual_admitted_by_Root": true
+  }
+}

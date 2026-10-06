@@ -8,6 +8,12 @@
 
 ## 現在の段階
 
+Issue [#19](https://github.com/phni3j9a/sekirei-weight2/issues/19)で、**2026-10-05 18:52:22〜10-12 18:52:22 JSTの1週間**、採用モデルを起点に継続する改善Goalを開始した。第1候補の多様化データE3は正式比較で不採用となり、NAS保存・独立照合・SSDへの物理復元・コピー環境・元readerの再検証まで完了した。[第1候補の結果](docs/validation/weekly-weight-improvement-2026-10-05/diverse-games-e3/comparison.md)と[保存・復元集計](docs/validation/weekly-weight-improvement-2026-10-05/diverse-games-e3/archive-recovery.json)を保持する。
+
+**第2候補Huber1000も、新規3epoch学習・全量技術検証・候補自身の100万ノード4段階比較を完了し、不採用**。MAEは1022.504590 cp、Top3入り率は58.590726%で、現bestの907.671621 cp・59.951320%への共同採用条件を満たさない。[正式比較・技術検証・評価値グラフ](docs/validation/weekly-weight-improvement-2026-10-05/huber1000-e3/comparison.md)を記録する。現bestと固定探索条件を維持し、final5局は未使用。Huber候補もNAS保存15,451ファイル・2,486,486,375 bytes、独立照合、2回目のSSD復元、コピー環境、正式比較再集計、元数値reader v4の再検証と補足保存を完了した。初回復元の1バイト不一致とreader v3のbootstrap失敗は原因・修復の範囲を分けて保持し、SSD原本も残す。[保存・復元集計](docs/validation/weekly-weight-improvement-2026-10-05/huber1000-e3/archive-recovery.json)を参照。復元は同じplatformの固定OS等を前提とする。[期間・採用条件・到達点](docs/WEEKLY_WEIGHT_IMPROVEMENT.md)を参照。
+
+第1候補MSEのraw masterと同じ候補のnearest03について、train256＋固定holdout256局面の[量子化診断](docs/validation/weekly-weight-improvement-2026-10-05/raw-master-quantization-diagnostic/README.md)を完了した。raw masterと整数coreの平均絶対差はtrain 1.293796 cp・holdout 1.392101 cpで、全state bits不変とnativeの全bytes再export一致を確認した。これは512サンプルの直接計算であり、全局面の上限や正式探索指標を保証しない。失敗した初回compileと2回目aggregateも保持し、[公開ソースと軽量fixture](preparations/raw-master-quantization-diagnostic-v1/README.md)を記録する。診断記録のNAS保存は未完了。次は第1候補のMSE・データ・構造・初期化seed42・3epochを固定し、epochごとの学習行順だけを決定的にshuffleする[第3候補のソース](preparations/white-view-paired-nonlinear-epoch-shuffle-mse-v1/README.md)を準備した。学習・正式採否は未確定で、採用モデルの更新はまだない。
+
 Issue [#17](https://github.com/phni3j9a/sekirei-weight2/issues/17)の第8候補、白視点・対非線形headの固定epoch3は、規定のdevelopment 5局・100万ノード正式比較で**採用条件を満たした**。MAEは **907.671621 cp**（同じ白視点binaryのfallbackは1084.478601 cp、16.303409%改善）、Top3入り率は **59.951320%**（基準55.388757%、4.562562ポイント改善）。8項目の比較identityが一致し、5局等重みの有理数でMAEの厳密低下とTop3の非低下を同時に確認した。探索実装と比較条件は維持している。過去7候補の有効な不採用結果は[自律改善の記録](docs/AUTONOMOUS_WEIGHT_IMPROVEMENT.md)に残す。
 
 固定3epoch・338,043更新とepoch3の技術検証は完了し、保護駒得のparameterとAdam m/vのbyte一致、118,591局面のcoreと8,185差分更新観測を確認した。これらprobeは通常compileの実行であり、native fixtureのcfg(test) Clone不整合を解消・実行した証拠とは区別する。final 5局は未使用。採用後のSuisho11Plus参考確認は17局面×3反復を完了し、採用判断から分けて記録した。

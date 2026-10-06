@@ -1,0 +1,32 @@
+--- a/paired_nonlinear_native_contract.rs
++++ b/paired_nonlinear_native_contract.rs
+@@ -130,7 +130,28 @@
+  Ok(NativeSafety{q_l1_upper:q_l1,absolute_cp_upper:cp})
+ }
+ #[cfg(test)]mod tests{use super::*;
+- fn paired_zero(r:&NnueWeights)->NnueWeights{let mut w=r.clone();for pair in 0..14{let p=4+2*pair;let n=p+1;for j in 2..L1{w.l2[L1+j][n]=w.l2[j][p];w.l2[j][n]=w.l2[L1+j][p];}w.l2_bias[n]=w.l2_bias[p];w.out[n]=f32::from_bits(w.out[p].to_bits()^0x8000_0000);}w}
++ fn copy_weights(r: &NnueWeights) -> NnueWeights {
++     NnueWeights {
++         ft: r.ft.clone(),
++         ft_bias: r.ft_bias,
++         l2: r.l2.clone(),
++         l2_bias: r.l2_bias,
++         out: r.out,
++         out_bias: r.out_bias,
++     }
++ }
++ fn paired_zero(r:&NnueWeights)->NnueWeights{let mut w=copy_weights(r);for pair in 0..14{let p=4+2*pair;let n=p+1;for j in 2..L1{w.l2[L1+j][n]=w.l2[j][p];w.l2[j][n]=w.l2[L1+j][p];}w.l2_bias[n]=w.l2_bias[p];w.out[n]=f32::from_bits(w.out[p].to_bits()^0x8000_0000);}w}
++
++ #[test]
++ fn copy_is_bit_exact_and_owns_matrix_storage() {
++     let r = canonical_reference_native03().unwrap();
++     let mut w = copy_weights(&r);
++     assert_eq!(native03_layout_bytes(&w).unwrap(), native03_layout_bytes(&r).unwrap());
++     w.ft[0][2] += 1;
++     w.l2[2][4] = f32::from_bits(w.l2[2][4].to_bits() ^ 0x8000_0000);
++     assert_ne!(w.ft[0][2], r.ft[0][2]);
++     assert_ne!(w.l2[2][4].to_bits(), r.l2[2][4].to_bits());
++ }
+ 
+  #[test]fn protected_material_and_aux_domain_are_distinct(){let r=canonical_reference_native03().unwrap();let mut w=paired_zero(&r);validate_pair(&w,&r).unwrap();w.ft[0][2]=798;assert!(validate_pair(&w,&r).is_err());w=paired_zero(&r);w.ft[0][0]+=1;assert!(validate_pair(&w,&r).is_err());}
+  #[test]fn head_and_hand_mirror_are_bit_exact(){let r=canonical_reference_native03().unwrap();let mut w=paired_zero(&r);w.l2[2][4]=0.5;w.l2[L1+2][5]=0.5;w.l2[2][5]=0.25;w.l2[L1+2][4]=0.25;w.out[4]=1.0;w.out[5]=-1.0;validate_pair(&w,&r).unwrap();w.out[5]=1.0;assert!(validate_pair(&w,&r).is_err());}

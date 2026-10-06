@@ -1,0 +1,43 @@
+{
+  "schema": "sekirei.weekly-incumbent-revalidation-public.v1",
+  "comparison_valid": true,
+  "inputs_unchanged": true,
+  "comparison_checks": {
+    "execution_except_model": true,
+    "occurrences": true,
+    "teacher_results": true,
+    "teacher_E_cp": true,
+    "top3_occurrences": true,
+    "top3_legal_moves_sha256": true,
+    "top3_denominators": true,
+    "top3_teacher_bestmoves": true
+  },
+  "self_comparison": true,
+  "adopt": false,
+  "reason": "SameE3 model; validation of the new explicitincumbent consumer, not a new candidate adoption.",
+  "model_sha256": "f647864fa17a7e9d06ed44aed6894527128c721208bac1f761741c3c5ec1e042",
+  "mae_exact": {
+    "numerator": 1446737797,
+    "denominator": 1593900
+  },
+  "top3_exact": {
+    "numerator": 321208691,
+    "denominator": 535782520
+  },
+  "coverage": {
+    "mae_occurrences": 570,
+    "teacher_E": 266,
+    "top3_occurrences": 551
+  },
+  "engine_process_started": false,
+  "final_used": false,
+  "private_receipt": {
+    "bytes": 1509099,
+    "sha256": "e51902f0f42a6b83e87581ac9a194adfe7c2bbf3f372c75f09fea0c474fe992a"
+  },
+  "prior_failed_receipt": {
+    "bytes": 1501795,
+    "sha256": "aeff94d8746e120e892a8f9efe84f9e3b96fe1eaa2dd587986364093b56020ad",
+    "failure": "Consumer canonicaloccurrence/teacher-key representation mismatch; fixed before successfulv2."
+  }
+}

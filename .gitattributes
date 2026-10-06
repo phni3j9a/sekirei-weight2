@@ -6,3 +6,4 @@ preparations/white-view-paired-nonlinear-rust-v1/compiled-source/nonlinear-compl
 preparations/white-view-paired-nonlinear-runtime-v2/native-contract-fixture-copy.patch whitespace=-blank-at-eol
 preparations/white-view-paired-nonlinear-huber1000-v1/candidate.patch whitespace=-blank-at-eol
 preparations/raw-master-quantization-diagnostic-v1/*.patch whitespace=-blank-at-eol
+preparations/white-view-paired-nonlinear-epoch-shuffle-mse-v1/candidate.patch whitespace=-blank-at-eol

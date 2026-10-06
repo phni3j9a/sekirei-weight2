@@ -102,7 +102,7 @@ MAEは`513433951/531300`、Top3は`114632561/200918445`。MAEは58.701334 cp悪�
 
 v3の実parentと六childはexit0、wait/reap・ECHILD・二回空scan・残存なしを確認した。全parameterとAdam m/v/global stepのbits、元input/source/modelの前後一致、nativeの全bytes再export一致、11 locksの全解放を確認した。Rootは512行のrequestと出力集合を照合し、同じpure aggregatorで実logを再集計してsummary全体の一致を確認した。Rustのmodel計算をRootが独立に再実行したという主張ではない。[実測値・失敗履歴](validation/weekly-weight-improvement-2026-10-05/raw-master-quantization-diagnostic/README.md)と[ソース・再現条件](../preparations/raw-master-quantization-diagnostic-v1/README.md)を残す。v1はRust module pathのE0583で数値処理前に失敗し、v2は数値childの512行を得たが既存FTZ/DAZ startup行へのstrict aggregator拒否で全体exit1だった。どちらも成功へ書き換えず、v3は別runとして完了した。診断記録のNAS保存は未完了で、SSD原本を保持している。
 
-この512サンプルでは大きな量子化崩れの証拠は得られなかった。全局面上限や探索中のPV同値性、正式MAEへの影響を結論するものではない。次の仮説には、同じ局面順をepochごとに繰り返すonline Adam更新への感度を選んだ。第1候補のMSE・同じデータ・構造・LR・fresh初期化seed42・3epoch・338,043更新を維持し、train行だけをepochごとの固定shuffle seed20261006で並べ替える候補を準備する。holdoutの順序と比較条件は維持する。現在のデータ選択規則はpack間round-robinなので、末尾packへの偏りが測定されたという説明は採らない。予定したpermutationに加え、更新が成功した実行順・各epochの全行一回ずつの使用・実stepを記録し、学習後に照合する。現時点ではsource準備中で、次候補の学習結果や正式採否は未確定である。
+この512サンプルでは大きな量子化崩れの証拠は得られなかった。全局面上限や探索中のPV同値性、正式MAEへの影響を結論するものではない。次の仮説には、同じ局面順をepochごとに繰り返すonline Adam更新への感度を選んだ。第1候補のMSE・同じデータ・構造・LR・fresh初期化seed42・3epoch・338,043更新を維持し、train行だけをepochごとの固定shuffle seed20261006で並べ替える第3候補の[専用ソース](../preparations/white-view-paired-nonlinear-epoch-shuffle-mse-v1/README.md)を準備した。holdoutの順序と比較条件は維持する。現在のデータ選択規則はpack間round-robinなので、末尾packへの偏りが測定されたという説明は採らない。予定したpermutationに加え、更新が成功した実行順・各epochの全行一回ずつの使用・実stepを記録し、学習後に照合する。現時点では実機での学習前で、次候補の学習結果や正式採否は未確定である。
 
 ## 計算と保存
 

@@ -1,0 +1,86 @@
+{
+  "candidate_patch": {
+    "bytes": 25253,
+    "sha256": "d81b023552bd32748806dffef1f50fa5979c62f43f68ac076f933cc8b7c49a69"
+  },
+  "changed_files": {
+    "crates/sekirei-train/src/paired_nonlinear_cli.rs": {
+      "after": {
+        "bytes": 11178,
+        "sha256": "20b5ed8b59dfb505a30028ce7d3699b03e7ebe3c020752257848f881964ac5d0"
+      },
+      "before": {
+        "bytes": 11205,
+        "sha256": "1c581a0abbd0d4c6c89aa027a48e6b0500e5ceaf9d30dab77315a624c4239dee"
+      }
+    },
+    "crates/sekirei-train/src/paired_nonlinear_parent_binding.rs": {
+      "after": {
+        "bytes": 33804,
+        "sha256": "3586dab9a4477c9831c5ea82906c88c7509e07e848a4f333199ac86fe36170ac"
+      },
+      "before": {
+        "bytes": 33110,
+        "sha256": "14973ada77ca1e042d7b81946e5885a71d179dea721a75c27c75b5286bd39a28"
+      }
+    },
+    "crates/sekirei-train/src/paired_nonlinear_positions.rs": {
+      "after": {
+        "bytes": 55617,
+        "sha256": "e0a5eaf93c25f3041ac0b8bb605e03329e683f0abba4b334b9fce7cd7f6866c0"
+      },
+      "before": {
+        "bytes": 46671,
+        "sha256": "e3ad93b674e50c0ab5db701ea612f8eac373779fb5c53ce2c0f13d69022ddeef"
+      }
+    }
+  },
+  "compiled": false,
+  "final_used": false,
+  "mode": "white-view-diverse-games-shuffle-seed42-e3-v1",
+  "numerical_position_update_prefix": {
+    "bytes": 34791,
+    "sha256": "770f99699c15995d0f014da26a3f74873a3f6422562965e6fca19c861f2086d4"
+  },
+  "numerical_position_update_preserved": true,
+  "objective": "absolute-cp-mse",
+  "optimizer_float_policy_checkpoint_native_core_preserved": true,
+  "required_actual_rust_test_suffixes": [
+    "shuffle_stable_integer_vectors",
+    "shuffle_full_permutation_bijection_and_epoch_pins",
+    "shuffle_rejects_seed_epoch_missing_duplicate_and_order",
+    "shuffle_consumption_success_counts_and_exact_updates",
+    "shuffle_consumption_rejects_wrong_step_order_duplicate_and_incomplete",
+    "shuffle_declaration_has_exact_separate_init_seed_and_holdout_order"
+  ],
+  "row_order": {
+    "algorithm": "splitmix64-fisher-yates-rejection-v1",
+    "consumption_trace": "successful-update-indices-in-contiguous-1024-row-chunks-v1",
+    "epochs": [
+      {
+        "bytes": 901448,
+        "count": 112681,
+        "epoch": 1,
+        "sha256": "bf2bca166952f95db75b4508360ee4cf3ea5d9507bf5cee4bc0951f8006f8551"
+      },
+      {
+        "bytes": 901448,
+        "count": 112681,
+        "epoch": 2,
+        "sha256": "3920f2d9ad3f8af31cd636c84284b85200635a58795f479296a00e27267d664a"
+      },
+      {
+        "bytes": 901448,
+        "count": 112681,
+        "epoch": 3,
+        "sha256": "1700b38354b9e24387d031d5174cd2c14c8e87108b23e22eebb9fd54df5525f2"
+      }
+    ],
+    "index_encoding": "original-train-row-index-u64-le",
+    "seed_mixing": "state=seed-xor-epoch-times-0x9e3779b97f4a7c15-mod2^64;next-adds-gamma"
+  },
+  "schema": "sekirei.weekly-epoch-shuffle-mse-public-source-variant.v1",
+  "shuffle_seed": 20261006,
+  "status": "source-only",
+  "training_started": false
+}

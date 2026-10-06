@@ -1,0 +1,334 @@
+--- a/crates/sekirei-train/src/paired_nonlinear_cli.rs
++++ b/crates/sekirei-train/src/paired_nonlinear_cli.rs
+@@ -5,7 +5,7 @@
+ use std::collections::HashMap;
+ use std::path::{Path,PathBuf,Component};
+ use serde_json::Value;
+-use crate::trainer::{Trainer,TrainWeights,shuffled_order};
++use crate::trainer::{Trainer,TrainWeights};
+ use crate::trainer::paired_nonlinear_adapter::{self as paired,DeclaredRecipe};
+ use crate::trainer::paired_nonlinear_positions::{Context,EpochToken};
+ 
+@@ -98,9 +98,9 @@
+ pub fn selected_recipe(v:&Value,args:&Args)->Result<SelectedDeclaration,String> {
+     let o=obj(v,&["schema","mode","feature_schema","seed","epochs","train_count","objective","optimizer",
+         "learning_rate_f32_bits","head_init_width_f32_bits","head_bias_init_f32_bits","output_native_l1_budget_f32_bits",
+-        "shuffle_seed","teacher_identity","manifest","reference03","positions","labels","source_binding",
++        "shuffle_seed","row_order","teacher_identity","manifest","reference03","positions","labels","source_binding",
+         "resume_allowed","ft_saved_q_max","ft_bias_q"])?;
+-    if o["schema"].as_str()!=Some("sekirei.white-view-paired-nonlinear-recipe.v1")
++    if o["schema"].as_str()!=Some("sekirei.white-view-paired-nonlinear-epoch-shuffle-mse-recipe.v1")
+         ||o["mode"].as_str()!=Some(MODE)||o["feature_schema"].as_str()!=Some(FEATURE_SCHEMA)
+         ||o["seed"].as_u64()!=Some(42)||o["epochs"].as_u64()!=Some(3)||o["train_count"].as_u64()!=Some(112681)
+         ||o["objective"].as_str()!=Some("absolute-cp-mse")||o["optimizer"].as_str()!=Some("fresh-adam-tied-masters")
+@@ -114,11 +114,12 @@
+     let width=bits(&o["head_init_width_f32_bits"])?;let bias=bits(&o["head_bias_init_f32_bits"])?;
+     let budget=bits(&o["output_native_l1_budget_f32_bits"])?;
+     if [lr.to_bits(),width.to_bits(),bias.to_bits(),budget.to_bits()] != [0x3a83126f,0x3b800000,0x40800000,0x47000000]
+-        || !o["shuffle_seed"].is_null() {return Err("selected fixed plan bits/no-shuffle differ".into());}
++        || o["shuffle_seed"].as_u64()!=Some(20261006)
++        || o["row_order"]!=crate::trainer::paired_nonlinear_positions::row_order_declaration() {return Err("fixed numerical bits/explicit row-order declaration differ".into());}
+     let recipe=DeclaredRecipe {learning_rate:lr,head_init_width:width,
+         head_bias_init:bias,output_native_l1_budget:budget};
+     paired::validate_recipe(recipe).map_err(str::to_string)?;
+-    let shuffle_seed=if o["shuffle_seed"].is_null(){None}else{Some(o["shuffle_seed"].as_u64().ok_or("explicit shuffle integer or null required")?)};
++    let shuffle_seed=Some(o["shuffle_seed"].as_u64().ok_or("fixed typed shuffle seed required")?);
+     let teacher=o["teacher_identity"].as_str().ok_or("teacher identity string required")?;
+     if !teacher.starts_with("external:")||teacher.len()<=9 {return Err("original O external teacher identity required".into());}
+     Ok(SelectedDeclaration{recipe,shuffle_seed,teacher_identity:teacher.to_string()})
+@@ -158,13 +159,9 @@
+         let fp=crate::paired_nonlinear_float::snapshot()?;
+         eprintln!("PAIRED_EPOCH_BEGIN {}",serde_json::json!({"epoch":epoch,"start_step":train.trainer.paired_optimizer_step(),"float":fp}));
+         train.trainer.lr=decl.recipe.learning_rate;
+-        let shuffled;
+-        let samples=if let Some(seed)=decl.shuffle_seed {
+-            let order=shuffled_order(train.samples.len(),seed ^ epoch as u64);
+-            shuffled=order.iter().map(|&i|train.samples[i].clone()).collect::<Vec<_>>();
+-            shuffled.as_slice()
+-        }else {train.samples.as_slice()};
+-        let token=train.trainer.train_paired_nonlinear_epoch(samples,&train.cache,epoch,&mut context)?;
++        let seed=decl.shuffle_seed.ok_or("fixed row-order seed missing")?;
++        let order=crate::trainer::paired_nonlinear_positions::shuffle_permutation(train.samples.len(),seed,epoch)?;
++        let token=train.trainer.train_paired_nonlinear_epoch(&train.samples,&train.cache,&order,epoch,&mut context)?;
+         let fp=crate::paired_nonlinear_float::snapshot()?;
+         eprintln!("PAIRED_EPOCH_COMPLETE {}",serde_json::json!({"epoch":token.epoch(),"positions":token.positions(),"end_step":token.end_step(),"float":fp}));
+         tokens.push(token);
+--- a/crates/sekirei-train/src/paired_nonlinear_parent_binding.rs
++++ b/crates/sekirei-train/src/paired_nonlinear_parent_binding.rs
+@@ -113,7 +113,7 @@
+ fn validate_plan_value(v:&Value,args:&Args)->Result<OriginalFive,String>{
+     let o=io::object(v,&["schema","status","mode","hypothesis","created_utc","architecture","training",
+         "dataset_inputs","teacher_identity","selection_profile","resources","adoption","incumbent_model"])?;
+-    io::require(o["schema"].as_str()==Some("sekirei.weekly-nonlinear-selected-plan.v1")
++    io::require(o["schema"].as_str()==Some("sekirei.weekly-nonlinear-epoch-shuffle-mse-selected-plan.v1")
+         &&o["status"].as_str()==Some("frozen-before-build")&&o["mode"].as_str()==Some(MODE)
+         &&o["teacher_identity"].as_str()==Some(TEACHER),"weekly selected plan header differs")?;
+     for key in ["hypothesis","created_utc"]{io::require(o[key].as_str().is_some_and(|s|!s.is_empty()),"nonempty plan text required")?;}
+@@ -124,7 +124,8 @@
+     let training=serde_json::json!({"seed":42,"epochs":3,"selected_epoch":3,"train_count":112681,"holdout_count":5895,
+         "objective":"absolute-cp-mse","optimizer":"fresh-adam-tied-masters","learning_rate_schedule":"constant",
+         "learning_rate_f32_bits":"3a83126f","head_init_width_f32_bits":"3b800000","head_bias_init_f32_bits":"40800000",
+-        "output_native_l1_budget_f32_bits":"47000000","shuffle_seed":null,"resume_allowed":false,
++        "output_native_l1_budget_f32_bits":"47000000","shuffle_seed":20261006,
++        "row_order":crate::trainer::paired_nonlinear_positions::row_order_declaration(),"resume_allowed":false,
+         "ft_saved_q_max":797,"ft_bias_q":64});
+     io::require(io::exact(&o["training"],&training),"weekly fixed numeric recipe differs")?;
+     let profile:Ref=serde_json::from_value(o["selection_profile"].clone()).map_err(|e|e.to_string())?;profile.validate()?;
+@@ -201,7 +202,7 @@
+     /// No True field is accepted without its exact producer/body/source binding.
+     pub fn validate_parent_and_source(&self,inputs:&RawInputs,args:&Args,run_request_path:Option<&str>)->Result<(),String>{
+         let b=&self.binding;let p:Parent=inputs.typed(&b.parent_preflight)?;
+-        io::require(p.schema=="sekirei.weekly-nonlinear-parent-preflight.v1"&&p.status=="complete"&&p.mode==MODE,"parent exact schema/status/mode differ")?;
++        io::require(p.schema=="sekirei.weekly-nonlinear-epoch-shuffle-mse-parent-preflight.v1"&&p.status=="complete"&&p.mode==MODE,"parent exact schema/status/mode differ")?;
+         io::require(p.origin_proof_policy=="fresh-whole-pack-ranked-dataset-with-frozen-holdout","parent origin proof policy differs")?;
+         io::require(p.selected_plan==b.selected_plan&&p.training_build==b.training_build&&p.engine_build==b.engine_build
+             &&p.original_inputs==b.original_inputs&&p.reference03==b.reference03,"parent/source binding refs differ")?;
+@@ -244,7 +245,7 @@
+     let expected=Ref::from_cli(&args.source_binding)?;
+     io::require(raw.len()as u64==expected.bytes&&sha::hex(raw)?==expected.sha256,"source-binding raw external SHA differs")?;
+     let b:SourceBinding=parse(raw)?;
+-    io::require(b.schema=="sekirei.weekly-nonlinear-source-binding.v1"&&b.status=="ready"&&b.mode==MODE
++    io::require(b.schema=="sekirei.weekly-nonlinear-epoch-shuffle-mse-source-binding.v1"&&b.status=="ready"&&b.mode==MODE
+         &&b.float_policy==FLOAT_POLICY,"source-binding schema/status/mode/float policy differ")?;
+     io::require(b.selected_plan.bytes==PLAN_BYTES&&b.selected_plan.sha256==PLAN_SHA,"selected plan raw identity differs")?;
+     for r in [&b.selected_plan,&b.parent_preflight,&b.training_build,&b.training_binary,&b.engine_build,&b.reference03]{r.validate()?;}
+@@ -286,7 +287,7 @@
+ fn check_strings(v:&[String])->Result<(),String>{io::require(!v.is_empty()&&v.iter().all(|x|!x.is_empty()&&!x.contains('\0')),"nonempty literal argv/name strings required")}
+ fn validate_training_build_body(inputs:&RawInputs,b:&SourceBinding,p:&Parent)->Result<(),String>{
+     let t:TrainingBuild=inputs.typed(&b.training_build)?;
+-    io::require(t.schema=="sekirei.weekly-nonlinear-training-build.v1"&&t.status=="complete"&&t.mode==MODE
++    io::require(t.schema=="sekirei.weekly-nonlinear-epoch-shuffle-mse-training-build.v1"&&t.status=="complete"&&t.mode==MODE
+         &&t.upstream_commit=="f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9"&&!t.scalar_power_cache_used,"fixed original scalar build differs")?;
+     io::absolute(&t.source_root)?;strict_sha40(&t.source_head)?;
+     io::require(t.source_head==p.source_head&&t.source_files==b.training_source_files&&t.compiler_files==b.compiler_files
+@@ -331,6 +332,9 @@
+     for name in &t.tests.required_test_names{io::require(passed.contains(name.as_str()),"required test not observed passing in bound actual log")?;}
+     // Category names are only a necessary source/log linkage check. The Root
+     // producer validates exact expected test bodies; names alone prove nothing.
++    for suffix in ["shuffle_stable_integer_vectors","shuffle_full_permutation_bijection_and_epoch_pins","shuffle_rejects_seed_epoch_missing_duplicate_and_order","shuffle_consumption_success_counts_and_exact_updates","shuffle_consumption_rejects_wrong_step_order_duplicate_and_incomplete","shuffle_declaration_has_exact_separate_init_seed_and_holdout_order"]{
++        io::require(t.tests.required_test_names.iter().any(|name|name.ends_with(suffix)),"actual bound shuffle test missing")?;
++    }
+     let lowered:Vec<String>=t.tests.required_test_names.iter().map(|v|v.to_lowercase()).collect();
+     for needles in [&["reader"][..],&["sha"][..],&["unique"][..],&["native"][..],&["update","adapter"][..],&["ftz","float_policy","mxcsr"][..]]{
+         io::require(lowered.iter().any(|name|needles.iter().any(|needle|name.contains(needle))),"required typed Reader/SHA/uniqueJSON/native/update/FTZ category missing")?;
+@@ -349,7 +353,7 @@
+     scan_records:[ScanRecord;2],lock_records:Vec<LockRecord>,source_head:String}
+ fn validate_process_evidence_body(inputs:&RawInputs,_b:&SourceBinding,p:&Parent)->Result<(),String>{
+     let e:ProcessEvidence=serde_json::from_value(p.process_evidence.clone()).map_err(|e|e.to_string())?;
+-    io::require(e.schema=="sekirei.weekly-nonlinear-preflight-process-evidence.v1"&&e.status=="observed-clear"
++    io::require(e.schema=="sekirei.weekly-nonlinear-epoch-shuffle-mse-preflight-process-evidence.v1"&&e.status=="observed-clear"
+         &&e.source_head==p.source_head,"Root process evidence schema/status/head differ")?;strict_sha40(&e.source_head)?;
+     for r in [&e.producer_source,&e.process_reader,&e.allowlist]{raw_ref(inputs,p,r)?;}
+     // Opaque descriptors are checked by the pinned unchanged Root-reader and
+@@ -380,7 +384,7 @@
+     actual_replay_repeated_by_verifier:bool,final_used:bool}
+ fn validate_fresh_origin_body(inputs:&RawInputs,b:&SourceBinding,p:&Parent)->Result<(),String>{
+     let fresh:FreshOrigin=inputs.typed(&p.prior_original_origin_proof)?;
+-    io::require(fresh.schema=="sekirei.weekly-nonlinear-dataset-origin.v1"&&fresh.status=="verified"
++    io::require(fresh.schema=="sekirei.weekly-nonlinear-epoch-shuffle-mse-dataset-origin.v1"&&fresh.status=="verified"
+         &&fresh.dataset_inputs==b.original_inputs&&fresh.counts==p.origin_counts&&fresh.checks.all()
+         &&!fresh.actual_replay_repeated_by_verifier&&!fresh.final_used,"fresh origin typed body differs")?;
+     io::require(fresh.inputs_before==fresh.inputs_after,"fresh origin immutable input maps differ")?;
+--- a/crates/sekirei-train/src/paired_nonlinear_positions.rs
++++ b/crates/sekirei-train/src/paired_nonlinear_positions.rs
+@@ -721,11 +721,11 @@
+     }
+ 
+     /// Complete keyed original teacher cache only; never searches or mutates
+-    /// cache. The caller orders samples with original shuffled_order when the
+-    /// externally frozen recipe requests it. No resume cursor/chunk path.
++    /// cache. The dedicated caller supplies the fixed identity-index permutation;
++    /// successful updates alone enter the actual index trace. No resume path.
+     pub fn train_paired_nonlinear_epoch(&mut self,
+         samples:&[crate::positions::PositionSample], cache:&HashMap<String,i32>,
+-        epoch:u32, context:&mut Context) -> Result<EpochToken,String>
++        order:&[usize], epoch:u32, context:&mut Context) -> Result<EpochToken,String>
+     {
+         context.ensure_live()?;
+         let result=(|| {
+@@ -746,10 +746,13 @@
+                     return Err("duplicate position or teacher outside absolute integer domain".into());
+                 }
+             }
++            let mut consumption=ShuffleConsumption::new(samples.len(),epoch,start_step,order,true)?;
+             self.reset_epoch_stats();
+-            for (position_index,sample) in samples.iter().enumerate() {
++            for (position_index,&original_index) in order.iter().enumerate() {
++                let sample=&samples[original_index];
+                 let sfen=sekirei_core::sfen::board_to_sfen(&sample.board);
+                 self.train_paired_nonlinear_position(&sample.board,cache[&sfen],context)?;
++                consumption.record(original_index,self.weights.step)?;
+                 if (position_index+1)%1024==0 || position_index+1==samples.len() {
+                     eprintln!("PAIRED_POSITION_PROGRESS epoch={epoch} positions={} global_step={}",position_index+1,self.weights.step);
+                 }
+@@ -760,6 +763,7 @@
+                 return Err("epoch did not process every original train position exactly once".into());
+             }
+             paired::validate_state(&self.weights,&context.reference,context.recipe).map_err(str::to_string)?;
++            consumption.finish(self.weights.step)?;
+             Ok(EpochToken { epoch, positions:samples.len(), end_step:expected_end })
+         })();
+         match result {
+@@ -877,7 +881,7 @@
+         let cache=ordinary_cache(&samples[0]);
+         for epoch in 1..=3_u32 {
+             actual_float_policy();
+-            let token=trainer.train_paired_nonlinear_epoch(&samples,&cache,epoch,&mut context).unwrap();
++            let token=trainer.train_paired_nonlinear_epoch(&samples,&cache,&shuffle_permutation(samples.len(),SHUFFLE_SEED,epoch).unwrap(),epoch,&mut context).unwrap();
+             assert_eq!(token.epoch(),epoch);
+             assert_eq!(token.positions(),1);
+             assert_eq!(token.end_step(),u64::from(epoch));
+@@ -911,7 +915,7 @@
+             let mut context=Context::from_verified_declaration(reference,recipe).unwrap();
+             let samples=[public_sample()];
+             let good=ordinary_cache(&samples[0]);
+-            let token=trainer.train_paired_nonlinear_epoch(&samples,&good,1,&mut context).unwrap();
++            let token=trainer.train_paired_nonlinear_epoch(&samples,&good,&shuffle_permutation(samples.len(),SHUFFLE_SEED,1).unwrap(),1,&mut context).unwrap();
+             assert_eq!(token.positions(),1); assert_eq!(token.end_step(),1);
+             let before_failure=trainer.weights.clone();
+             let bad=match bad_teacher {
+@@ -919,13 +923,13 @@
+                 Some(cp)=>HashMap::from([(board_to_sfen(&samples[0].board),cp)]),
+             };
+             assert_eq!(bad.len(),samples.len());
+-            assert!(trainer.train_paired_nonlinear_epoch(&samples,&bad,2,&mut context).is_err());
++            assert!(trainer.train_paired_nonlinear_epoch(&samples,&bad,&shuffle_permutation(samples.len(),SHUFFLE_SEED,2).unwrap(),2,&mut context).is_err());
+             assert!(context.ensure_live().is_err());
+             assert!(native::checkpoint_state_equal(&before_failure,&trainer.weights));
+             assert_eq!(trainer.paired_optimizer_step(),1);
+             // Repairing the cache cannot turn the terminal partial attempt
+             // into a resumable one. No second update is allowed.
+-            assert!(trainer.train_paired_nonlinear_epoch(&samples,&good,2,&mut context).is_err());
++            assert!(trainer.train_paired_nonlinear_epoch(&samples,&good,&shuffle_permutation(samples.len(),SHUFFLE_SEED,2).unwrap(),2,&mut context).is_err());
+             assert!(native::checkpoint_state_equal(&before_failure,&trainer.weights));
+             assert!(checkpoint::completed_checkpoint_bytes(&trainer,recipe,&memory_checkpoint_context()).is_err());
+             assert!(checkpoint::completed_nearest_bytes(&trainer,recipe).is_err());
+@@ -936,3 +940,128 @@
+         }
+     }
+ }
++
++// Fixed integer row-order variant. Numerical position update stays unchanged.
++const SHUFFLE_SEED:u64=20261006;
++const SHUFFLE_GAMMA:u64=0x9e3779b97f4a7c15;
++const SHUFFLE_ALGORITHM:&str="splitmix64-fisher-yates-rejection-v1";
++struct StableSplitMix64{state:u64}
++impl StableSplitMix64{
++    fn next(&mut self)->u64{
++        self.state=self.state.wrapping_add(SHUFFLE_GAMMA);
++        let mut z=self.state;
++        z=(z^(z>>30)).wrapping_mul(0xbf58476d1ce4e5b9);
++        z=(z^(z>>27)).wrapping_mul(0x94d049bb133111eb);
++        z^(z>>31)
++    }
++    fn below(&mut self,bound:u64)->Result<u64,String>{
++        if bound==0{return Err("positive shuffle bound required".into());}
++        let threshold=bound.wrapping_neg()%bound;
++        loop{let value=self.next();if value>=threshold{return Ok(value%bound);}}
++    }
++}
++pub fn shuffle_permutation(count:usize,seed:u64,epoch:u32)->Result<Vec<usize>,String>{
++    if count==0||seed!=SHUFFLE_SEED||!(1..=3).contains(&epoch){return Err("fixed shuffle seed/fresh epoch/count required".into());}
++    let mut order:Vec<usize>=(0..count).collect();
++    let mut rng=StableSplitMix64{state:seed^(epoch as u64).wrapping_mul(SHUFFLE_GAMMA)};
++    for i in (1..count).rev(){
++        let j=usize::try_from(rng.below(u64::try_from(i+1).map_err(|_|"shuffle count overflow")?)?).map_err(|_|"shuffle index overflow")?;
++        order.swap(i,j);
++    }Ok(order)
++}
++fn order_identity(order:&[usize])->Result<serde_json::Value,String>{
++    let size=order.len().checked_mul(8).ok_or("shuffle byte count overflow")?;
++    let mut raw=Vec::with_capacity(size);
++    for &i in order{raw.extend_from_slice(&u64::try_from(i).map_err(|_|"shuffle index overflow")?.to_le_bytes());}
++    Ok(serde_json::json!({"bytes":size,"sha256":crate::paired_nonlinear_sha256::hex(&raw)?}))
++}
++pub fn row_order_declaration()->serde_json::Value{
++    serde_json::json!({"algorithm":"splitmix64-fisher-yates-rejection-v1","seed_mixing":"state=seed-xor-epoch-times-0x9e3779b97f4a7c15-mod2^64;next-adds-gamma","index_encoding":"original-train-row-index-u64-le","consumption_trace":"successful-update-indices-in-contiguous-1024-row-chunks-v1","epochs":[{"epoch":1,"count":112681,"bytes":901448,"sha256":"bf2bca166952f95db75b4508360ee4cf3ea5d9507bf5cee4bc0951f8006f8551"},{"epoch":2,"count":112681,"bytes":901448,"sha256":"3920f2d9ad3f8af31cd636c84284b85200635a58795f479296a00e27267d664a"},{"epoch":3,"count":112681,"bytes":901448,"sha256":"1700b38354b9e24387d031d5174cd2c14c8e87108b23e22eebb9fd54df5525f2"}]})
++}
++struct ShuffleConsumption{
++    epoch:u32,start_step:u64,expected:Vec<usize>,consumed:Vec<usize>,seen:Vec<bool>,emit:bool,
++}
++impl ShuffleConsumption{
++    fn new(count:usize,epoch:u32,start_step:u64,order:&[usize],emit:bool)->Result<Self,String>{
++        let expected=shuffle_permutation(count,SHUFFLE_SEED,epoch)?;
++        if order!=expected.as_slice()||start_step!=(epoch as u64-1).checked_mul(count as u64).ok_or("shuffle start overflow")?{
++            return Err("fixed full permutation/start update differs".into());
++        }
++        if emit{eprintln!("PAIRED_SHUFFLE_BEGIN {}",serde_json::json!({"epoch":epoch,"seed":SHUFFLE_SEED,
++            "count":count,"algorithm":SHUFFLE_ALGORITHM,"permutation":order_identity(&expected)?}));}
++        Ok(Self{epoch,start_step,expected,consumed:Vec::with_capacity(count),seen:vec![false;count],emit})
++    }
++    // Called ONLY after actual position update succeeded, with its original
++    // train-row index and observed optimizer step; never derives used rows
++    // from a recomputed declaration at completion time.
++    fn record(&mut self,index:usize,actual_step:u64)->Result<(),String>{
++        let position=self.consumed.len();
++        if index>=self.seen.len()||self.seen[index]||self.expected.get(position)!=Some(&index)
++            ||actual_step!=self.start_step.checked_add(position as u64+1).ok_or("shuffle update overflow")?{
++            return Err("duplicate/outside/order/actual update step mismatch".into());
++        }
++        self.seen[index]=true;self.consumed.push(index);
++        if self.emit&&(self.consumed.len()%1024==0||self.consumed.len()==self.expected.len()){
++            let end=self.consumed.len();let start=((end-1)/1024)*1024;
++            eprintln!("PAIRED_SHUFFLE_ROWS {}",serde_json::json!({"epoch":self.epoch,"start_position":start,
++                "start_step":self.start_step+start as u64,"end_step":actual_step,"indices":&self.consumed[start..end]}));
++        }Ok(())
++    }
++    fn finish(&self,actual_step:u64)->Result<(),String>{
++        if self.consumed.len()!=self.expected.len()||self.seen.iter().any(|v|!*v)
++            ||actual_step!=self.start_step+self.expected.len()as u64
++            ||order_identity(&self.consumed)?!=order_identity(&self.expected)?{
++            return Err("incomplete actual row consumption/update/digest".into());
++        }
++        if self.emit{eprintln!("PAIRED_SHUFFLE_COMPLETE {}",serde_json::json!({"epoch":self.epoch,
++            "consumed_count":self.consumed.len(),"start_step":self.start_step,"end_step":actual_step,
++            "consumed":order_identity(&self.consumed)?}));}Ok(())
++    }
++}
++#[cfg(test)] mod epoch_shuffle_tests{
++    use super::*;
++    #[test] fn shuffle_stable_integer_vectors(){
++        let mut rng=StableSplitMix64{state:0};
++        assert_eq!(rng.next(),0xe220a8397b1dcdaf);assert_eq!(rng.next(),0x6e789e6aa1b965f4);
++        assert_eq!(shuffle_permutation(8,SHUFFLE_SEED,1).unwrap(),vec![1,2,7,5,6,4,3,0]);
++        assert_eq!(shuffle_permutation(8,SHUFFLE_SEED,2).unwrap(),vec![6,2,4,3,0,5,1,7]);
++        assert_eq!(shuffle_permutation(8,SHUFFLE_SEED,3).unwrap(),vec![3,2,6,5,7,1,0,4]);
++    }
++    #[test] fn shuffle_full_permutation_bijection_and_epoch_pins(){
++        let declaration=row_order_declaration();
++        for epoch in 1..=3{
++            let order=shuffle_permutation(112681,SHUFFLE_SEED,epoch).unwrap();
++            let mut sorted=order.clone();sorted.sort_unstable();assert_eq!(sorted,(0..112681).collect::<Vec<_>>());
++            assert_eq!(order_identity(&order).unwrap()["sha256"],declaration["epochs"][(epoch-1)as usize]["sha256"]);
++            assert_eq!(order,shuffle_permutation(112681,SHUFFLE_SEED,epoch).unwrap());
++        }
++        assert_ne!(shuffle_permutation(112681,SHUFFLE_SEED,1).unwrap(),shuffle_permutation(112681,SHUFFLE_SEED,2).unwrap());
++    }
++    #[test] fn shuffle_rejects_seed_epoch_missing_duplicate_and_order(){
++        assert!(shuffle_permutation(8,42,1).is_err());assert!(shuffle_permutation(8,SHUFFLE_SEED,0).is_err());
++        assert!(shuffle_permutation(8,SHUFFLE_SEED,4).is_err());assert!(shuffle_permutation(0,SHUFFLE_SEED,1).is_err());
++        let good=shuffle_permutation(8,SHUFFLE_SEED,1).unwrap();
++        assert!(ShuffleConsumption::new(8,1,0,&good[..7],false).is_err());
++        let mut bad=good.clone();bad[1]=bad[0];assert!(ShuffleConsumption::new(8,1,0,&bad,false).is_err());
++        bad=good.clone();bad.swap(0,1);assert!(ShuffleConsumption::new(8,1,0,&bad,false).is_err());
++    }
++    #[test] fn shuffle_consumption_success_counts_and_exact_updates(){
++        for epoch in 1..=3{
++            let order=shuffle_permutation(8,SHUFFLE_SEED,epoch).unwrap();let start=(epoch as u64-1)*8;
++            let mut trace=ShuffleConsumption::new(8,epoch,start,&order,false).unwrap();
++            for (p,&i)in order.iter().enumerate(){trace.record(i,start+p as u64+1).unwrap();}
++            trace.finish(start+8).unwrap();assert!(trace.record(order[0],start+9).is_err());
++        }
++    }
++    #[test] fn shuffle_consumption_rejects_wrong_step_order_duplicate_and_incomplete(){
++        let order=shuffle_permutation(8,SHUFFLE_SEED,1).unwrap();
++        let mut trace=ShuffleConsumption::new(8,1,0,&order,false).unwrap();assert!(trace.record(order[0],0).is_err());
++        assert!(trace.record(order[1],1).is_err());assert!(trace.record(8,1).is_err());assert!(trace.finish(0).is_err());
++        trace.record(order[0],1).unwrap();assert!(trace.record(order[0],2).is_err());assert!(trace.finish(8).is_err());
++    }
++    #[test] fn shuffle_declaration_has_exact_separate_init_seed_and_holdout_order(){
++        assert_ne!(SHUFFLE_SEED,42);let d=row_order_declaration();assert_eq!(d["epochs"].as_array().unwrap().len(),3);
++        assert_eq!(d["index_encoding"],"original-train-row-index-u64-le");assert_eq!(d["epochs"][2]["count"],112681);
++        // No holdout reorder path is added: the dedicated method accepts TRAIN only.
++    }
++}

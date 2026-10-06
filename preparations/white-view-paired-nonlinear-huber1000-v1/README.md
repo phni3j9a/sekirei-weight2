@@ -1,8 +1,8 @@
-# Huber1000候補のソース準備
+# Huber1000候補のソース準備と実行結果
 
-Issue [#19](https://github.com/phni3j9a/sekirei-weight2/issues/19)の次候補として、第1候補と同じ白視点・対非線形headで、CP誤差のMSEを **2倍のHuber損失**へ変更する。δは1000 cp、f32 bitsは `447a0000`。学習出力を64で割ったscoreと教師cpの差が `err` であり、δに追加の尺度変換はしない。
+Issue [#19](https://github.com/phni3j9a/sekirei-weight2/issues/19)の第2候補として、第1候補と同じ白視点・対非線形headで、CP誤差のMSEを **2倍のHuber損失**へ変更した。新規3epoch学習・候補自身の技術検証・100万ノードの正式比較を完了し、共同採用条件を満たさず不採用となった。[正式比較と実行結果](../../docs/validation/weekly-weight-improvement-2026-10-05/huber1000-e3/comparison.md)と[保存・復元集計](../../docs/validation/weekly-weight-improvement-2026-10-05/huber1000-e3/archive-recovery.json)を参照。δは1000 cp、f32 bitsは `447a0000`。学習出力を64で割ったscoreと教師cpの差が `err` であり、δに追加の尺度変換はしない。
 
-`|err| <= 1000` では旧MSEの `loss = err * err` と、勾配の `checked_product(checked_product(weight, 2), err) / 64` を同じ演算順序で保持する。超過域だけを `loss = 2δ|err| − δ²`、勾配を `checked_product(checked_product(weight, 2), sign(err) * δ) / 64` に変える。上限処理の前に非有限誤差を拒否し、tailのoverflow検出と失敗後のpoisonも保持する。小残差域の実更新が旧MSEとbit一致することは、今後の実コンパイル済みfixtureで確認する。
+`|err| <= 1000` では旧MSEの `loss = err * err` と、勾配の `checked_product(checked_product(weight, 2), err) / 64` を同じ演算順序で保持する。超過域だけを `loss = 2δ|err| − δ²`、勾配を `checked_product(checked_product(weight, 2), sign(err) * δ) / 64` に変える。上限処理の前に非有限誤差を拒否し、tailのoverflow検出と失敗後のpoisonも保持する。小残差域の実更新が旧MSEとbit一致することは、実コンパイル済みfixtureの3更新・全parameter/m/v/step controlsで確認した。
 
 入力は第1候補と同じ凍結dataset（train 112,681局面、holdout 5,895局面）。seed42の新規初期化からshuffle/resumeなしで3epoch、338,043更新、epoch3選択を固定する。Adam・定数learning rate・初期化・保護materialのparameterとm/v・tie制約・nearest03量子化・checkpoint/native codec・固定White core・Sekireiの探索と100万ノード比較条件を保持する。学習lossは採用基準にせず、最新bestに対するMAEの厳密低下とTop3の非低下を要求し、finalを日々の選択に使わない。
 
@@ -23,4 +23,6 @@ Issue [#19](https://github.com/phni3j9a/sekirei-weight2/issues/19)の次候補�
 
 再現には、原典 [Sekirei f09c130](https://github.com/kent-tokyo/sekirei/tree/f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9)、[既存MSE snapshot](../white-view-paired-nonlinear-rust-v1/README.md)、runtime修復ソース、凍結済み非公開data/plan/profileと固定White engine・compiler/depsが必要である。専用source/build/outputをSSD上に新設し、同じLinux x86_64 platform・CPU/浮動小数点条件を満たす。[環境・非公開成果物の扱い](../../docs/ENVIRONMENT.md)に従う。この3 postimagesと差分patchだけでは単独のbuild環境にならず、教師data・weight・raw label・private runは付属しない。
 
-現時点では公開ソースの準備とPythonの構文・help確認までで、新専用sourceの実作成、実コンパイルは未実行である。実compiledログに束縛した10 suffix、calling-thread FTZ/DAZ・MXCSR同条件での小残差3更新の全parameter/m/v/step bit-controlsとinitialized/native codec照合、実position失敗後のpoison検証、initialized readerのpositiveとmissing-FTZ negative、preflight、3epoch fit、候補自身のown proof、MAE/Top3のpilot/formal 4段階比較は、すべて未実行のgateとして残る。小fixtureは完了checkpointの338,043更新条件を緩めず、synthetic Huber helper失敗と実position失敗を区別する。準備ソースやhelpの成功から学習改善・正式比較成功・モデル採用を推定しない。
+専用sourceの実作成・ビルドと、compiledログに束縛した必須Huber Rust suffix 10件・Rust全体43 test・10 controlsを完了した。calling-thread FTZ/DAZ・MXCSR同条件での小残差3更新の全parameter/m/v/step bit-controls、initialized/native codec照合、実position失敗後のpoison、initialized readerのpositiveとmissing-FTZ negativeを確認し、preflight後にfresh seed42の112,681局面×3epoch・338,043更新を完了した。[学習完了集計](../../docs/validation/weekly-weight-improvement-2026-10-05/huber1000-e3/training-completion.json)はソース準備manifestとは別の実行証拠である。
+
+候補自身の[own proof](../../docs/validation/weekly-weight-improvement-2026-10-05/huber1000-e3/technical-proof.json)はcore 118,591行・incremental 8,185観測を検証した。MAE/Top3のpilot/formal全4段階も候補自身の重みで完了し、最新bestとの正式比較は有効だがrejectとなった。NAS本体の独立照合、SSD復元v2、コピー環境5 smoke、コピーだけからの正式比較再集計、元Huber数値reader v4、失敗・修復・完了記録の補足保存まで完了した。初回復元の1バイト不一致とreader v3のbootstrap失敗は保存・復元集計で区別して保持する。現best revision 0と固定探索条件を維持し、final5局は未使用。保存nativeのfloat/core bridgeはraw master量子化差や全局面の整数bit共変性の証明ではない。小fixtureは実fitの338,043更新条件を緩めず、synthetic Huber helper失敗と実position失敗を区別する。モデル採用の判断には実際の正式比較を用いる。

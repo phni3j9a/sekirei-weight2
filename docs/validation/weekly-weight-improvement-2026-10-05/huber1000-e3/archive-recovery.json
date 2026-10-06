@@ -1,0 +1,535 @@
+{
+  "SSD_physical_restore": {
+    "complete": true,
+    "first_restore_remains_failed": true,
+    "original_reference_paths_preserved": true,
+    "publication": "atomic-rename-noreplace",
+    "regular_bytes_modes_membership_verified": true,
+    "successful_attempt": "v2",
+    "whole_directory_atomic": true
+  },
+  "base_archive": {
+    "copied_and_verified": true,
+    "directories": 902,
+    "independent_verify_complete": true,
+    "inventory": {
+      "bytes": 6688570,
+      "sha256": "6afd0bd4db3a91fe12ae5b5c81d87515af55b87061120c7fdf2efdc8b549b7a4"
+    },
+    "originals_preserved": true,
+    "publication": "exclusive-directory-copy-manifest-last",
+    "regular_bytes": 2486486375,
+    "regular_files": 15451,
+    "roots": 419,
+    "source_stage_retained": true,
+    "whole_directory_atomic": false
+  },
+  "best_registry_revision": 0,
+  "candidate": "white-view-diverse-games-seed42-huber1000-e3-v1",
+  "candidate_adopted": false,
+  "cleanup_performed": false,
+  "completed_recovery_record_supplement": {
+    "all_source_and_saved_bytes_modes_membership_verified": true,
+    "base_archive_manifest_unchanged": true,
+    "base_archive_modified": false,
+    "cleanup_performed": false,
+    "complete": true,
+    "directories": 26,
+    "manifest": {
+      "bytes": 65094,
+      "mode": 384,
+      "sha256": "1d82fc38b7fd836fae3212912c2dbbdb90fcfdbfadd20e2d0a9aaea17c4e0796"
+    },
+    "originals_preserved": true,
+    "publication": "exclusive-directory-copy-manifest-last",
+    "regular_bytes": 11984951,
+    "regular_files": 126,
+    "symlinks": 0,
+    "whole_directory_atomic": false
+  },
+  "copied_environment": {
+    "children": [
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "rust-identity",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      },
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "rust-sysroot",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      },
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "rust-std-link",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      },
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "rust-std-run",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      },
+      {
+        "group_empty_observations": [
+          true,
+          true
+        ],
+        "name": "python-cshogi-numpy",
+        "returncode": 0,
+        "timed_out": false,
+        "wait_reap_confirmed": true
+      }
+    ],
+    "complete": true,
+    "imports_from_copied_venv_verified": true,
+    "recreated_symlinks": 4,
+    "regular_bytes": 1027715260,
+    "regular_bytes_modes_membership_verified": true,
+    "regular_files": 2473,
+    "restored_environment_subset_manifest_and_closure_unchanged": true,
+    "same_platform_prerequisites_required": true,
+    "standalone_OS_or_stdlib_restore_proved": false,
+    "symbolic_link_recreation_two_pass": true,
+    "verified_platform_prerequisites": {
+      "verified_packages": 11,
+      "verified_regular_prerequisites": 37,
+      "verified_system_aliases": 17
+    }
+  },
+  "copy_only_reaggregation": {
+    "adoption_replayed": false,
+    "comparison_valid": true,
+    "complete": true,
+    "decision": "reject",
+    "eight_comparison_identities_equal": true,
+    "engine_rerun_performed": false,
+    "frozen_parser_count": 8,
+    "live_original_fallback_allowed": false,
+    "receipt_exactly_reproduced": true,
+    "restored_consumed_bytes": 180547431,
+    "restored_consumed_file_count": 7371,
+    "restored_consumed_inputs_unchanged": true,
+    "restored_input_inventory_equal": true
+  },
+  "failure_history": [
+    {
+      "byte_difference_count": 1,
+      "cause_determined": false,
+      "child_returncode": 1,
+      "directory_membership_differences": {
+        "changed": 0,
+        "extra": 0,
+        "missing": 0
+      },
+      "file_membership_differences": {
+        "changed": 1,
+        "extra": 0,
+        "missing": 0
+      },
+      "later_failed_stage_contents_changed": true,
+      "later_observation_matches_NAS": true,
+      "observed_bad_bytes_retention": {
+        "bytes": 11497,
+        "original_failed_stage_unchanged_claimed": false,
+        "reconstructed": true,
+        "representation": "explicitly-reconstructed-from-recorded-one-byte-difference",
+        "sha256": "3f7ac484d2b1b0bc6abf973a0a6c8353b376c5e5a0280e9538d8bcbfb2d2a2ca"
+      },
+      "one_file_SHA_mismatch": true,
+      "phase": "ssd-restore-v1",
+      "records_retained": true,
+      "source_and_NAS_match_frozen_SHA": true,
+      "status": "failed",
+      "successful_fresh_retry": "v2"
+    },
+    {
+      "cause": "The copied environment receipt used the producer four-key closure shape including mode; v3 compared it with a three-key identity shape.",
+      "child_returncode": 1,
+      "corrected_in_separate_source_and_output": true,
+      "numerical_consumer_success_claimed": false,
+      "old_fixture_methods_unchanged": 62,
+      "old_numerical_cache_boundary_functions_AST_unchanged": true,
+      "phase": "original-reader-v3-bootstrap",
+      "records_retained": true,
+      "repair": "v4",
+      "repair_scope": "Bootstrap receipt shape and mode binding to the unique frozen restore manifest entry. The alias control retains the strict three-key identity shape.",
+      "repair_source": {
+        "bytes": 37689,
+        "sha256": "201861b1e204db185b8d7f5a58106233aa171b254f4328aae36ba7fe28ea3f08"
+      },
+      "status": "failed",
+      "v4_small_fixture_count": 74,
+      "v4_small_fixtures_passed": true
+    }
+  ],
+  "final_used": false,
+  "original_canonical_readers": {
+    "actual_engine_compile_fit_lock": false,
+    "blocked_attempts": 0,
+    "boundary_denials": 0,
+    "complete": true,
+    "consumed_logical_files": 7416,
+    "consumer_status": "dedicated-Huber-raw-proof-revalidated",
+    "copied_consumed_inputs_unchanged": true,
+    "copied_venv": {
+      "bytes": 120770606,
+      "directories": 269,
+      "files": 2259,
+      "original_dependency_inputs_not_read": true,
+      "symlinks": 4
+    },
+    "decoder_origins_before_after_copied_only_verified": true,
+    "live_original_fallback_allowed": false,
+    "loaded_source_role_count": 19,
+    "restored_Huber_raw_proof_consumer_verified": true,
+    "source_input_pin_count": 26,
+    "trained_candidate_raw_master_quantization_difference_proved": false
+  },
+  "owned_parent_phases": [
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 0,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "archive",
+      "private_terminal": {
+        "bytes": 4709,
+        "sha256": "bb55da00777635a804f0a391ccd1828b8ec4c3619e3751eaa17b239cf3a92f4a"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 9,
+      "source_input_pins_before_after_verified": true,
+      "status": "complete",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 1340.9345532618463
+    },
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 0,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "independent-nas-verify",
+      "private_terminal": {
+        "bytes": 4530,
+        "sha256": "581d73b9b2093d5012cfc64d85008a5596616354d6d3c00394cae024178aa6b5"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 9,
+      "source_input_pins_before_after_verified": true,
+      "status": "complete",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 38.29216143395752
+    },
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 1,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "ssd-restore-v1",
+      "private_terminal": {
+        "bytes": 4806,
+        "sha256": "dd717f518852a0c30c7f63a790af81a50ab86afcf5c520fa3b510d5f5afdb105"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 9,
+      "source_input_pins_before_after_verified": true,
+      "status": "failed",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 421.8885194961913
+    },
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 0,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "ssd-restore-v2",
+      "private_terminal": {
+        "bytes": 5554,
+        "sha256": "e7fa764aaef96fa6cf51eccbf01c5f483f647fe91001acae339217442f04f561"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 12,
+      "source_input_pins_before_after_verified": true,
+      "status": "complete",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 475.1031028716825
+    },
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 0,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "copied-environment",
+      "private_terminal": {
+        "bytes": 5536,
+        "sha256": "880653b6baba7c84e9da885a5f2c67f815ef567dbd22242f4cc8f65fe02ba748"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 11,
+      "source_input_pins_before_after_verified": true,
+      "status": "complete",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 72.2996584950015
+    },
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 0,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "copy-only-recount",
+      "private_terminal": {
+        "bytes": 5983,
+        "sha256": "14b4916b03988b29ba115435b934f4fdcf1ed86348e4b42d1358fb8843c112ce"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 13,
+      "source_input_pins_before_after_verified": true,
+      "status": "complete",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 98.15877075586468
+    },
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 1,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "original-reader-v3-bootstrap",
+      "private_terminal": {
+        "bytes": 10171,
+        "sha256": "638e1310eecd912cc527506951ce006ed8cde7ac20c2ab7b130602b725f52afc"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 21,
+      "source_input_pins_before_after_verified": true,
+      "status": "failed",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 7.460373864043504
+    },
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 0,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "original-reader-v4-numeric",
+      "private_terminal": {
+        "bytes": 11496,
+        "sha256": "eb7255c419f29e38cda42dbcd047f8b546ccf441ddbdd9a8ca0f383dae96e80d"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 26,
+      "source_input_pins_before_after_verified": true,
+      "status": "complete",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 769.668921595905
+    },
+    {
+      "ECHILD_observed": true,
+      "child_returncode": 0,
+      "cleanup_verified": true,
+      "direct_children_empty_scans": [
+        true,
+        true
+      ],
+      "group_empty_scans": [
+        true,
+        true
+      ],
+      "phase": "recovery-record-supplement",
+      "private_terminal": {
+        "bytes": 5866,
+        "sha256": "c14d48c84c11a712b0f6b9ead97d4634bb178e3a008a8439e56aa9bae13a2c89"
+      },
+      "residual_descendants_detected": false,
+      "source_input_pin_count": 12,
+      "source_input_pins_before_after_verified": true,
+      "status": "complete",
+      "timed_out": false,
+      "wait_reap_confirmed": true,
+      "wall_seconds": 4.872229401022196
+    }
+  ],
+  "private_receipts": {
+    "archive-parent--terminal": {
+      "bytes": 4709,
+      "sha256": "bb55da00777635a804f0a391ccd1828b8ec4c3619e3751eaa17b239cf3a92f4a"
+    },
+    "archive-root-terminal-audit-v1": {
+      "bytes": 1185,
+      "sha256": "a81102075b0a24906f60e0e93b667e6a0e41077d00917d56a1e5cf53692e09f3"
+    },
+    "copied-comparison-recount-v1": {
+      "bytes": 3613,
+      "sha256": "40c3303de0c5cdbabdddea78f6b0940af189ebc744618a095ab76f6da50ff6ed"
+    },
+    "copied-environment-receipt-v1": {
+      "bytes": 11207,
+      "sha256": "20c800ca0ddf640fe2babab5314ed3fb316e0319d80bede22eeca5e1c47f857c"
+    },
+    "copied-original-huber-reader-v2--receipt": {
+      "bytes": 52915,
+      "sha256": "7fca605f40083e5c095e953bd38b324442dd23253ee78ad2de6ef329ef259e52"
+    },
+    "environment-parent--terminal": {
+      "bytes": 5536,
+      "sha256": "880653b6baba7c84e9da885a5f2c67f815ef567dbd22242f4cc8f65fe02ba748"
+    },
+    "original-reader-parent--terminal": {
+      "bytes": 10171,
+      "sha256": "638e1310eecd912cc527506951ce006ed8cde7ac20c2ab7b130602b725f52afc"
+    },
+    "original-reader-v2-parent--terminal": {
+      "bytes": 11496,
+      "sha256": "eb7255c419f29e38cda42dbcd047f8b546ccf441ddbdd9a8ca0f383dae96e80d"
+    },
+    "original-reader-v4-repair--lightweight-checks-v4-final": {
+      "bytes": 2285,
+      "sha256": "e01515d48dc40f76ed69fddc92c8d7c891cced0d44be8162cee4778b80811a0f"
+    },
+    "original-reader-v4-repair--source-validation-v4": {
+      "bytes": 3638,
+      "sha256": "aa4a69dfd35697e6b4801fbc4fe6e2e9654edb963cfea5be52bd2dc174877950"
+    },
+    "original-reader-v4-root-terminal-audit-v1": {
+      "bytes": 2526,
+      "sha256": "c5b84f29d3b16f4d57d17e4756dbfbb9560f36a93634a080ecb2c888992bb426"
+    },
+    "recount-parent--terminal": {
+      "bytes": 5983,
+      "sha256": "14b4916b03988b29ba115435b934f4fdcf1ed86348e4b42d1358fb8843c112ce"
+    },
+    "restore-failed-stage-later-observation-v1": {
+      "bytes": 779,
+      "sha256": "5df2a12348a5862a078a2a8c00acd3db591888e66901a69ffa87c6d4934fcaec"
+    },
+    "restore-file-content-difference-v1": {
+      "bytes": 1556,
+      "sha256": "c08f2e0522194168bb7c6a67c307f1277d03834d676f25ee90c743c7bafbc095"
+    },
+    "restore-parent--terminal": {
+      "bytes": 4806,
+      "sha256": "dd717f518852a0c30c7f63a790af81a50ab86afcf5c520fa3b510d5f5afdb105"
+    },
+    "restore-physical-difference-v1": {
+      "bytes": 1203,
+      "sha256": "d2128ea86443fb7027331ded4460298ee45a122200f89eb0b22dec5fde7ace6d"
+    },
+    "restore-v2-parent--terminal": {
+      "bytes": 5554,
+      "sha256": "e7fa764aaef96fa6cf51eccbf01c5f483f647fe91001acae339217442f04f561"
+    },
+    "restore-v2-root-terminal-audit-v1": {
+      "bytes": 1014,
+      "sha256": "aa488457f2ad0e34c4691f300a5502fcf3dc5d0f5adabc7001065dc3d183e4f4"
+    },
+    "supplement-parent--terminal": {
+      "bytes": 5866,
+      "sha256": "c14d48c84c11a712b0f6b9ead97d4634bb178e3a008a8439e56aa9bae13a2c89"
+    },
+    "supplement-receipt-v1": {
+      "bytes": 943,
+      "sha256": "ef7c3d4915ab55eef1d91bd4539556162f2c5b44f989fc173c64b594c70b4e1e"
+    },
+    "supplement-root-terminal-audit-v1": {
+      "bytes": 2178,
+      "sha256": "44ee3c81213d53f8bef9fe8954d9e83178db6cb8a043fd0dfc790e6aa1db97fe"
+    },
+    "verify-parent--terminal": {
+      "bytes": 4530,
+      "sha256": "581d73b9b2093d5012cfc64d85008a5596616354d6d3c00394cae024178aa6b5"
+    },
+    "verify-root-audit-and-restore-capacity-v1": {
+      "bytes": 745,
+      "sha256": "67985847a1d172651a165d454ce0adca94bdd46b353bd7e7b02a23a1a473fc73"
+    }
+  },
+  "same_platform_prerequisites": [
+    "Linux x86_64 on the same CPU/platform",
+    "Pinned OS, Python stdlib, loader/shared libraries and linker"
+  ],
+  "schema": "sekirei.weekly-candidate-nas-recovery-public.v1",
+  "status": "complete"
+}

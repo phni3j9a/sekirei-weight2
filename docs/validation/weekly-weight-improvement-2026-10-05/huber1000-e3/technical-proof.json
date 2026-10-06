@@ -1,0 +1,78 @@
+{
+  "adoption_claimed": false,
+  "build_unchanged": true,
+  "core": {
+    "fixtures": {
+      "count": 15,
+      "maximum_stored_float_core_bridge_cp": 0.976806640625
+    },
+    "holdout": {
+      "count": 5895,
+      "maximum_stored_float_core_bridge_cp": 0.999969482421875
+    },
+    "train": {
+      "count": 112681,
+      "maximum_stored_float_core_bridge_cp": 0.999969482421875
+    }
+  },
+  "core_fullrows_verified_on_new_candidate": true,
+  "final_used": false,
+  "fullstate_checkpoint": {
+    "bytes": 16705598,
+    "sha256": "3d18a23d14d98339bef1202757c0425c53b78cdfab5c0458abfcbe14652b04dd"
+  },
+  "incremental": {
+    "accumulator_refresh_equal": true,
+    "all_preclamp_intermediates_finite": true,
+    "captures": 632,
+    "drops": 577,
+    "fixtures": 15,
+    "incremental_refresh_error_cp": 0,
+    "mxcsr_control": "9fc0",
+    "null_undos": 240,
+    "parent_restoration_equal": true,
+    "positions_checked": 8185,
+    "promotions": 186,
+    "search_walks": 8,
+    "undos": 3837,
+    "walks": 16
+  },
+  "incremental_verified_on_new_candidate": true,
+  "inputs_before_after_equal": true,
+  "mode": "white-view-diverse-games-seed42-huber1000-e3-v1",
+  "model_adopted": false,
+  "native03": {
+    "bytes": 1305356,
+    "sha256": "1713bdf5e0002468e87e860ba252bee42182c71db50bfbc453bafb74c4c2df11"
+  },
+  "native_bitexact_covariance_claimed": false,
+  "original_inputs_before_after_equal": true,
+  "proof_children": {
+    "all_groups_empty_in_two_scans": true,
+    "all_returncodes_zero": true,
+    "all_waited_reaped": true,
+    "any_timeout": false,
+    "compile_children": 2,
+    "core_children": 3,
+    "count": 6,
+    "incremental_children": 1
+  },
+  "protected_material_ft_bits_preserved": true,
+  "resume_used": false,
+  "schema": "sekirei.weekly-nonlinear-technical-proof-public.v1",
+  "shuffle_used": false,
+  "source_unchanged": true,
+  "status": "technical-proof-complete-not-adopted",
+  "stored_float_core_bridge_scope": "Stored candidate nearest03 dequantized float versus the same native integer core; not raw master float versus quantized float.",
+  "technical_proof": {
+    "bytes": 21897968,
+    "sha256": "58be0a5c96cf65c52134218794e6da02d58715819ac37042041e3fe88f73aeea"
+  },
+  "total_core_rows": 118591,
+  "training_completion": {
+    "bytes": 2165535,
+    "sha256": "7fcbed98cb1e528a3b50727390eb6962896988285fc394d0e28f63d067103bf5"
+  },
+  "universal_integer_bound_claimed": false,
+  "whole_board_ft_preservation_claimed": false
+}

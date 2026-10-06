@@ -71,11 +71,24 @@ MAEは`513433951/531300`、Top3は`114632561/200918445`。MAEは58.701334 cp悪�
 
 評価helperはdecoder依存を出力作成・最初のMAE実行の前に検査するよう修正した。固定audit venvの11 fixture、構文、差分、CLI helpが通過した。第1候補の凍結済みprivate script/config/weights/runtime controlは保持した。
 
-## 次の候補
+## 第2候補: Huber1000
 
-次は同じ多様化データ、fresh seed42、3epoch、構造、scalar Adam、LR、保護パラメータ、export、探索条件を固定し、損失だけをδ=1,000 cpのHuberへ変える。実装は[標準Huber](https://docs.pytorch.org/docs/2.14/generated/torch.nn.HuberLoss.html)の2倍とし、絶対誤差が1,000 cp以下では旧MSEのloss・gradientと演算順を維持する。大きい残差域で二乗増加を線形増加に変える仮説で、ラベルやデータは変更しない。δは今回の事前選択値である。
+第2候補は同じ多様化データ、fresh seed42、3epoch、構造、scalar Adam、LR、保護パラメータ、export、探索条件を固定し、損失だけをδ=1,000 cpのHuberへ変えた。実装は[標準Huber](https://docs.pytorch.org/docs/2.14/generated/torch.nn.HuberLoss.html)の2倍とし、絶対誤差が1,000 cp以下では旧MSEのloss・gradientと演算順を維持する。大きい残差域で二乗増加を線形増加に変える仮説で、ラベルやデータは変更しない。δは今回の事前選択値である。
 
-新変種専用の[sourceと補助CLI](../preparations/white-view-paired-nonlinear-huber1000-v1/README.md)を追加した。元MSEのsourceと補助CLIを維持し、3 Rust postimages・5専用CLI・共有検証module・variant manifest・patchを公開する。source準備と独立読取レビューは完了した。actual Rust compile、全state/Adam moments/stepのbit比較fixture、新recipe/preflight、候補自身の初期readerを通してから学習する。現段階では新候補の学習・モデル採用は未実行。起点のbestを維持して期間内の改善を継続する。final5局は未使用。
+候補自身のfresh seed42・固定3epoch学習は112,681局面×3、338,043更新、13,466.234221秒で完了した。resume・shuffleなし、入力/source/buildの前後不変、FTZ/DAZ・MXCSRのepoch境界6回とexport1回を確認した。候補自身のcore 118,591行とincremental 8,185観測も完了し、compile2・core3・incremental1のchildは実exit0、wait/reap、group空の2回確認を通過した。bridgeの対象は保存nearest03を復号したfloatと同じnative整数coreであり、raw masterの量子化差や全boardの整数bit共変性を証明したという主張ではない。
+
+候補自身のMAE pilot・正式MAE・Top3 pilot・正式Top3を102 / 1,140 / 36 / 551 attemptで完了した。全4段階のHuber重みidentity、両候補のraw再検証、8比較identity、最新best snapshotとのexact fraction、登録前後不変を確認した。正式比較は有効で、**第2候補も不採用**。
+
+| 指標 | 現best | Huber1000 E3 |
+| --- | ---: | ---: |
+| 5局等重みMAE（cp） | 907.671621 | 1022.504590 |
+| 5局等重みTop3入り率 | 59.951320% | 58.590726% |
+
+候補のMAEは `1086513377/1062600`、Top3は `941756597/1607347560`。MAEは114.832969 cp悪化し、Top3は1.360594ポイント低下した。[正式比較・学習/proof/実親終了集計・評価値グラフ](validation/weekly-weight-improvement-2026-10-05/huber1000-e3/comparison.md)を保存する。今回の固定データ・構造・更新量・δによる結果であり、Huber一般の有効性や未評価棋譜への汎化を結論しない。現best revision 0を維持し、final5局は未使用。
+
+[Huber専用sourceと補助CLI](../preparations/white-view-paired-nonlinear-huber1000-v1/README.md)の準備時manifestはsource-only記録として保持する。今回の学習・技術検証・正式比較は別receiptに記録した。Huber候補のNAS保存は15,451ファイル・2,486,486,375 bytes、902 directory・419 rootを照合し、独立verifyと2回目のSSD物理復元まで完了した。コピー環境は2,473 regular files・1,027,715,260 bytesと4 symlinkを検証し、Rust identity／sysroot／std link／runとPython cshogi・NumPyの5 smokeが通過した。コピーだけからの再集計は7,371ファイル・180,547,431 bytes、8 identityと正式receiptを再現してrejectを確認した。元Huber数値reader v4も7,416 logical files・19 source roleを読み、専用raw proof consumerと入力前後不変、コピー由来decoder、blocked attempt／boundary denial各0を確認した。コピーvenvのbefore/after対象は2,259ファイル・120,770,606 bytes・269 directory・4 link。実親はexit0、wait/reap・ECHILD・子/group空の2回確認と26 pinsの前後一致を通過した。
+
+初回SSD復元は1ファイルの1バイトSHA不一致で失敗した。原本とNASは固定SHAに一致し、その後の失敗stageの観測では内容が変化してNAS同値となったが原因は未確定。観測した不一致bytesは記録した1バイト差から明示的に再構成して保管し、元の失敗stageの不変コピーとは扱わない。reader v3はclosure receiptの4-key metadata（modeを含む）と3-key identityの比較で数値処理前に失敗した。v4はuniqueな復元manifest entryへmodeを束縛するbootstrapだけを修正し、数値・cache・境界関数と旧62 fixtureのASTを維持した74 fixture、および実数値consumerを通過した。失敗記録・v4修復・完了記録126ファイル・11,984,951 bytes・26 directory metadataを別の補足NAS packetへ保存し、base archiveを変更せずSSD原本を保持した。[保存・復元集計](validation/weekly-weight-improvement-2026-10-05/huber1000-e3/archive-recovery.json)を参照。復元は同じplatformの固定OS・Python stdlib・loader/shared libraries・linkerを前提とし、OS全体の独立復元を主張しない。
 
 ## 計算と保存
 

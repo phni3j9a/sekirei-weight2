@@ -1,0 +1,80 @@
+{
+  "adoption_claimed": false,
+  "development_used": false,
+  "export_mutation": false,
+  "final_used": false,
+  "float_observations": {
+    "float_after": {
+      "environment_value": "1",
+      "environment_variable": "SEKIREI_TRAIN_FTZ_DAZ",
+      "float_policy": "x86-ftz-daz",
+      "mxcsr_control_bits": 40896,
+      "mxcsr_raw_bits": 40928,
+      "mxcsr_status_bits": 32,
+      "mxcsr_status_mask": 63,
+      "required_control_bits": 40896,
+      "schema": "sekirei.white-view-paired-nonlinear-float-snapshot.v1"
+    },
+    "float_before": {
+      "environment_value": "1",
+      "environment_variable": "SEKIREI_TRAIN_FTZ_DAZ",
+      "float_policy": "x86-ftz-daz",
+      "mxcsr_control_bits": 40896,
+      "mxcsr_raw_bits": 40928,
+      "mxcsr_status_bits": 32,
+      "mxcsr_status_mask": 63,
+      "required_control_bits": 40896,
+      "schema": "sekirei.white-view-paired-nonlinear-float-snapshot.v1"
+    }
+  },
+  "lifecycle_must_be_verified_by_parent": true,
+  "mode": "white-view-diverse-games-seed42-e3-v1",
+  "optimizer_updates": 0,
+  "sample_count": 512,
+  "schema": "sekirei.raw-master-quantization-sampled-summary.v1",
+  "splits": {
+    "holdout": {
+      "native_dequant_minus_native_core": {
+        "count": 256,
+        "max_absolute_cp": 0.998382568359375,
+        "mean_absolute_cp": 0.49928559735417366,
+        "mean_signed_cp": -0.031077120453119278
+      },
+      "raw_master_minus_native_core": {
+        "count": 256,
+        "max_absolute_cp": 9.29766845703125,
+        "mean_absolute_cp": 1.392100501805544,
+        "mean_signed_cp": -0.1173434890806675
+      },
+      "raw_master_minus_native_dequant": {
+        "count": 256,
+        "max_absolute_cp": 9.78533935546875,
+        "mean_absolute_cp": 1.1985713988542557,
+        "mean_signed_cp": -0.08626636862754822
+      }
+    },
+    "train": {
+      "native_dequant_minus_native_core": {
+        "count": 256,
+        "max_absolute_cp": 0.9963226318359375,
+        "mean_absolute_cp": 0.49323010444641113,
+        "mean_signed_cp": 0.005252271890640259
+      },
+      "raw_master_minus_native_core": {
+        "count": 256,
+        "max_absolute_cp": 9.996826171875,
+        "mean_absolute_cp": 1.2937958911061287,
+        "mean_signed_cp": -0.03144261986017227
+      },
+      "raw_master_minus_native_dequant": {
+        "count": 256,
+        "max_absolute_cp": 10.28094482421875,
+        "mean_absolute_cp": 1.0415136888623238,
+        "mean_signed_cp": -0.03669489175081253
+      }
+    }
+  },
+  "stm_cp_divisor": 64,
+  "teacher_queried": false,
+  "universal_bound_proved": false
+}

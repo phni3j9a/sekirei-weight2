@@ -18,6 +18,8 @@ jobs:
           python3 -m unittest discover -s tests -v
       - name: Nonlinear compiled source snapshot
         run: python3 -B -m unittest discover -s preparations/white-view-paired-nonlinear-rust-v1 -p test_public_source.py -v
+      - name: Raw master diagnostic sampler and source snapshot
+        run: python3 -B -m unittest discover -s preparations/raw-master-quantization-diagnostic-v1 -p 'test_*.py' -v
       - name: JSON configuration
         run: |
           python3 -m json.tool config/toolchain.lock.json >/dev/null

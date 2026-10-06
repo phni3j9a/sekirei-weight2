@@ -1,0 +1,176 @@
+{
+  "Rust_source_v5_exact_v2": true,
+  "activation_requires_separate_runtime_gates": true,
+  "baseline_alignment": {
+    "main_diagnostic_preimage": {
+      "bytes": 194899,
+      "sha256": "4045a359d109b1ccf7f898c9020e40b18f454730897ad88ec62d8767ff966c71"
+    },
+    "main_public_preimage": {
+      "bytes": 194824,
+      "sha256": "e5ab5089a7332837750fe6561aa39d1863c78c0e019e621d9b8eaace6c58cea8"
+    },
+    "patch": "baseline-weekly-profile.patch",
+    "profile": {
+      "bytes": 803,
+      "sha256": "d870c139115434daf37059923d12f196db32a5ce4e27c308678f887680048ce8"
+    },
+    "source_profile_bound_by_v2_saved_source_inventory": true
+  },
+  "baseline_public_dependency": "../white-view-paired-nonlinear-rust-v1/compiled-source/",
+  "compiled_by_snapshot_author": false,
+  "diagnostic_postimages": {
+    "crates/sekirei-train/src/main.rs": {
+      "bytes": 195247,
+      "sha256": "e626c62a63866742b00da151acf7f6f4a4c5fdc6f8ce96fc9105b59a06b32a44"
+    },
+    "crates/sekirei-train/src/paired_nonlinear_checkpoint_io.rs": {
+      "bytes": 15400,
+      "sha256": "cb389b8a44a6c2e155f6ca692db22c75d6e458af9a41b55e1eede003031d8eae"
+    },
+    "crates/sekirei-train/src/paired_nonlinear_raw_master_diag.rs": {
+      "bytes": 17107,
+      "sha256": "59bc8e9e0b52bea7b706a93e2c0d075e038f8b586c24ceb7ae376c6759d45f6e"
+    },
+    "crates/sekirei-train/src/trainer.rs": {
+      "bytes": 264352,
+      "sha256": "8d932df7cd5a7c5499e6f10a4e6a2cc5528f042a5141b593ff44dfa7dfd95d33"
+    }
+  },
+  "diagnostic_preimages": {
+    "crates/sekirei-train/src/main.rs": {
+      "bytes": 194899,
+      "sha256": "4045a359d109b1ccf7f898c9020e40b18f454730897ad88ec62d8767ff966c71"
+    },
+    "crates/sekirei-train/src/paired_nonlinear_checkpoint_io.rs": {
+      "bytes": 14423,
+      "sha256": "256c16067433f460bab5728f1d73ef59de80456c310d1e9864e787748be64b33"
+    },
+    "crates/sekirei-train/src/trainer.rs": {
+      "bytes": 264137,
+      "sha256": "77c84f1460a402781d8dcaf6318f2b173466aec0d8260c118ce305a6efc205d8"
+    }
+  },
+  "execution_results": "../../docs/validation/weekly-weight-improvement-2026-10-05/raw-master-quantization-diagnostic/summary.json",
+  "files": {
+    "LICENSE": {
+      "bytes": 166,
+      "sha256": "6be7e3bc43fcd2a6ba0cd8ab92739cb26275ce123234c56e225e8dacd48026fe"
+    },
+    "LICENSE-APACHE": {
+      "bytes": 9553,
+      "sha256": "1d97733652f212414eeda1c530c5872eec308528a7398eebc4fa482e0c0c1a03"
+    },
+    "LICENSE-MIT": {
+      "bytes": 1071,
+      "sha256": "3ff88fd2faeac25dcb4d14caac2e3f62611475551fc9ae2d77da23fea87fdb96"
+    },
+    "README.md": {
+      "bytes": 7930,
+      "sha256": "3afb24734bbe1933afed97dad272dd9bc41c6aa407fa7c252ece5b6c2574ceef"
+    },
+    "baseline-weekly-profile.patch": {
+      "bytes": 1312,
+      "sha256": "b1f937cf18054a60aeea70eaa71282a2de847d504572409163eb581213168088"
+    },
+    "candidate.patch": {
+      "bytes": 20281,
+      "sha256": "18e8ae2559f03f5cc3059989189a65adc31008eb51b14a6eb7f236f8868b8ed1"
+    },
+    "queued-activation.patch": {
+      "bytes": 543,
+      "sha256": "9b5093966a7789c73d97d8bad89beab97a4ca7f9e215819057fdeef9af01b86b"
+    },
+    "sample_request.py": {
+      "bytes": 14820,
+      "sha256": "907cf35876fe25705ed67fa678d1e99da794eda091cacb4c560c00c5a36e595f"
+    },
+    "source/crates/sekirei-train/src/main.rs": {
+      "bytes": 195247,
+      "sha256": "e626c62a63866742b00da151acf7f6f4a4c5fdc6f8ce96fc9105b59a06b32a44"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_checkpoint_io.rs": {
+      "bytes": 15400,
+      "sha256": "cb389b8a44a6c2e155f6ca692db22c75d6e458af9a41b55e1eede003031d8eae"
+    },
+    "source/crates/sekirei-train/src/paired_nonlinear_raw_master_diag.rs": {
+      "bytes": 17107,
+      "sha256": "59bc8e9e0b52bea7b706a93e2c0d075e038f8b586c24ceb7ae376c6759d45f6e"
+    },
+    "source/crates/sekirei-train/src/trainer.rs": {
+      "bytes": 264352,
+      "sha256": "8d932df7cd5a7c5499e6f10a4e6a2cc5528f042a5141b593ff44dfa7dfd95d33"
+    },
+    "source/crates/sekirei-train/src/weekly_nonlinear_profile.rs": {
+      "bytes": 803,
+      "sha256": "d870c139115434daf37059923d12f196db32a5ce4e27c308678f887680048ce8"
+    },
+    "test_public_source_snapshot.py": {
+      "bytes": 2235,
+      "sha256": "00e9a6870819039e2b68145999e077732ea941e0809a985f13af340bbaa49074"
+    },
+    "test_sample_request.py": {
+      "bytes": 13304,
+      "sha256": "4071d49fa094c7c95df243f744a67429d1efe83c2a432a3a2b3b6e90540018f1"
+    }
+  },
+  "model_probe_executed_by_snapshot_author": false,
+  "not_included": [
+    "private parent and command plans",
+    "actual requests or raw diagnostic logs",
+    "input/source inventories",
+    "private positions/teacher labels/model payload"
+  ],
+  "numeric_blocks": [
+    {
+      "bytes": 1175,
+      "ordinal": 0,
+      "sha256": "19680992afc6ff9ae607fab199bb5591141fa3782405b11d94e2e2cec86cf684",
+      "verbatim": true
+    },
+    {
+      "bytes": 865,
+      "ordinal": 1,
+      "sha256": "0a8e79f96a2359236bdc21660c882b9da263d8b62542edddf40baf589a6e5d04",
+      "verbatim": true
+    },
+    {
+      "bytes": 644,
+      "ordinal": 2,
+      "sha256": "62e2d5a2c6fbcd46b2df663bfca283ddd1aa4ca71ab73a7e880a9114824da468",
+      "verbatim": true
+    },
+    {
+      "bytes": 252,
+      "ordinal": 3,
+      "sha256": "716aecad30ad1ad09b87759648aa99904c1698eb05d4384f0c4e892294729b47",
+      "verbatim": true
+    }
+  ],
+  "original_numeric_positions_module": {
+    "bytes": 46671,
+    "sha256": "e3ad93b674e50c0ab5db701ea612f8eac373779fb5c53ce2c0f13d69022ddeef"
+  },
+  "parser_source_v3": {
+    "bytes": 14820,
+    "sha256": "907cf35876fe25705ed67fa678d1e99da794eda091cacb4c560c00c5a36e595f"
+  },
+  "protected_public_source_head": "8ba82004c50a6029d3cf83d8ab4ff8aebfbc52be",
+  "prototype_closed_before_io": true,
+  "public_sampler_methods_AST_same_as_P3_except_one_source_origin_check": 21,
+  "public_snapshot_fixture_count": 3,
+  "sampler_contract_fixture_count": 22,
+  "schema": "sekirei.raw-master-quantization-public-source-manifest.v1",
+  "source_only_snapshot": true,
+  "startup_regression_embedded_in_sampler": true,
+  "startup_regression_method_count": 6,
+  "startup_regression_methods_AST_exact_v3": true,
+  "status": "source-snapshot",
+  "synthetic_unit_test_board_literals_are_not_actual_512_input_data": true,
+  "upstream": {
+    "commit": "f09c13026e9485a19b4ba41b91ed2e1bbdf5e1c9",
+    "license": "MIT OR Apache-2.0",
+    "repository": "https://github.com/kent-tokyo/sekirei",
+    "version": "0.3.39"
+  }
+}

@@ -90,6 +90,20 @@ MAEは`513433951/531300`、Top3は`114632561/200918445`。MAEは58.701334 cp悪�
 
 初回SSD復元は1ファイルの1バイトSHA不一致で失敗した。原本とNASは固定SHAに一致し、その後の失敗stageの観測では内容が変化してNAS同値となったが原因は未確定。観測した不一致bytesは記録した1バイト差から明示的に再構成して保管し、元の失敗stageの不変コピーとは扱わない。reader v3はclosure receiptの4-key metadata（modeを含む）と3-key identityの比較で数値処理前に失敗した。v4はuniqueな復元manifest entryへmodeを束縛するbootstrapだけを修正し、数値・cache・境界関数と旧62 fixtureのASTを維持した74 fixture、および実数値consumerを通過した。失敗記録・v4修復・完了記録126ファイル・11,984,951 bytes・26 directory metadataを別の補足NAS packetへ保存し、base archiveを変更せずSSD原本を保持した。[保存・復元集計](validation/weekly-weight-improvement-2026-10-05/huber1000-e3/archive-recovery.json)を参照。復元は同じplatformの固定OS・Python stdlib・loader/shared libraries・linkerを前提とし、OS全体の独立復元を主張しない。
 
+## 量子化診断と次の仮説
+
+不採用が続いたため、第1候補MSEの保存raw masterと同じ候補自身のnearest03を直接比較した。元train 112,681行と固定holdout 5,895行から、それぞれ `floor(i*(N-1)/255), i=0..255` の256行を選んだ。label値やpredictionを選択に使わず、development/finalを参照しない。Huber候補や現bestの量子化誤差を測った結果ではない。
+
+| 差（手番視点cp） | train平均絶対差 | train最大絶対差 | holdout平均絶対差 | holdout最大絶対差 |
+| --- | ---: | ---: | ---: | ---: |
+| raw master − native dequant | 1.041514 | 10.280945 | 1.198571 | 9.785339 |
+| native dequant − integer core | 0.493230 | 0.996323 | 0.499286 | 0.998383 |
+| raw master − integer core | 1.293796 | 9.996826 | 1.392101 | 9.297668 |
+
+v3の実parentと六childはexit0、wait/reap・ECHILD・二回空scan・残存なしを確認した。全parameterとAdam m/v/global stepのbits、元input/source/modelの前後一致、nativeの全bytes再export一致、11 locksの全解放を確認した。Rootは512行のrequestと出力集合を照合し、同じpure aggregatorで実logを再集計してsummary全体の一致を確認した。Rustのmodel計算をRootが独立に再実行したという主張ではない。[実測値・失敗履歴](validation/weekly-weight-improvement-2026-10-05/raw-master-quantization-diagnostic/README.md)と[ソース・再現条件](../preparations/raw-master-quantization-diagnostic-v1/README.md)を残す。v1はRust module pathのE0583で数値処理前に失敗し、v2は数値childの512行を得たが既存FTZ/DAZ startup行へのstrict aggregator拒否で全体exit1だった。どちらも成功へ書き換えず、v3は別runとして完了した。診断記録のNAS保存は未完了で、SSD原本を保持している。
+
+この512サンプルでは大きな量子化崩れの証拠は得られなかった。全局面上限や探索中のPV同値性、正式MAEへの影響を結論するものではない。次の仮説には、同じ局面順をepochごとに繰り返すonline Adam更新への感度を選んだ。第1候補のMSE・同じデータ・構造・LR・fresh初期化seed42・3epoch・338,043更新を維持し、train行だけをepochごとの固定shuffle seed20261006で並べ替える候補を準備する。holdoutの順序と比較条件は維持する。現在のデータ選択規則はpack間round-robinなので、末尾packへの偏りが測定されたという説明は採らない。予定したpermutationに加え、更新が成功した実行順・各epochの全行一回ずつの使用・実stepを記録し、学習後に照合する。現時点ではsource準備中で、次候補の学習結果や正式採否は未確定である。
+
 ## 計算と保存
 
 現在のMac mini CPU・32 GiB RAM・既存SSD/NASだけを使う。解析jobs=1、Threads=1、build jobs=2、重い実験は直列。開始時SSD空き約27 GiB、NAS空き約5.9 TiB。初期の追加SSD作業領域は8 GiBを目安とし、各候補前に空き容量と時間を再確認する。

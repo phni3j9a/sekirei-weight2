@@ -1,0 +1,11 @@
+--- a/crates/sekirei-train/src/paired_nonlinear_raw_master_diag.rs
++++ b/crates/sekirei-train/src/paired_nonlinear_raw_master_diag.rs
+@@ -10,7 +10,7 @@
+ use serde_json::{Value,json};
+ use std::{collections::{BTreeMap,HashSet},path::PathBuf};
+ 
+-const PROTOTYPE_ONLY:bool=true;
++const PROTOTYPE_ONLY:bool=false;
+ const MODE:&str="white-view-diverse-games-seed42-e3-v1";
+ const POLICY:&str="ascending floor(i*(N-1)/255), i=0..255, original split row order";
+ const MASTER:&str="7c2f9793bc1e3660f0202631cce2c3ae1c85b6cf7293e9285e16e60a60772f88";
